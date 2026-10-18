@@ -928,6 +928,7 @@
   "fieldPage.archivedBadge": "Archiviert",
   "fieldPage.area": "Fläche",
   "fieldPage.areaHint": "Aus der aktuellen Schlaggrenze",
+  "fieldPage.boundary.add": "Neue Grenze",
   "fieldPage.boundary.cancel": "Geplante Änderung stornieren",
   "fieldPage.boundary.cancelMessage": "Die Grenze ab {{date}} wird verworfen; die bisherige Grenze gilt weiter.",
   "fieldPage.boundary.cancelTitle": "Geplante Grenzänderung stornieren?",

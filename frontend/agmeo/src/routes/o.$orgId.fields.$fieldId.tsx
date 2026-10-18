@@ -218,7 +218,7 @@ function FieldPage() {
           <ProductivityZones field={f} />
         </TabPanel>
         <TabPanel id="boundary">
-          <BoundaryHistory fieldId={fieldId} canEdit={can('field.write')} />
+          <BoundaryHistory fieldId={fieldId} canEdit={can('field.write')} onAdd={() => setBoundaryOpen(true)} />
         </TabPanel>
         {can('finance.read') && (
           <TabPanel id="costs">
@@ -319,7 +319,7 @@ function EditBoundaryDialog({ field, onClose }: { field: Field; onClose: () => v
   )
 }
 
-function BoundaryHistory({ fieldId, canEdit }: { fieldId: string; canEdit: boolean }) {
+function BoundaryHistory({ fieldId, canEdit, onAdd }: { fieldId: string; canEdit: boolean; onAdd: () => void }) {
   const { t } = useTranslation()
   const history = useOrgQuery<FieldGeometryVersion[]>(`/fields/${fieldId}/geometry-history`)
   const [selected, setSelected] = useState<string | null>(null)
@@ -332,7 +332,11 @@ function BoundaryHistory({ fieldId, canEdit }: { fieldId: string; canEdit: boole
   const shown = versions.find((v) => v.id === selected) ?? versions.find((v) => v.status === 'current') ?? versions[0]
   return (
     <div className="grid lg:grid-cols-[1fr_1.3fr] gap-6">
-      <Card title={t('fieldPage.boundary.versions')} padded={false}>
+      <Card
+        title={t('fieldPage.boundary.versions')}
+        padded={false}
+        actions={canEdit && <Button size="sm" onPress={onAdd}><Plus /> {t('fieldPage.boundary.add')}</Button>}
+      >
         <ul className="divide-y divide-line">
           {versions.map((v) => (
             <li key={v.id} className={`flex items-center gap-2 pr-3 ${shown?.id === v.id ? 'bg-primary-soft' : ''}`}>

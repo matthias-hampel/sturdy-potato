@@ -928,6 +928,7 @@
   "fieldPage.archivedBadge": "Archived",
   "fieldPage.area": "Area",
   "fieldPage.areaHint": "From the current boundary",
+  "fieldPage.boundary.add": "New boundary",
   "fieldPage.boundary.cancel": "Cancel planned change",
   "fieldPage.boundary.cancelMessage": "The boundary from {{date}} is discarded; the previous boundary stays in effect.",
   "fieldPage.boundary.cancelTitle": "Cancel planned boundary change?",
