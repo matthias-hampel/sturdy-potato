@@ -245,6 +245,8 @@ export function OpacityPicker({ value, onChange }: { value: number; onChange: (v
 export function ImageryProgress({ status, className }: { status: ImageryStatus | null; className?: string }) {
   const { t } = useTranslation()
   if (!status || (status.state !== 'running' && status.state !== 'queued')) return null
+  // The job can stay `running` for a while after the last scene while it wraps up.
+  if (status.scenesTotal > 0 && status.scenesDone >= status.scenesTotal) return null
   const pct = status.scenesTotal ? Math.round((100 * status.scenesDone) / status.scenesTotal) : 0
   return (
     <div className={cx('rounded-lg border border-line bg-surface px-3 py-2 text-sm flex items-center gap-3', className)} role="status">

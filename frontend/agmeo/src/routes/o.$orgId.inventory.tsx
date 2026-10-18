@@ -33,6 +33,7 @@ import { baseUnitLabel, productCategoryLabel } from '#/i18n/labels'
 import { fertilizerTypeLabel } from '#/i18n/labels.fieldwork'
 import { api } from '#/lib/api'
 import { fmt, localToIso, today } from '#/lib/format'
+import { openSearch, useOpenParam } from '#/lib/openParam'
 import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button, Link, SegmentedControl } from '#/ui/Button'
@@ -42,7 +43,7 @@ import { Menu, MenuItem, MenuSeparator, MenuTrigger, ModalDialog } from '#/ui/Ov
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx } from '#/ui/utils'
 
-export const Route = createFileRoute('/o/$orgId/inventory')({ component: InventoryPage })
+export const Route = createFileRoute('/o/$orgId/inventory')({ validateSearch: openSearch, component: InventoryPage })
 
 const ALL = '__all'
 const categoryItems = () => enumItems(PRODUCT_CATEGORIES, productCategoryLabel.all())
@@ -76,6 +77,8 @@ function InventoryPage() {
   const { can } = useOrg()
   const canWrite = can('inventory.write')
   const [dialog, setDialog] = useState<DialogState>(null)
+  const products = useOrgQuery<Product[]>('/products')
+  useOpenParam(products.data, (p) => canWrite && setDialog({ kind: 'product', product: p }))
   const product = dialog && 'product' in dialog ? dialog.product : undefined
   const onOpenChange = (open: boolean) => !open && setDialog(null)
 

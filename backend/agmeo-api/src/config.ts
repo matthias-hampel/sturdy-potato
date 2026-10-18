@@ -16,6 +16,7 @@ export const config = {
   port: Number(env('PORT', '3001')),
   databaseUrl: env('DATABASE_URL', 'postgres://agmeo_api:agmeo_api@localhost:5434/agmeo'),
   relayDatabaseUrl: env('RELAY_DATABASE_URL', 'postgres://agmeo_worker:agmeo_worker@localhost:5434/agmeo'),
+  recommenderDatabaseUrl: env('RECOMMENDER_DATABASE_URL', 'postgres://agmeo_recommender_worker:agmeo_recommender_worker@localhost:5434/agmeo'),
   refdataDatabaseUrl: env('REFDATA_DATABASE_URL', 'postgres://agmeo_refdata_sync:agmeo_refdata_sync@localhost:5434/agmeo'),
   natsUrl:env('NATS_URL', 'nats://localhost:4222'),
   corsOrigin: env('CORS_ORIGIN', 'http://localhost:3000'),
@@ -40,5 +41,11 @@ export const config = {
     reasoningEffort: env('OPENAI_REASONING_EFFORT', 'low'),
     timeoutMs: Number(env('OPENAI_TIMEOUT_MS', '30000')),
   },
-
+  // The worker recalculates recommendations each morning and after changes to the calendar
+  // or crops (as agmeo_recommender). 'off' leaves it to the users' refreshes.
+  recommendationSchedule: {
+    enabled: env('RECOMMENDATIONS_SCHEDULE', 'on') !== 'off',
+    dailyAt: env('RECOMMENDATIONS_DAILY_AT', '05:00'),
+    timeZone: env('RECOMMENDATIONS_TIME_ZONE', 'Europe/Berlin'),
+  },
 };

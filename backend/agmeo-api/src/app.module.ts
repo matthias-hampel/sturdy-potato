@@ -36,6 +36,8 @@ import { RecommendationsController } from './modules/recommendations/recommendat
 import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
 import { RegulatoryController } from './modules/regulatory/regulatory.controller.js';
 import { RegulatoryService } from './modules/regulatory/regulatory.service.js';
+import { SearchController } from './modules/search/search.controller.js';
+import { SearchService } from './modules/search/search.service.js';
 import { OperationsController } from './modules/operations/operations.controller.js';
 import { OperationsService } from './modules/operations/operations.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
@@ -70,6 +72,7 @@ export const DOMAIN_SERVICES = [
   ExplainerService,
   RecommendationsService,
   DashboardService,
+  SearchService,
 ];
 
 /**
@@ -100,6 +103,7 @@ export const DOMAIN_SERVICES = [
     VraController,
     RecommendationsController,
     DashboardController,
+    SearchController,
   ],
   providers: [
     TokenService,

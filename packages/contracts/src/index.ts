@@ -15,3 +15,4 @@ export * from './nutrients.js';
 export * from './agronomy.js';
 export * from './regulatory.js';
 export * from './recommendations.js';
+export * from './search.js';

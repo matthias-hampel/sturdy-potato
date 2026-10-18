@@ -68,7 +68,7 @@ function Overview() {
           {d.setup.hasCropCycles && <RecommendationsCard />}
           <Card title={t('dashboard.fields')} padded={false} actions={<Link to="/o/$orgId/fields" params={{ orgId }} className="text-sm">{t('dashboard.openMap')}</Link>}>
             {fields.data && fields.data.length > 0 ? (
-              <FieldMap fields={fields.data} className="h-80 rounded-none rounded-b-xl border-0" />
+              <FieldMap fields={fields.data} className="h-80 rounded-t-none! border-0" />
             ) : (
               <EmptyState icon={MapIcon} title={t('dashboard.noFields')} action={<Link to="/o/$orgId/fields/new" params={{ orgId }} variant="primary">{t('dashboard.addFields')}</Link>} />
             )}

@@ -322,7 +322,7 @@ export class RecommendationsService {
       await sql`SELECT pg_advisory_xact_lock(hashtext(${`recommendations:${ctx.orgId}`}))`.execute(trx);
       const { id: runId } = await trx
         .insertInto('recommendation_runs')
-        .values({ organization_id: ctx.orgId, rule_set: RECOMMENDATION_RULE_SET, item_count: decisions.length, created_by: ctx.userId })
+        .values({ organization_id: ctx.orgId, rule_set: RECOMMENDATION_RULE_SET, item_count: decisions.length, created_by: ctx.system ? null : ctx.userId })
         .returning('id')
         .executeTakeFirstOrThrow();
 

@@ -9,7 +9,7 @@ specification (P0 modules plus inventory, economics, compliance and machinery).
 ```
 frontend/agmeo        TanStack Start + React Aria + MapLibre      :3000  (/api → :3001)
 backend/agmeo-api     NestJS modular monolith (HTTP API)          :3001
-                      + worker entry (outbox → NATS relay)
+                      + worker entry (outbox → NATS relay, scheduled recommendations)
 packages/contracts    zod request schemas + response types, shared by API and web
 db/migrations         golang-migrate SQL migrations (PostgreSQL 18 + PostGIS 3.6)
 backend/agmeo-geo     Python: field zonal statistics worker + index tile server  :3002 (internal)
@@ -60,6 +60,15 @@ expressions are written as `sql` fragments.
   `audit_events`; `cost_entries` only allows deleting manual entries (policy).
 - The outbox is insert-only for the API; the relay role (`agmeo_outbox_relay`) can read and
   mark it but has no access to tenant tables.
+- Background recalculation of recommendations connects as a member of `agmeo_recommender`
+  (dev login `agmeo_recommender_worker`, `RECOMMENDER_DATABASE_URL`). It acts for one
+  organization at a time through the ordinary tenant policies: `app.org_id()` accepts
+  `app.organization_id` without a membership only for that role and only while no
+  `app.user_id` is set (`systemCtx(orgId)`), so there is no service user and nothing is
+  attributed to a person (`recommendation_runs.created_by` is NULL). Grants limit it to
+  reading the rule set's inputs (plus member names via `users(id, display_name)`) and
+  writing `recommendation_runs`/`recommendations`; `app.recommendation_schedule()` (SECURITY
+  DEFINER) lists active organizations with their open crop cycles and latest run.
 
 ### Authentication (temporary)
 
@@ -106,9 +115,14 @@ Types emitted today: `organization.created`, `membership.invited`, `farm.created
 `operation.planned|updated|completed|reopened|canceled`, `inventory.movement_recorded`,
 `inventory.low_stock`, `harvest.recorded`, `task.created|updated`.
 
-Consumer today: `agmeo-geo worker` (durable consumer `agmeo-geo-fields`) subscribes to
-`field.created` / `field.geometry_updated` and computes that field's statistics for every
-scene covering it.
+Consumers today:
+- `agmeo-geo worker` (durable consumer `agmeo-geo-fields`) subscribes to
+  `field.created` / `field.geometry_updated` and computes that field's statistics for every
+  scene covering it.
+- The API worker (durable consumer `agmeo-recommendations`) subscribes to `operation.>` and
+  `crop_cycle.>` and recalculates the organization's recommendations once changes settle
+  (2 min without a further event, at most 15 min after the first). Events are acknowledged
+  when noted; a crash before the recalculation is covered by the next daily run.
 
 ## Satellite monitoring
 
@@ -176,8 +190,13 @@ is a module in `backend/agmeo-api/src/modules`:
   livestock balance (excretion + intake − delivery) entered by the user.
 - **Recommendations** are orientation, not advice: weather thresholds (spray, fertilization, soil
   work, harvest) use the farm forecast, not field soil moisture; NDVI anomalies compare with the
-  previous observation and with the same crop on other fields. Recalculated on demand (and by the
-  UI when older than six hours); there is no scheduled daily run yet. Decided keys stay quiet for
+  previous observation and with the same crop on other fields. The worker recalculates them
+  daily at `RECOMMENDATIONS_DAILY_AT` (05:00 Europe/Berlin) for every organization with planned
+  or active main crop cycles that has not been recalculated since, catching up the same day after
+  an outage (a missed day is not repeated), and after operation/crop-cycle events; users can
+  refresh on demand, and the UI does when the last run is older than six hours. One worker at a
+  time runs the daily pass (advisory lock); organizations run one after another, and a failing one
+  is logged and retried after an hour without stopping the others. Decided keys stay quiet for
   seven days.
 - Weather: Open-Meteo forecast API, cached 30 minutes per location; spray windows are
   indicative thresholds only (no daylight, inversion or product-label rules).

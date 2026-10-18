@@ -1,6 +1,6 @@
 import { NUTRIENT_KEYS, type ApplicationTechnique, type CostCategory, type Field, type NutrientRates, type Operation, type OperationChecks, type PsmFinding, type StockMovement, type StockShortage } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AlertTriangle, Ban, CheckCircle2, Info, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, CheckCircle2, ChevronDown, Info, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Form } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +18,7 @@ import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button, Link } from '#/ui/Button'
 import { DatePicker, TextField } from '#/ui/Field'
 import { Badge, Card, DescriptionList, ErrorNotice, Loading, Notice, PageHeader } from '#/ui/Layout'
-import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
+import { ConfirmButton, Menu, MenuItem, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
 export const Route = createFileRoute('/o/$orgId/operations/$operationId')({ component: OperationPage })
@@ -67,26 +67,25 @@ function OperationPage() {
             : t('operations.detail.plannedSubtitle', { date: fmt.date(o.plannedOn), area: fmt.ha(o.totalAreaHa) })
         }
         actions={
-          writable && (
-            <>
-              {open && (
-                <>
-                  <ConfirmButton
-                    title={t('operations.detail.cancelTitle')}
-                    message={t('operations.detail.cancelMessage')}
-                    confirmLabel={t('operations.detail.cancelConfirm')}
-                    onConfirm={() => cancel.mutateAsync(o.version)}
-                    trigger={<Button variant="ghost"><Ban /> {t('operations.detail.cancel')}</Button>}
-                  />
-                  <Button onPress={() => setEditing(true)}><Pencil /> {t('common.edit')}</Button>
-                  <Button variant="primary" onPress={() => setCompleteOpen(true)}><CheckCircle2 /> {t('operations.detail.complete')}</Button>
-                </>
-              )}
-              {o.status === 'completed' && (
-                <Button onPress={() => setReopenOpen(true)}><RotateCcw /> {t('operations.detail.correct')}</Button>
-              )}
-            </>
-          )
+          <>
+            <BackToField operation={o} />
+            {writable && open && (
+              <>
+                <ConfirmButton
+                  title={t('operations.detail.cancelTitle')}
+                  message={t('operations.detail.cancelMessage')}
+                  confirmLabel={t('operations.detail.cancelConfirm')}
+                  onConfirm={() => cancel.mutateAsync(o.version)}
+                  trigger={<Button variant="ghost"><Ban /> {t('operations.detail.cancel')}</Button>}
+                />
+                <Button onPress={() => setEditing(true)}><Pencil /> {t('common.edit')}</Button>
+                <Button variant="primary" onPress={() => setCompleteOpen(true)}><CheckCircle2 /> {t('operations.detail.complete')}</Button>
+              </>
+            )}
+            {writable && o.status === 'completed' && (
+              <Button onPress={() => setReopenOpen(true)}><RotateCcw /> {t('operations.detail.correct')}</Button>
+            )}
+          </>
         }
       />
 
@@ -236,6 +235,28 @@ function OperationPage() {
       {completeOpen && <CompleteDialog operation={o} onClose={() => setCompleteOpen(false)} />}
       {reopenOpen && <ReopenDialog operation={o} onClose={() => setReopenOpen(false)} />}
     </>
+  )
+}
+
+/** Back to the field's operations tab; with several fields a menu picks which one. */
+function BackToField({ operation: o }: { operation: Operation }) {
+  const { t } = useTranslation()
+  const { orgId } = useOrg()
+  const fields = [...new Map(o.fields.map((f) => [f.fieldId, { id: f.fieldId, name: f.fieldName }])).values()]
+  if (fields.length === 0) return null
+  if (fields.length === 1)
+    return (
+      <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: fields[0].id }} search={{ tab: 'operations' }} variant="ghost">
+        <ArrowLeft /> {t('operations.detail.backToField')}
+      </Link>
+    )
+  return (
+    <MenuTrigger>
+      <Button variant="ghost"><ArrowLeft /> {t('operations.detail.backToField')} <ChevronDown /></Button>
+      <Menu items={fields}>
+        {(f) => <MenuItem id={f.id} textValue={f.name} href={`/o/${orgId}/fields/${f.id}?tab=operations`}>{f.name}</MenuItem>}
+      </Menu>
+    </MenuTrigger>
   )
 }
 

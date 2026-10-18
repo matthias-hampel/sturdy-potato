@@ -13,6 +13,16 @@ export interface Ctx {
   userId: string;
   orgId: string;
   role: Role;
+  /** A background job acting for the organization without a user (`userId` is empty). */
+  system?: true;
+}
+
+/**
+ * Context of a background job for one organization. Only the agmeo_recommender database
+ * role may use it: app.org_id() accepts an organization without a user for that role alone.
+ */
+export function systemCtx(orgId: string): Ctx {
+  return { userId: '', orgId, role: 'viewer', system: true };
 }
 
 export type AuthedRequest = Request & { user?: AuthUser; ctx?: Ctx };

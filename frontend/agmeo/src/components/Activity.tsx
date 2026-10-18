@@ -22,9 +22,6 @@ export function Activity({ entityType, entityId }: { entityType: string; entityI
                 <strong className="font-medium">{e.actorName ?? t('activity.system')}</strong> <span className="text-fg-2">{t(`activity.action.${e.action}`, { defaultValue: e.action.replace(/[_.]/g, ' ') })}</span>
               </div>
               <div className="text-xs text-muted">{fmt.dateTime(e.createdAt)}</div>
-              {Object.keys(e.changes).length > 0 && (
-                <pre className="mt-1.5 text-xs bg-surface-2 rounded-md p-2 overflow-x-auto text-fg-2">{JSON.stringify(e.changes, null, 1)}</pre>
-              )}
             </li>
           ))}
         </ol>

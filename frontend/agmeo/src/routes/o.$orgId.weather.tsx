@@ -160,7 +160,7 @@ function SprayWindows({ w }: { w: WeatherForecast }) {
   const { t } = useTranslation()
   return (
     <Card title={t('weather.spray.title')} description={t('weather.spray.description')}>
-      <div className="space-y-3">
+      <div className="flex flex-col gap-6">
         {w.sprayWindows.length === 0 ? (
           <p className="text-sm text-muted">{t('weather.spray.empty')}</p>
         ) : (
@@ -197,7 +197,7 @@ function Notices({ w }: { w: WeatherForecast }) {
     return <p className="text-sm text-muted">{t('weather.notices.empty')}</p>
   }
   return (
-    <section aria-label={t('weather.notices.ariaLabel')} className="grid md:grid-cols-2 gap-3">
+    <section aria-label={t('weather.notices.ariaLabel')} className="grid gap-3">
       {w.notices.map((n, i) => {
         const kind = noticeKind(n.kind)
         return (

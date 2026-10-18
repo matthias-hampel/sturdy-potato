@@ -19,6 +19,7 @@ import { Checkbox, DatePicker, NumberField, TextField } from '#/ui/Field'
 import { Card, ErrorNotice, Loading, Notice } from '#/ui/Layout'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
+import { cx } from '#/ui/utils'
 
 export const OPERATION_TABS = ['tillage', 'base_fertilization', 'sowing', 'nitrogen', 'crop_protection', 'irrigation', 'harvest'] as const
 export type OperationTab = (typeof OPERATION_TABS)[number]
@@ -232,6 +233,8 @@ interface GroupRow {
   cycle: CropCycle | null
   entry: Entry | null
   first: boolean
+  /** Same crop cycle as the row above in the field's group, so the crop is not repeated. */
+  sameCycle?: boolean
 }
 
 /** The operations of one kind in the season, grouped per field: each field once, with all its operations below it. */
@@ -251,7 +254,7 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   const columns = useMemo<ColumnDef<GroupRow>[]>(
     () => [
       { id: 'field', label: t('crops.plan.field'), value: (r) => r.field.name, text: (r) => `${r.field.name} ${r.field.farmName}`, render: () => null },
-      { id: 'crop', label: t('crops.plan.crop'), filter: 'select', value: (r) => r.cycle?.cropName, render: (r) => (r.cycle ? <CropTag name={r.cycle.cropName} color={r.cycle.cropColor} /> : r.first ? dash : null) },
+      { id: 'crop', label: t('crops.plan.crop'), filter: 'select', value: (r) => r.cycle?.cropName, render: (r) => (r.sameCycle ? null : r.cycle ? <CropTag name={r.cycle.cropName} color={r.cycle.cropColor} /> : r.first ? dash : null) },
       {
         id: 'area',
         label: t('crops.plan.area'),
@@ -323,14 +326,19 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
     if (view.compare) list = [...list].sort(view.compare)
     const groups = new Map<string, GroupRow[]>()
     for (const r of list) groups.set(r.field.id, [...(groups.get(r.field.id) ?? []), r])
-    return [...groups.values()].flatMap((g) => g.map((r, i) => ({ ...r, first: i === 0 })))
+    return [...groups.values()].flatMap((g) =>
+      g.map((r, i) => ({ ...r, first: i === 0, sameCycle: i > 0 && (r.cycle?.id ?? null) === (g[i - 1].cycle?.id ?? null) })),
+    )
   }, [rows, view])
 
+  // Only a field's first row has a checkbox; it stands for all of the field's rows.
+  const followUps = useMemo(() => shown.filter((r) => !r.first).map((r) => r.id), [shown])
   const selected = useMemo(() => {
     const ids = selectedIds(selection, shown)
-    const picked = shown.filter((r) => ids.has(r.id))
+    const fieldIds = new Set(shown.filter((r) => r.first && ids.has(r.id)).map((r) => r.field.id))
+    const picked = shown.filter((r) => fieldIds.has(r.field.id))
     const opsById = new Map(picked.flatMap((r) => (r.entry ? [[r.entry.op.id, r.entry.op] as const] : [])))
-    return { count: picked.length, ops: [...opsById.values()], fieldIds: [...new Set(picked.map((r) => r.field.id))] }
+    return { count: fieldIds.size, ops: [...opsById.values()], fieldIds: [...fieldIds] }
   }, [selection, shown])
   const openOps = selected.ops.filter(isOpen)
   const clear = () => setSelection(new Set())
@@ -353,6 +361,8 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
           selectionMode={writable ? 'multiple' : 'none'}
           selectedKeys={selection}
           onSelectionChange={setSelection}
+          disabledKeys={followUps}
+          disabledBehavior="selection"
           sortDescriptor={view.sort}
           onSortChange={view.setSort}
         >
@@ -368,14 +378,10 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
               </Column>
             ))}
           </TableHeader>
-          <TableBody items={shown} renderEmptyState={() => (view.filtered ? <NoMatches onReset={view.clearFilters} /> : <div className="py-10 text-center text-sm text-muted">{t('crops.plan.empty')}</div>)}>
+          <TableBody items={shown} dependencies={[selected.fieldIds]} renderEmptyState={() => (view.filtered ? <NoMatches onReset={view.clearFilters} /> : <div className="py-10 text-center text-sm text-muted">{t('crops.plan.empty')}</div>)}>
             {(r) => (
-              <Row id={r.id} href={r.entry ? `/o/${orgId}/operations/${r.entry.op.id}` : undefined} className={r.first ? '[&>td]:border-t [&>td]:border-line' : undefined}>
-                {writable && (
-                  <Cell>
-                    <Checkbox slot="selection" />
-                  </Cell>
-                )}
+              <Row id={r.id} href={r.entry ? `/o/${orgId}/operations/${r.entry.op.id}` : undefined} className={cx(r.first && '[&>td]:border-t [&>td]:border-line', !r.first && selected.fieldIds.includes(r.field.id) && 'bg-primary-soft')}>
+                {writable && <Cell>{r.first && <Checkbox slot="selection" />}</Cell>}
                 {columns.map((c) =>
                   c.id === 'field' ? (
                     <Cell key={c.id}>

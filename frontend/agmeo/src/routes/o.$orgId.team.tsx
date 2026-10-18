@@ -1,8 +1,8 @@
 import { ROLES, type Employee, type EmployeeInput, type InviteMemberInput, type Member, type Role, type UpdateMemberInput } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
 import { HardHat, KeyRound, Mail, Pencil, Phone, Trash2, UserCheck, UserPlus, UserX, Users } from 'lucide-react'
-import { useState } from 'react'
-import { Form } from 'react-aria-components'
+import { useEffect, useState } from 'react'
+import { Form, type Key } from 'react-aria-components'
 import { Trans, useTranslation } from 'react-i18next'
 import { FormActions, NONE, keyOrNull, textOrNull } from '#/components/resources/form'
 import { t } from '#/i18n'
@@ -10,6 +10,7 @@ import { roleLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { fmt } from '#/lib/format'
+import { openSearch, useOpenParam } from '#/lib/openParam'
 import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button } from '#/ui/Button'
@@ -19,7 +20,7 @@ import { ConfirmButton, Dialog, DialogTrigger, ModalDialog, Tooltip } from '#/ui
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx } from '#/ui/utils'
 
-export const Route = createFileRoute('/o/$orgId/team')({ component: TeamPage })
+export const Route = createFileRoute('/o/$orgId/team')({ validateSearch: openSearch, component: TeamPage })
 
 const roleDescription = (role: Role) => t(`team.roleDescription.${role}`)
 const roleItems = () => ROLES.map((id) => ({ id, name: roleLabel(id), description: roleDescription(id) }))
@@ -32,10 +33,15 @@ const MEMBER_STATUS_TONES: Record<Member['status'], BadgeTone> = {
 
 function TeamPage() {
   const { t } = useTranslation()
+  const { open } = Route.useSearch()
+  const [tab, setTab] = useState<Key>(open ? 'employees' : 'access')
+  useEffect(() => {
+    if (open) setTab('employees')
+  }, [open])
   return (
     <>
       <PageHeader title={t('team.title')} subtitle={t('team.subtitle')} />
-      <Tabs>
+      <Tabs selectedKey={tab} onSelectionChange={setTab}>
         <TabList aria-label={t('team.title')}>
           <Tab id="access">{t('team.tabs.access')}</Tab>
           <Tab id="employees">{t('team.employees.title')}</Tab>
@@ -260,6 +266,7 @@ function EmployeesTab() {
   const employees = useOrgQuery<Employee[]>('/employees')
   const members = useOrgQuery<Member[]>('/members')
   const [editing, setEditing] = useState<Employee | 'new' | null>(null)
+  useOpenParam(employees.data, (e) => canWrite && setEditing(e))
 
   const memberName = (id: string | null) => (id ? (members.data?.find((m) => m.userId === id)?.displayName ?? t('team.employees.appUser')) : null)
   const sorted = [...(employees.data ?? [])].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))

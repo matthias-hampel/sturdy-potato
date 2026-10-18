@@ -20,6 +20,7 @@ import { LOCALE } from '#/i18n'
 import { operationTypeLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
 import { addDays, fmt, today } from '#/lib/format'
+import { openSearch, useOpenParam } from '#/lib/openParam'
 import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button, Link, SegmentedControl, buttonClass } from '#/ui/Button'
@@ -28,7 +29,7 @@ import { Card, EmptyState, ErrorNotice, Loading, PageHeader } from '#/ui/Layout'
 import { Menu, MenuItem, MenuSeparator, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { cx } from '#/ui/utils'
 
-export const Route = createFileRoute('/o/$orgId/tasks')({ component: TasksPage })
+export const Route = createFileRoute('/o/$orgId/tasks')({ validateSearch: openSearch, component: TasksPage })
 
 type View = 'list' | 'calendar'
 type StatusFilter = 'active' | 'done' | 'all'
@@ -42,6 +43,10 @@ function TasksPage() {
   const [editing, setEditing] = useState<Task | 'new' | null>(null)
   const tasks = useOrgQuery<Task[]>('/tasks', { status: status === 'all' ? undefined : status, assigneeEmployeeId: assignee === 'all' ? undefined : assignee })
   const employees = useOrgQuery<Employee[]>('/employees')
+  // The linked task may be done or assigned to someone else, so look it up without the filters.
+  const { open } = Route.useSearch()
+  const linked = useOrgQuery<Task[]>('/tasks', undefined, { enabled: !!open })
+  useOpenParam(linked.data, setEditing)
 
   return (
     <>
