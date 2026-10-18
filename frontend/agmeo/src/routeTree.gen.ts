@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as OOrgIdRouteImport } from './routes/o.$orgId'
 import { Route as OOrgIdIndexRouteImport } from './routes/o.$orgId.index'
 import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
+import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
@@ -51,6 +53,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OOrgIdRoute = OOrgIdRouteImport.update({
   id: '/o/$orgId',
   path: '/o/$orgId',
@@ -69,6 +76,11 @@ const OOrgIdCalendarRoute = OOrgIdCalendarRouteImport.update({
 const OOrgIdEconomicsRoute = OOrgIdEconomicsRouteImport.update({
   id: '/economics',
   path: '/economics',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdFilesRoute = OOrgIdFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
@@ -173,9 +185,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -201,8 +215,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -229,9 +245,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -259,9 +277,11 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/onboarding'
+    | '/auth/callback'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/settings'
@@ -287,8 +307,10 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/onboarding'
+    | '/auth/callback'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/settings'
@@ -314,9 +336,11 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/onboarding'
+    | '/auth/callback'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/settings'
@@ -343,6 +367,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   OOrgIdRoute: typeof OOrgIdRouteWithChildren
 }
 
@@ -367,6 +392,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/o/$orgId': {
@@ -395,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/economics'
       fullPath: '/o/$orgId/economics'
       preLoaderRoute: typeof OOrgIdEconomicsRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/files': {
+      id: '/o/$orgId/files'
+      path: '/files'
+      fullPath: '/o/$orgId/files'
+      preLoaderRoute: typeof OOrgIdFilesRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/inventory': {
@@ -536,6 +575,7 @@ declare module '@tanstack/react-router' {
 interface OOrgIdRouteChildren {
   OOrgIdCalendarRoute: typeof OOrgIdCalendarRoute
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
+  OOrgIdFilesRoute: typeof OOrgIdFilesRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
@@ -561,6 +601,7 @@ interface OOrgIdRouteChildren {
 const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdCalendarRoute: OOrgIdCalendarRoute,
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
+  OOrgIdFilesRoute: OOrgIdFilesRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
@@ -590,6 +631,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   OOrgIdRoute: OOrgIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport

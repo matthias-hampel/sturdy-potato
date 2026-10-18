@@ -73,9 +73,7 @@ function MembersTab() {
 
   return (
     <div className="space-y-4">
-      <Notice icon={KeyRound}>
-        <Trans i18nKey="team.members.devSignInNotice" components={{ b: <strong /> }} />
-      </Notice>
+      <Notice icon={KeyRound}>{t('team.members.invitationNotice')}</Notice>
 
       <Card
         title={t('team.members.title')}

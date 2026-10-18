@@ -9,8 +9,8 @@ import { EmptyState, Loading } from '#/ui/Layout'
 import { t } from '#/i18n'
 
 export const Route = createFileRoute('/o/$orgId')({
-  beforeLoad: () => {
-    if (!tokenStore.get()) throw redirect({ to: '/login' })
+  beforeLoad: ({ location }) => {
+    if (!tokenStore.get()) throw redirect({ to: '/login', search: { returnTo: location.href } })
   },
   component: OrgLayout,
 })

@@ -1,0 +1,101 @@
+{
+  "realm": "agmeo",
+  "displayName": "agmeo",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["de", "en"],
+  "defaultLocale": "de",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 2592000,
+  "ssoSessionMaxLifespan": 7776000,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@agmeo.local",
+    "fromDisplayName": "agmeo"
+  },
+  "clients": [
+    {
+      "clientId": "agmeo-web",
+      "name": "agmeo web app",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "/",
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email", "basic"],
+      "optionalClientScopes": ["offline_access"],
+      "protocolMappers": [
+        {
+          "name": "agmeo-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "agmeo-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "anna@example.com",
+      "email": "anna@example.com",
+      "firstName": "Anna",
+      "lastName": "Bauer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "agmeo-demo", "temporary": false }]
+    },
+    {
+      "username": "jonas@example.com",
+      "email": "jonas@example.com",
+      "firstName": "Jonas",
+      "lastName": "Meyer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "agmeo-demo", "temporary": false }]
+    },
+    {
+      "username": "lena@example.com",
+      "email": "lena@example.com",
+      "firstName": "Lena",
+      "lastName": "Schulz",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "agmeo-demo", "temporary": false }]
+    },
+    {
+      "username": "paul@example.com",
+      "email": "paul@example.com",
+      "firstName": "Paul",
+      "lastName": "Krüger",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "agmeo-demo", "temporary": false }]
+    }
+  ]
+}

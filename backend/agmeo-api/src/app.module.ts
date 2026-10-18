@@ -13,6 +13,9 @@ import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { EconomicsController } from './modules/economics/economics.controller.js';
 import { EconomicsService } from './modules/economics/economics.service.js';
 import { FarmsController } from './modules/farms/farms.controller.js';
+import { FilesController } from './modules/files/files.controller.js';
+import { FilesService } from './modules/files/files.service.js';
+import { ObjectStorage } from './storage/object-storage.js';
 import { FarmsService } from './modules/farms/farms.service.js';
 import { FieldPartsController, FieldsController } from './modules/fields/fields.controller.js';
 import { FieldPartsService } from './modules/fields/field-parts.service.js';
@@ -65,6 +68,7 @@ export const DOMAIN_SERVICES = [
   ProductivityService,
   VraService,
   DashboardService,
+  FilesService,
 ];
 
 /**
@@ -94,9 +98,11 @@ export const DOMAIN_SERVICES = [
     ProductivityController,
     VraController,
     DashboardController,
+    FilesController,
   ],
   providers: [
     TokenService,
+    ObjectStorage,
     ...DOMAIN_SERVICES,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: OrgGuard },

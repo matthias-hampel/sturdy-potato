@@ -128,12 +128,12 @@ function WeatherCard({ farmId }: { farmId: string }) {
           <div className="flex items-center gap-4">
             <CurrentIcon className="size-9 text-primary shrink-0" aria-hidden />
             <div className="min-w-0">
-              <div className="text-2xl font-semibold tabular">{current?.tempC != null ? `${fmt.num(current.tempC)}°` : '—'}</div>
+              <div className="text-2xl font-semibold tabular">{current?.tempC != null ? `${fmt.measure(current.tempC, 'temperature', { digits: 0, withUnit: false })}°` : '—'}</div>
               <div className="text-sm text-fg-2">{code.label}</div>
             </div>
             <div className="ml-auto text-right text-sm text-fg-2">
-              <div className="inline-flex items-center gap-1"><CloudRain className="size-4 text-muted" aria-hidden /> {t('cultivation.info.rain7d', { mm: fmt.num(w.precipitationLast7dMm, 1) })}</div>
-              {current?.windKmh != null && <div className="text-xs text-muted">{t('cultivation.info.wind', { kmh: fmt.num(current.windKmh) })}</div>}
+              <div className="inline-flex items-center gap-1"><CloudRain className="size-4 text-muted" aria-hidden /> {t('cultivation.info.rain7d', { amount: fmt.measure(w.precipitationLast7dMm, 'precipDepth') })}</div>
+              {current?.windKmh != null && <div className="text-xs text-muted">{t('cultivation.info.wind', { value: fmt.measure(current.windKmh, 'speed', { digits: 0 }) })}</div>}
             </div>
           </div>
           <ol className="grid grid-cols-7 gap-1 text-center text-xs">
@@ -144,8 +144,8 @@ function WeatherCard({ farmId }: { farmId: string }) {
                 <li key={d.date} className="rounded-md bg-surface-2 py-2 px-0.5" title={c.label}>
                   <div className="text-muted">{fmt.weekday(localDate(d.date))}</div>
                   <Icon className="size-5 mx-auto my-1 text-fg-2" aria-hidden />
-                  <div className="tabular font-medium">{fmt.num(d.tempMaxC)}°</div>
-                  <div className="tabular text-muted">{fmt.num(d.tempMinC)}°</div>
+                  <div className="tabular font-medium">{fmt.measure(d.tempMaxC, 'temperature', { digits: 0, withUnit: false })}°</div>
+                  <div className="tabular text-muted">{fmt.measure(d.tempMinC, 'temperature', { digits: 0, withUnit: false })}°</div>
                   <div className="tabular text-info mt-0.5">{d.precipitationMm ? `${fmt.num(d.precipitationMm, 1)}` : '·'}</div>
                 </li>
               )

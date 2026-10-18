@@ -1,4 +1,4 @@
-import type { Farm, LatLng, Organization, Season } from '@agmeo/contracts'
+import { MEASUREMENT_SETTINGS, type Farm, type LatLng, type MeasurementSetting, type Organization, type Season } from '@agmeo/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Archive, ArchiveRestore, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -42,7 +42,8 @@ function OrganizationCard({ org, editable }: { org: Organization; editable: bool
   const [name, setName] = useState(org.name)
   const [currency, setCurrency] = useState(org.currency)
   const [month, setMonth] = useState(org.cropYearStartMonth)
-  const save = useOrgMutation((base, _: void) => api.patch<Organization>(base, { name, currency, cropYearStartMonth: month }), {
+  const [measurement, setMeasurement] = useState<MeasurementSetting>(org.measurementSetting)
+  const save = useOrgMutation((base, _: void) => api.patch<Organization>(base, { name, currency, cropYearStartMonth: month, measurementSetting: measurement }), {
     success: t('settings.org.updated'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
   })
@@ -54,6 +55,16 @@ function OrganizationCard({ org, editable }: { org: Organization; editable: bool
           {(c) => <Option id={c.id}>{c.name}</Option>}
         </Select>
         <Select label={t('settings.org.cropYearStart')} isDisabled={!editable} items={MONTHS} value={month} onChange={(v) => v && setMonth(Number(v))} description={t('settings.org.cropYearStartHint')}>
+          {(m) => <Option id={m.id}>{m.name}</Option>}
+        </Select>
+        <Select
+          label={t('settings.org.units')}
+          isDisabled={!editable}
+          items={MEASUREMENT_SETTINGS.map((id) => ({ id, name: t(`settings.org.units.${id}`) }))}
+          value={measurement}
+          onChange={(v) => v && setMeasurement(v as MeasurementSetting)}
+          description={t('settings.org.unitsHint')}
+        >
           {(m) => <Option id={m.id}>{m.name}</Option>}
         </Select>
         {editable && (

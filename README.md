@@ -31,11 +31,11 @@ Requires Node 24+, pnpm, Docker and `golang-migrate` (`brew install golang-migra
 
 ```bash
 pnpm install
-pnpm infra:up        # PostgreSQL/PostGIS on :5434, NATS on :4222
+pnpm infra:up        # PostgreSQL/PostGIS :5434, NATS :4222, Keycloak :8180, Mailpit :8025
 pnpm db:migrate
 pnpm db:seed         # demo farm "Hof Sonnenfeld" near Sehnde
 pnpm dev             # contracts watcher, API on :3001, web on :3000
-pnpm dev:worker      # optional: relays domain events to NATS
+pnpm dev:worker      # relays domain events to NATS, runs background jobs (e-mails, schedules)
 pnpm sync:psm        # optional: loads the BVL plant-protection register (needs internet)
 ```
 
@@ -51,8 +51,14 @@ The worker backfills every field's Sentinel-2 imagery since 2018 from Earth Sear
 the field windows are read; progress shows in the app) and then computes productivity
 zones. See Fields & map → *Satellite imagery*, and a field's *Satellite* and *Zones* tabs.
 
-Open http://localhost:3000 and pick a demo account (Anna Bauer is the owner). Sign-in is
-development-only: any email works without a password until Keycloak is integrated.
+Open http://localhost:3000. By default the API runs with `AUTH_MODE=dev`: pick a demo
+account (Anna Bauer is the owner) or sign in with any e-mail address, no password.
+
+To sign in through Keycloak instead, start the API with `AUTH_MODE=oidc`. The realm in
+`infrastructure/keycloak/agmeo-realm.json` is imported on Keycloak's first start, with the
+demo users anna@, jonas@, lena@ and paul@example.com (password `agmeo-demo`). Registration
+and password-reset e-mails, and agmeo's invitation e-mails, arrive in Mailpit
+(http://localhost:8025). Keycloak's admin console is http://localhost:8180/admin (admin / admin).
 
 ```bash
 pnpm typecheck

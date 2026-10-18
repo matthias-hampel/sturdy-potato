@@ -22,3 +22,6 @@ dist/
 .nitro/
 *.tsbuildinfo
 coverage/
+
+# Local object storage (STORAGE_DRIVER=local)
+.storage/

@@ -32,7 +32,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={LANGUAGE}>
+    // The client sets the language before hydrating (it can differ from the server shell).
+    <html lang={LANGUAGE} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

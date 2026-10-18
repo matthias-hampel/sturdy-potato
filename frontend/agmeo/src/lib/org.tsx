@@ -2,7 +2,7 @@ import { type Organization, type Permission, type Season, can } from '@agmeo/con
 import { useQuery } from '@tanstack/react-query'
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import { api } from './api'
-import { today } from './format'
+import { setMeasurementSystem, today } from './format'
 
 interface OrgContextValue {
   orgId: string
@@ -13,6 +13,8 @@ interface OrgContextValue {
 const OrgContext = createContext<OrgContextValue | null>(null)
 
 export function OrgProvider({ org, children }: { org: Organization; children: ReactNode }) {
+  // Before the children render, so their formatting uses this organization's units.
+  setMeasurementSystem(org.measurementSystem)
   const value = useMemo(() => ({ orgId: org.id, org, can: (p: Permission) => can(org.role, p) }), [org])
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>
 }

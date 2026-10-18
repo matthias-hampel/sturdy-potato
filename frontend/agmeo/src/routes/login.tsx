@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ClipboardList, Map, Satellite, ShieldAlert, Sprout } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ClipboardList, LogIn, MailCheck, Map, Satellite, ShieldAlert, Sprout, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Form } from 'react-aria-components'
@@ -8,12 +9,13 @@ import { Logo } from '#/components/Logo'
 import { roleLabel } from '#/i18n/labels'
 import { errorMessage } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
+import { authConfig } from '#/lib/oidc'
 import { Button } from '#/ui/Button'
 import { TextField } from '#/ui/Field'
-import { Notice } from '#/ui/Layout'
+import { Loading, Notice } from '#/ui/Layout'
 
 export const Route = createFileRoute('/login')({
-  validateSearch: z.object({ expired: z.boolean().optional() }),
+  validateSearch: z.object({ expired: z.coerce.boolean().optional(), invited: z.coerce.boolean().optional(), returnTo: z.string().optional() }),
   component: Login,
 })
 
@@ -26,9 +28,71 @@ const PERSONAS = [
 
 function Login() {
   const { t } = useTranslation()
+  const { expired, invited, returnTo } = Route.useSearch()
+  const config = useQuery({ queryKey: ['authConfig'], queryFn: authConfig, staleTime: Infinity, retry: 2 })
+
+  return (
+    <div className="min-h-dvh grid lg:grid-cols-[1.1fr_1fr]">
+      <IntroPanel />
+      <section className="flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-sm">
+          <Logo className="lg:hidden mb-10" />
+          <h2 className="text-2xl font-semibold tracking-tight">{t('login.title')}</h2>
+          {expired && <Notice tone="warning" className="mt-5">{t('login.expired')}</Notice>}
+          {invited && <Notice tone="info" icon={MailCheck} className="mt-5">{t('login.invited')}</Notice>}
+          {config.isPending ? (
+            <div className="mt-6"><Loading /></div>
+          ) : config.isError ? (
+            <Notice tone="danger" className="mt-6">{t('login.configError')}</Notice>
+          ) : config.data.mode === 'oidc' ? (
+            <OidcSignIn returnTo={returnTo} preferRegister={!!invited} />
+          ) : (
+            <DevSignIn />
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function OidcSignIn({ returnTo, preferRegister }: { returnTo?: string; preferRegister: boolean }) {
+  const { t } = useTranslation()
   const { signIn } = useAuth()
+  const [pending, setPending] = useState<'signin' | 'register' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const go = async (register: boolean) => {
+    setPending(register ? 'register' : 'signin')
+    setError(null)
+    try {
+      await signIn({ returnTo, register })
+    } catch (e) {
+      setError(errorMessage(e))
+      setPending(null)
+    }
+  }
+  const signInButton = (
+    <Button key="signin" variant={preferRegister ? 'secondary' : 'primary'} className="w-full" isPending={pending === 'signin'} onPress={() => go(false)}>
+      <LogIn /> {t('login.signIn')}
+    </Button>
+  )
+  const registerButton = (
+    <Button key="register" variant={preferRegister ? 'primary' : 'secondary'} className="w-full" isPending={pending === 'register'} onPress={() => go(true)}>
+      <UserPlus /> {t('login.register')}
+    </Button>
+  )
+  return (
+    <div className="mt-6 space-y-3">
+      <p className="text-sm text-muted">{t('login.oidcHint')}</p>
+      {preferRegister ? [registerButton, signInButton] : [signInButton, registerButton]}
+      {error && <Notice tone="danger">{error}</Notice>}
+    </div>
+  )
+}
+
+function DevSignIn() {
+  const { t } = useTranslation()
+  const { signInDev } = useAuth()
   const navigate = useNavigate()
-  const { expired } = Route.useSearch()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +102,7 @@ function Login() {
     setPending(address)
     setError(null)
     try {
-      const user = await signIn(address, displayName)
+      const user = await signInDev(address, displayName)
       const org = user.organizations[0]
       await navigate(org ? { to: '/o/$orgId', params: { orgId: org.id } } : { to: '/onboarding' })
     } catch (e) {
@@ -49,76 +113,72 @@ function Login() {
   }
 
   return (
-    <div className="min-h-dvh grid lg:grid-cols-[1.1fr_1fr]">
-      <section className="hidden lg:flex flex-col justify-between bg-sidebar text-sidebar-fg p-12 relative overflow-hidden">
-        <FieldPattern />
-        <Logo light className="relative" />
-        <div className="relative max-w-lg">
-          <h1 className="text-4xl font-semibold tracking-tight text-white leading-tight">{t('login.headline')}</h1>
-          <p className="mt-4 text-lg text-sidebar-fg/80">{t('login.subline')}</p>
-          <ul className="mt-10 space-y-4 text-sm">
-            {[
-              [Map, t('login.feature.fields')],
-              [Sprout, t('login.feature.crops')],
-              [ClipboardList, t('login.feature.records')],
-              [Satellite, t('login.feature.monitoring')],
-            ].map(([Icon, text], i) => {
-              const I = Icon as typeof Map
-              return (
-                <li key={i} className="flex gap-3 items-start">
-                  <span className="size-8 rounded-lg bg-white/8 flex items-center justify-center shrink-0">
-                    <I className="size-4 text-[#a8d08d]" aria-hidden />
-                  </span>
-                  <span className="pt-1.5">{text as string}</span>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-        <p className="relative text-xs text-sidebar-muted">{t('login.footer')}</p>
-      </section>
+    <>
+      <p className="text-sm text-muted mt-1">{t('login.hint')}</p>
+      <Form
+        className="mt-6 space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void go(email, name)
+        }}
+      >
+        <TextField label={t('login.email')} type="email" name="email" isRequired autoFocus value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder')} />
+        <TextField label={t('common.name')} name="name" value={name} onChange={setName} description={t('login.nameHint')} placeholder={t('common.optional')} />
+        {error && <Notice tone="danger">{error}</Notice>}
+        <Button type="submit" variant="primary" className="w-full" isPending={pending === email && !!email}>
+          {t('login.continue')}
+        </Button>
+      </Form>
 
-      <section className="flex items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-sm">
-          <Logo className="lg:hidden mb-10" />
-          <h2 className="text-2xl font-semibold tracking-tight">{t('login.title')}</h2>
-          <p className="text-sm text-muted mt-1">{t('login.hint')}</p>
-
-          {expired && <Notice tone="warning" className="mt-5">{t('login.expired')}</Notice>}
-
-          <Form
-            className="mt-6 space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void go(email, name)
-            }}
-          >
-            <TextField label={t('login.email')} type="email" name="email" isRequired autoFocus value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder')} />
-            <TextField label={t('common.name')} name="name" value={name} onChange={setName} description={t('login.nameHint')} placeholder={t('common.optional')} />
-            {error && <Notice tone="danger">{error}</Notice>}
-            <Button type="submit" variant="primary" className="w-full" isPending={pending === email && !!email}>
-              {t('login.continue')}
+      <div className="mt-8">
+        <div className="text-xs font-medium uppercase tracking-wider text-muted mb-2">{t('login.demoAccounts')}</div>
+        <div className="grid grid-cols-2 gap-2">
+          {PERSONAS.map((p) => (
+            <Button key={p.email} variant="secondary" className="h-auto py-2 flex-col items-start text-left" isPending={pending === p.email} onPress={() => go(p.email, p.name)}>
+              <span className="text-sm font-medium text-fg">{p.name}</span>
+              <span className="text-xs text-muted font-normal">{roleLabel(p.role)}</span>
             </Button>
-          </Form>
-
-          <div className="mt-8">
-            <div className="text-xs font-medium uppercase tracking-wider text-muted mb-2">{t('login.demoAccounts')}</div>
-            <div className="grid grid-cols-2 gap-2">
-              {PERSONAS.map((p) => (
-                <Button key={p.email} variant="secondary" className="h-auto py-2 flex-col items-start text-left" isPending={pending === p.email} onPress={() => go(p.email, p.name)}>
-                  <span className="text-sm font-medium text-fg">{p.name}</span>
-                  <span className="text-xs text-muted font-normal">{roleLabel(p.role)}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <Notice tone="warning" icon={ShieldAlert} className="mt-8">
-            <Trans i18nKey="login.devNotice" components={{ b: <strong /> }} />
-          </Notice>
+          ))}
         </div>
-      </section>
-    </div>
+      </div>
+
+      <Notice tone="warning" icon={ShieldAlert} className="mt-8">
+        <Trans i18nKey="login.devNotice" components={{ b: <strong /> }} />
+      </Notice>
+    </>
+  )
+}
+
+function IntroPanel() {
+  const { t } = useTranslation()
+  return (
+    <section className="hidden lg:flex flex-col justify-between bg-sidebar text-sidebar-fg p-12 relative overflow-hidden">
+      <FieldPattern />
+      <Logo light className="relative" />
+      <div className="relative max-w-lg">
+        <h1 className="text-4xl font-semibold tracking-tight text-white leading-tight">{t('login.headline')}</h1>
+        <p className="mt-4 text-lg text-sidebar-fg/80">{t('login.subline')}</p>
+        <ul className="mt-10 space-y-4 text-sm">
+          {[
+            [Map, t('login.feature.fields')],
+            [Sprout, t('login.feature.crops')],
+            [ClipboardList, t('login.feature.records')],
+            [Satellite, t('login.feature.monitoring')],
+          ].map(([Icon, text], i) => {
+            const I = Icon as typeof Map
+            return (
+              <li key={i} className="flex gap-3 items-start">
+                <span className="size-8 rounded-lg bg-white/8 flex items-center justify-center shrink-0">
+                  <I className="size-4 text-[#a8d08d]" aria-hidden />
+                </span>
+                <span className="pt-1.5">{text as string}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+      <p className="relative text-xs text-sidebar-muted">{t('login.footer')}</p>
+    </section>
   )
 }
 

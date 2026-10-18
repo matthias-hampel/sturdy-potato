@@ -1,5 +1,6 @@
 import { t } from '#/i18n'
 import type { ApiError } from '@agmeo/contracts'
+import { renewToken } from './oidc'
 
 const BASE = '/api/v1'
 const TOKEN_KEY = 'agmeo.accessToken'
@@ -32,14 +33,27 @@ function url(path: string, query?: Query) {
 
 export const SESSION_EXPIRED_EVENT = 'agmeo:session-expired'
 
+/**
+ * Fetches with the current access token. An expired Keycloak token is renewed once with the
+ * refresh token before the request counts as unauthenticated.
+ */
+async function authedFetch(input: string, init: RequestInit & { headers?: Record<string, string> } = {}): Promise<Response> {
+  const send = () => {
+    const token = tokenStore.get()
+    return fetch(input, { ...init, headers: { ...init.headers, ...(token ? { authorization: `Bearer ${token}` } : {}) } })
+  }
+  const res = await send()
+  if (res.status !== 401 || !tokenStore.get()) return res
+  const fresh = await renewToken()
+  if (!fresh) return res
+  tokenStore.set(fresh)
+  return send()
+}
+
 async function request<T>(method: string, path: string, body?: unknown, query?: Query): Promise<T> {
-  const token = tokenStore.get()
-  const res = await fetch(url(path, query), {
+  const res = await authedFetch(url(path, query), {
     method,
-    headers: {
-      ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
+    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   const text = await res.text()
@@ -53,6 +67,24 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
 }
 
 export const api = {
+  /** Uploads a file as multipart form data. */
+  async upload<T>(path: string, form: FormData): Promise<T> {
+    const res = await authedFetch(url(path), { method: 'POST', body: form })
+    const text = await res.text()
+    const data = text ? JSON.parse(text) : null
+    if (!res.ok) {
+      const err = (data ?? {}) as Partial<ApiError>
+      if (res.status === 401) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+      throw new ApiRequestError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details)
+    }
+    return data as T
+  },
+  /** Fetches a file response as a Blob with the current credentials (previews). */
+  async blob(path: string, query?: Query): Promise<Blob> {
+    const res = await authedFetch(url(path, query))
+    if (!res.ok) throw new ApiRequestError(res.status, 'download_failed', t('apiError.download_failed'))
+    return res.blob()
+  },
   get: <T>(path: string, query?: Query) => request<T>('GET', path, undefined, query),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
@@ -60,8 +92,7 @@ export const api = {
   delete: <T = void>(path: string) => request<T>('DELETE', path),
   /** Downloads a file response (e.g. CSV export) with the current credentials; `filename` is used when the response names none. */
   async download(path: string, query?: Query, filename = 'export') {
-    const token = tokenStore.get()
-    const res = await fetch(url(path, query), { headers: token ? { authorization: `Bearer ${token}` } : {} })
+    const res = await authedFetch(url(path, query))
     if (!res.ok) throw new ApiRequestError(res.status, 'download_failed', t('apiError.download_failed'))
     const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? filename
     saveBlob(await res.blob(), name)

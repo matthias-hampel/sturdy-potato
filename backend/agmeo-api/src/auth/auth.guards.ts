@@ -5,7 +5,7 @@ import { sql } from 'kysely';
 import { DomainError, forbidden } from '../core/errors.js';
 import { Database } from '../db/database.js';
 import { type AuthedRequest, PUBLIC_ROUTE, REQUIRED_PERMISSION } from './context.js';
-import { TokenService } from './token.service.js';
+import { TokenService, UnverifiedEmailError } from './token.service.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -33,7 +33,8 @@ export class AuthGuard implements CanActivate {
     let claims;
     try {
       claims = await this.tokens.verify(token);
-    } catch {
+    } catch (e) {
+      if (e instanceof UnverifiedEmailError) throw new DomainError(403, 'email_unverified', 'Please confirm your e-mail address first');
       throw new DomainError(401, 'invalid_token', 'Session expired or invalid; please sign in again');
     }
 

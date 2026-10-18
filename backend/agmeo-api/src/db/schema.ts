@@ -413,6 +413,33 @@ export interface Fields {
   updated_at: Generated<Timestamp>;
 }
 
+export interface FileFolders {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  deleted_at: Timestamp | null;
+  id: Generated<string>;
+  name: string;
+  organization_id: string;
+  parent_id: string | null;
+  system_key: string | null;
+}
+
+export interface Files {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  deleted_at: Timestamp | null;
+  description: string | null;
+  folder_id: string | null;
+  id: Generated<string>;
+  mime_type: Generated<string>;
+  name: string;
+  organization_id: string;
+  size_bytes: Int8;
+  storage_key: string;
+  updated_at: Generated<Timestamp>;
+  year: number | null;
+}
+
 export interface GrowingSeasons {
   created_at: Generated<Timestamp>;
   end_date: string;
@@ -439,6 +466,22 @@ export interface Harvests {
   quality: string | null;
   quantity_t: Numeric;
   updated_at: Generated<Timestamp>;
+}
+
+export interface Jobs {
+  attempts: Generated<number>;
+  created_at: Generated<Timestamp>;
+  dedupe_key: string | null;
+  failed_at: Timestamp | null;
+  finished_at: Timestamp | null;
+  id: Generated<Int8>;
+  kind: string;
+  last_error: string | null;
+  locked_until: Timestamp | null;
+  max_attempts: Generated<number>;
+  organization_id: string | null;
+  payload: Generated<Json>;
+  run_at: Generated<Timestamp>;
 }
 
 export interface LandUseCodes {
@@ -571,8 +614,10 @@ export interface Organizations {
   crop_year_start_month: Generated<number>;
   currency: Generated<string>;
   id: Generated<string>;
+  measurement_setting: Generated<string>;
   name: string;
   status: Generated<string>;
+  storage_limit_bytes: Int8 | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -808,7 +853,7 @@ export interface Users {
   email: string;
   id: Generated<string>;
   last_login_at: Timestamp | null;
-  locale: Generated<string>;
+  locale: string | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -892,8 +937,11 @@ export interface DB {
   field_parts: FieldParts;
   field_rasters: FieldRasters;
   fields: Fields;
+  file_folders: FileFolders;
+  files: Files;
   growing_seasons: GrowingSeasons;
   harvests: Harvests;
+  jobs: Jobs;
   land_use_codes: LandUseCodes;
   maintenance_records: MaintenanceRecords;
   memberships: Memberships;

@@ -123,18 +123,18 @@ function CurrentConditions({ w, today }: { w: WeatherForecast; today: WeatherDay
               <Icon className="size-7" aria-hidden />
             </span>
             <div>
-              <div className="text-4xl font-semibold tabular text-fg leading-none">{fmt.num(c.tempC, 1)}°C</div>
+              <div className="text-4xl font-semibold tabular text-fg leading-none">{fmt.measure(c.tempC, 'temperature', { digits: 1 })}</div>
               <div className="text-sm text-fg-2 mt-1">
                 {code.label}
-                {today && <span className="text-muted"> · {t('weather.current.today', { min: fmt.num(today.tempMinC), max: fmt.num(today.tempMaxC) })}</span>}
+                {today && <span className="text-muted"> · {t('weather.current.today', { min: fmt.measure(today.tempMinC, 'temperature', { digits: 0, withUnit: false }), max: fmt.measure(today.tempMaxC, 'temperature', { digits: 0, withUnit: false }) })}</span>}
               </div>
             </div>
           </div>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <Metric icon={Droplets} label={t('weather.current.humidity')} value={fmt.pct(c.humidityPct)} />
-            <Metric icon={Wind} label={t('weather.current.wind')} value={`${fmt.num(c.windKmh)} km/h`} />
-            <Metric icon={CloudRain} label={t('weather.current.precipitationNow')} value={`${fmt.fixed(c.precipitationMm, 1)} mm`} />
-            <Metric icon={CloudRain} label={t('weather.current.last7Days')} value={`${fmt.fixed(w.precipitationLast7dMm, 1)} mm`} />
+            <Metric icon={Wind} label={t('weather.current.wind')} value={fmt.measure(c.windKmh, 'speed', { digits: 0 })} />
+            <Metric icon={CloudRain} label={t('weather.current.precipitationNow')} value={fmt.measure(c.precipitationMm, 'precipDepth')} />
+            <Metric icon={CloudRain} label={t('weather.current.last7Days')} value={fmt.measure(w.precipitationLast7dMm, 'precipDepth')} />
           </dl>
         </div>
       ) : (
@@ -184,7 +184,7 @@ function SprayWindows({ w }: { w: WeatherForecast }) {
           </ul>
         )}
         <Notice tone="info" icon={Info}>
-          {t('weather.spray.disclaimer')}
+          {t('weather.spray.disclaimer', { wind: fmt.measure(15, 'speed', { digits: 0 }), gust: fmt.measure(25, 'speed', { digits: 0 }), tmin: fmt.measure(5, 'temperature', { digits: 0 }), tmax: fmt.measure(25, 'temperature', { digits: 0 }) })}
         </Notice>
       </div>
     </Card>
@@ -218,7 +218,7 @@ function ForecastTable({ days }: { days: WeatherDay[] }) {
   return (
     <Card
       title={t('weather.forecastTable.title', { count: days.length })}
-      description={t('weather.forecastTable.description', { precipitation: fmt.fixed(sum('precipitationMm'), 1), et0: fmt.fixed(sum('et0Mm'), 1) })}
+      description={t('weather.forecastTable.description', { precipitation: fmt.measure(sum('precipitationMm'), 'precipDepth'), et0: fmt.measure(sum('et0Mm'), 'precipDepth') })}
       padded={false}
     >
       <Table aria-label={t('weather.forecastTable.ariaLabel')}>
@@ -248,21 +248,21 @@ function ForecastTable({ days }: { days: WeatherDay[] }) {
                   </span>
                 </Cell>
                 <Cell align="end">
-                  {fmt.num(d.tempMinC)}° / <span className="font-medium">{fmt.num(d.tempMaxC)}°</span>
+                  {fmt.measure(d.tempMinC, 'temperature', { digits: 0, withUnit: false })}° / <span className="font-medium">{fmt.measure(d.tempMaxC, 'temperature', { digits: 0, withUnit: false })}°</span>
                 </Cell>
-                <Cell align="end">{fmt.fixed(d.precipitationMm, 1)} mm</Cell>
+                <Cell align="end">{fmt.measure(d.precipitationMm, 'precipDepth')}</Cell>
                 <Cell align="end">{fmt.pct(d.precipitationProbabilityPct)}</Cell>
                 <Cell align="end">
-                  {fmt.num(d.windMaxKmh)} / {fmt.num(d.gustMaxKmh)} km/h
+                  {fmt.measure(d.windMaxKmh, 'speed', { digits: 0, withUnit: false })} / {fmt.measure(d.gustMaxKmh, 'speed', { digits: 0 })}
                 </Cell>
-                <Cell align="end">{fmt.fixed(d.et0Mm, 1)} mm</Cell>
-                <Cell align="end">{fmt.fixed(d.gdd, 1)}</Cell>
+                <Cell align="end">{fmt.measure(d.et0Mm, 'precipDepth')}</Cell>
+                <Cell align="end">{fmt.measure(d.gdd, 'gdd', { digits: 1, withUnit: false })}</Cell>
               </Row>
             )
           }}
         </TableBody>
       </Table>
-      <p className="px-4 py-2.5 text-xs text-muted">{t('weather.forecastTable.footnote')}</p>
+      <p className="px-4 py-2.5 text-xs text-muted">{t('weather.forecastTable.footnote', { base: fmt.measure(5, 'temperature', { digits: 0 }) })}</p>
     </Card>
   )
 }
@@ -282,14 +282,14 @@ function TemperatureCard({ w }: { w: WeatherForecast }) {
     tooltip: (
       <>
         <div className="text-muted mb-0.5">{observed ? t('weather.observed') : t('weather.forecast')} · {fmt.weekday(d.date)}</div>
-        <div className="flex justify-between gap-3 text-fg-2">{t('weather.max')} <span className="font-medium text-fg tabular">{fmt.fixed(d.tempMaxC, 1)} °C</span></div>
-        <div className="flex justify-between gap-3 text-fg-2">{t('weather.min')} <span className="font-medium text-fg tabular">{fmt.fixed(d.tempMinC, 1)} °C</span></div>
+        <div className="flex justify-between gap-3 text-fg-2">{t('weather.max')} <span className="font-medium text-fg tabular">{fmt.measure(d.tempMaxC, 'temperature', { digits: 1 })}</span></div>
+        <div className="flex justify-between gap-3 text-fg-2">{t('weather.min')} <span className="font-medium text-fg tabular">{fmt.measure(d.tempMinC, 'temperature', { digits: 1 })}</span></div>
       </>
     ),
   }))
   return (
-    <Card title={t('weather.temperature.title')} description={t('weather.temperature.description')}>
-      <TemperatureRangeChart data={data} format={(v) => `${fmt.num(v)}°`} divideAt={w.past.length} ariaLabel={t('weather.temperature.ariaLabel')} />
+    <Card title={t('weather.temperature.title')} description={t('weather.temperature.description', { unit: fmt.unit('temperature') })}>
+      <TemperatureRangeChart data={data} format={(v) => `${fmt.measure(v, 'temperature', { digits: 0, withUnit: false })}°`} divideAt={w.past.length} ariaLabel={t('weather.temperature.ariaLabel')} />
       <p className="text-xs text-muted mt-2 flex items-center gap-1.5">
         <Thermometer className="size-3.5" aria-hidden />
         {t('weather.temperature.note')}
@@ -309,7 +309,7 @@ function PrecipitationCard({ w }: { w: WeatherForecast }) {
       <>
         <div className="text-muted mb-0.5">{observed ? t('weather.observed') : t('weather.forecast')} · {fmt.weekday(d.date)}</div>
         <div className="flex justify-between gap-3 text-fg-2">
-          {t('weather.precipitation.label')} <span className="font-medium text-fg tabular">{fmt.fixed(d.precipitationMm, 1)} mm</span>
+          {t('weather.precipitation.label')} <span className="font-medium text-fg tabular">{fmt.measure(d.precipitationMm, 'precipDepth')}</span>
         </div>
         {!observed && (
           <div className="flex justify-between gap-3 text-fg-2">
@@ -326,7 +326,7 @@ function PrecipitationCard({ w }: { w: WeatherForecast }) {
   return (
     <Card
       title={t('weather.precipitation.title')}
-      description={t('weather.precipitation.description', { value: fmt.fixed(w.precipitationLast7dMm, 1) })}
+      description={t('weather.precipitation.description', { unit: fmt.unit('precipDepth'), value: fmt.measure(w.precipitationLast7dMm, 'precipDepth') })}
     >
       <ColumnChart data={data} series={[{ name: t('weather.precipitation.label'), color: 'var(--color-primary)' }]} format={(v) => `${fmt.num(v, 1)}`} ariaLabel={t('weather.precipitation.ariaLabel')} />
       <p className="text-xs text-muted mt-2 flex items-center gap-1.5">
