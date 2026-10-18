@@ -13,6 +13,7 @@ import { notFound } from '../../core/errors.js';
 import { record } from '../../core/events.js';
 import { iso, round } from '../../core/mappers.js';
 import { Database, type Trx } from '../../db/database.js';
+import { zoneRows } from './zone-rows.js';
 
 interface AnalysisRow {
   id: string;
@@ -39,8 +40,13 @@ interface AnalysisRow {
 export class ProductivityService {
   constructor(private readonly db: Database) {}
 
-  state(ctx: Ctx, fieldId: string): Promise<ProductivityState> {
+  /** The latest analysis; with a field part, its zones are clipped to the part (see zoneRows). */
+  state(ctx: Ctx, fieldId: string, fieldPartId?: string): Promise<ProductivityState> {
     return this.db.run(ctx, async (trx) => {
+      if (fieldPartId) {
+        const part = await trx.selectFrom('field_parts').select('id').where('id', '=', fieldPartId).where('field_id', '=', fieldId).executeTakeFirst();
+        if (!part) throw notFound('Field part');
+      }
       const { rows } = await sql<AnalysisRow>`
         SELECT a.id, a.field_id, a.status, a.status_code, a.suitability, a.suitability_status, a.season_count,
                a.scene_count, a.scenes, a.excluded_scene_ids, a.created_at, a.finished_at, a.error,
@@ -53,27 +59,18 @@ export class ProductivityService {
       const pending = rows.find((r) => r.current && (r.status === 'queued' || r.status === 'running')) ?? null;
       const done = rows.find((r) => r.status === 'finished' || r.status === 'failed') ?? null;
       return {
-        analysis: done ? await this.toAnalysis(trx, done) : null,
+        analysis: done ? await this.toAnalysis(trx, done, fieldPartId ? [fieldPartId] : null) : null,
         pending: pending ? { id: pending.id, status: pending.status as 'queued' | 'running', createdAt: iso(pending.created_at) } : null,
       };
     });
   }
 
-  private async toAnalysis(trx: Trx, r: AnalysisRow): Promise<ProductivityAnalysis> {
-    const { rows } = await sql<{
-      id: string; zone_count: number; is_custom: boolean; zone_no: number; area_ha: number;
-      relative_productivity: number | null; geometry: string;
-    }>`
-      SELECT z.id, z.zone_count, z.is_custom, zz.zone_no, zz.area_ha, zz.relative_productivity,
-             ST_AsGeoJSON(zz.geometry, 7) AS geometry
-      FROM zonings z JOIN zoning_zones zz ON zz.zoning_id = z.id
-      WHERE z.analysis_id = ${r.id}::uuid
-      ORDER BY z.zone_count, z.is_custom, zz.zone_no`.execute(trx);
-    const zonings = new Map<string, Zoning>();
-    for (const row of rows) {
-      let zoning = zonings.get(row.id);
-      if (!zoning) zonings.set(row.id, (zoning = { id: row.id, zoneCount: row.zone_count, isCustom: row.is_custom, zones: [] }));
-      zoning.zones.push({
+  private async toAnalysis(trx: Trx, r: AnalysisRow, partIds: string[] | null): Promise<ProductivityAnalysis> {
+    const { rows: list } = await sql<{ id: string; zone_count: number; is_custom: boolean }>`
+      SELECT id, zone_count, is_custom FROM zonings WHERE analysis_id = ${r.id}::uuid ORDER BY zone_count, is_custom`.execute(trx);
+    const zonings = new Map<string, Zoning>(list.map((z) => [z.id, { id: z.id, zoneCount: z.zone_count, isCustom: z.is_custom, zones: [] }]));
+    for (const row of await zoneRows(trx, [...zonings.keys()], partIds)) {
+      zonings.get(row.zoning_id)!.zones.push({
         zoneNo: row.zone_no,
         areaHa: row.area_ha,
         sharePct: 0,

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Res } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Query, Res } from '@nestjs/common';
 import { RecalculateProductivityInput } from '@agmeo/contracts';
 import type { Response } from 'express';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
@@ -11,9 +11,14 @@ import { ProductivityService } from './productivity.service.js';
 export class ProductivityController {
   constructor(private readonly productivity: ProductivityService) {}
 
+  /** With `fieldPartId`, the zones are clipped to that part of the field. */
   @Get()
-  state(@OrgCtx() ctx: Ctx, @Param('fieldId', ParseUUIDPipe) fieldId: string) {
-    return this.productivity.state(ctx, fieldId);
+  state(
+    @OrgCtx() ctx: Ctx,
+    @Param('fieldId', ParseUUIDPipe) fieldId: string,
+    @Query('fieldPartId', new ParseUUIDPipe({ optional: true })) fieldPartId?: string,
+  ) {
+    return this.productivity.state(ctx, fieldId, fieldPartId);
   }
 
   @Post()

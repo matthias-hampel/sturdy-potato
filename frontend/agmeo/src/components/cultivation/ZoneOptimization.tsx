@@ -159,6 +159,7 @@ export function ZoneOptimization({
     async (base, _: void) => {
       if (!zoning) return
       const opIds = [...new Set(Object.keys(edits).map((k) => k.split(':')[0]))]
+      const zoneNos = Array.from({ length: zoning.zoneCount }, (_, i) => i + 1)
       for (const opId of opIds) {
         const op = operations.find((o) => o.id === opId)
         if (!op) continue
@@ -183,7 +184,8 @@ export function ZoneOptimization({
               unit,
               standardRate: roundRate(meanRate(r, l.flatRate, zones) * l.vra!.factor, unit) || null,
               columnName: column,
-              rates: Object.fromEntries(zones.map((z) => [String(z.zoneNo), roundRate(rateIn(r, l.flatRate, z.zoneNo) * l.vra!.factor, unit)])),
+              // A map needs a rate for every zone, also for one that lies outside the crop's part.
+              rates: Object.fromEntries(zoneNos.map((n) => [String(n), roundRate(rateIn(r, l.flatRate, n) * l.vra!.factor, unit)])),
             }
           })
           const body: VraMapInput = {

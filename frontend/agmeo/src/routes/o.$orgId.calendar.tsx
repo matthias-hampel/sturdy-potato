@@ -50,7 +50,7 @@ function CropCalendarPage() {
     <>
       <PageHeader
         title={t('calendar.title')}
-        subtitle={season ? `${season.name} · ${fmt.date(season.startDate)} – ${fmt.date(season.endDate)}` : t('calendar.subtitle')}
+        subtitle={season ? `${season.harvestYear} · ${fmt.date(season.startDate)} – ${fmt.date(season.endDate)}` : t('calendar.subtitle')}
         actions={
           <Link to="/o/$orgId/templates" params={{ orgId }} variant="secondary">
             {t('nav.templates')}

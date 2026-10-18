@@ -149,6 +149,8 @@ export interface ImageryDate {
   date: string
   /** Fields with imagery on this date. */
   fieldCount: number
+  /** Ids of those fields (fields of other acquisition passes have no imagery on this date). */
+  fieldIds: string[]
   /** Mean clear (cloud-free) share of those fields, %. */
   clearPct: number
   /** Whether at least one of them meets the clear-sky threshold for statistics. */

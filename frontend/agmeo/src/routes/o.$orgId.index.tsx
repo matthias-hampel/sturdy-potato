@@ -20,7 +20,6 @@ import { BarList } from '#/components/charts'
 import { noticeMessage } from '#/components/insights/weather'
 import { OperationTypeLabel, TaskStatusBadge } from '#/components/labels'
 import { FieldMap } from '#/components/map/FieldMap'
-import { farmView } from '#/components/map/useMap'
 import { errorMessage } from '#/lib/api'
 import { fmt } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
@@ -46,7 +45,7 @@ function Overview() {
 
   return (
     <>
-      <PageHeader eyebrow={org.name} title={t('dashboard.title')} subtitle={season ? t('dashboard.subtitleSeason', { season: season.name }) : t('dashboard.subtitle')} />
+      <PageHeader eyebrow={org.name} title={t('dashboard.title')} subtitle={season ? t('dashboard.subtitleSeason', { season: season.harvestYear }) : t('dashboard.subtitle')} />
 
       {!setupDone && <SetupChecklist setup={d.setup} orgId={orgId} />}
 
@@ -67,7 +66,7 @@ function Overview() {
         <div className="space-y-6 min-w-0">
           <Card title={t('dashboard.fields')} padded={false} actions={<Link to="/o/$orgId/fields" params={{ orgId }} className="text-sm">{t('dashboard.openMap')}</Link>}>
             {fields.data && fields.data.length > 0 ? (
-              <FieldMap fields={fields.data} view={farmView(farms.data?.[0])} className="h-80 rounded-none rounded-b-xl border-0" />
+              <FieldMap fields={fields.data} className="h-80 rounded-none rounded-b-xl border-0" />
             ) : (
               <EmptyState icon={MapIcon} title={t('dashboard.noFields')} action={<Link to="/o/$orgId/fields/new" params={{ orgId }} variant="primary">{t('dashboard.addFields')}</Link>} />
             )}

@@ -13,6 +13,7 @@ import { Button } from '#/ui/Button'
 import { Tooltip } from '#/ui/Overlay'
 import { cx } from '#/ui/utils'
 import { OWN } from './basemaps'
+import { type Bounds, frameBounds } from './framing'
 import { type MapView, useMap } from './useMap'
 
 export type DrawnGeometry = Polygon | MultiPolygon
@@ -21,7 +22,7 @@ interface Props {
   initial?: DrawnGeometry | null
   /** Other fields shown for orientation (not editable). */
   context?: Field[]
-  /** Where to start drawing a new field, e.g. the farm's saved view; ignored when editing. */
+  /** Where to start drawing when there is nothing to fit (no boundary, no context fields), e.g. the farm's saved view. */
   view?: MapView | null
   onChange: (geometry: DrawnGeometry | null) => void
   className?: string
@@ -34,12 +35,11 @@ const round = (p: Position): Position => [Math.round(p[0] * 1e7) / 1e7, Math.rou
 export function DrawField({ initial, context = [], view, onChange, className }: Props) {
   const { t } = useTranslation()
   const [bounds] = useState(() => {
-    const features = initial ? [{ type: 'Feature' as const, geometry: initial, properties: {} }] : context.map((f) => ({ type: 'Feature' as const, geometry: f.geometry, properties: {} }))
-    if (!features.length || (!initial && view)) return undefined
-    const [w, s, e, n] = bbox({ type: 'FeatureCollection', features })
-    return [w, s, e, n] as [number, number, number, number]
+    if (!initial) return frameBounds(context)
+    const [w, s, e, n] = bbox(initial)
+    return [w, s, e, n] as Bounds
   })
-  const { containerRef, map } = useMap({ basemap: 'satellite', center: initial ? undefined : view?.center, zoom: initial ? undefined : view?.zoom, bounds })
+  const { containerRef, map } = useMap({ basemap: 'satellite', center: bounds ? undefined : view?.center, zoom: bounds ? undefined : view?.zoom, bounds })
   const drawRef = useRef<TerraDraw | null>(null)
   const [mode, setMode] = useState<'polygon' | 'select'>(initial ? 'select' : 'polygon')
   const [areaHa, setAreaHa] = useState<number | null>(initial ? turfArea(initial) / 10000 : null)

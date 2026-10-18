@@ -56,7 +56,7 @@ function CompliancePage() {
     <>
       <PageHeader
         title={t('compliance.title')}
-        subtitle={season ? t('compliance.subtitleSeason', { season: season.name }) : t('compliance.subtitle')}
+        subtitle={season ? t('compliance.subtitleSeason', { season: season.harvestYear }) : t('compliance.subtitle')}
         actions={tab === 'records' && <ExportRecordsButton />}
       />
       <Tabs

@@ -235,8 +235,8 @@ function TopBar({ user, onOpenNav }: { user: CurrentUser; onOpenNav: () => void 
           onChange={(v) => v && setSeasonId(String(v))}
         >
           {(s) => (
-            <Option id={s.id} textValue={s.name} description={`${s.startDate.slice(0, 7)} – ${s.endDate.slice(0, 7)}`}>
-              {s.name}
+            <Option id={s.id} textValue={String(s.harvestYear)} description={`${s.startDate.slice(0, 7)} – ${s.endDate.slice(0, 7)}`}>
+              {s.harvestYear}
             </Option>
           )}
         </Select>

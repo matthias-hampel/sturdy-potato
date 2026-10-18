@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useOrg } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
-import type { Opacity } from './MapControls'
 import { boundaryVersion, imageryTiles } from './indices'
 
 const busy = (s?: ImageryStatus) => s?.state === 'running' || s?.state === 'queued'
@@ -36,22 +35,26 @@ export function useSatelliteLayer({
   const [internal, setInternal] = useState<string | null>(null)
   const chosen = controlled !== undefined ? controlled : internal
   const setDate = onDate ?? setInternal
-  const [opacity, setOpacity] = useState<Opacity>('1')
+  const [opacity, setOpacity] = useState(1)
   // While the history is being backfilled, progress and new dates are polled.
   const status = useOrgQuery<ImageryStatus>('/monitoring/imagery/status', { fieldId: fieldId ?? undefined }, { enabled, refetchInterval: (s) => (busy(s) ? 5_000 : false) })
   const dates = useOrgQuery<ImageryDate[]>('/monitoring/imagery/dates', { fieldId: fieldId ?? undefined }, { enabled, refetchInterval: busy(status.data) ? 20_000 : false })
   const list = dates.data ?? []
   const date = list.find((d) => d.date === chosen) ?? list.find((d) => d.valid) ?? list[0] ?? null
 
+  // Neighbouring fields can be imaged on different passes, so a date may cover only some of them.
+  const covered = useMemo(() => (date ? new Set(date.fieldIds) : null), [date])
+  const latestFor = (id: string) => list.find((d) => d.fieldIds.includes(id)) ?? null
+
   const version = useMemo(() => boundaryVersion(fields.map((f) => f.geometryVersionId)), [fields])
   const raster =
     enabled && date && (layer !== 'rgb' || date.hasRgb)
       ? {
           tiles: imageryTiles(orgId, date.date, layer, { stretch, fieldId, version }),
-          opacity: Number(opacity),
+          opacity,
           attribution: t('monitoring.attribution', { year: date.date.slice(0, 4) }),
         }
       : null
 
-  return { dates: list, isLoading: dates.isLoading, date, setDate, opacity, setOpacity, raster, status: status.data ?? null }
+  return { dates: list, isLoading: dates.isLoading, date, setDate, covered, latestFor, opacity, setOpacity, raster, status: status.data ?? null }
 }

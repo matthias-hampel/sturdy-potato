@@ -110,7 +110,7 @@ export class MonitoringService {
     return this.db.run(ctx, async (trx) => {
       const field = fieldId ?? null;
       const { rows } = await sql<{
-        observed_on: string; field_count: number; clear_pct: number; valid: boolean; has_rgb: boolean; ndvi: number | null;
+        observed_on: string; field_count: number; field_ids: string[]; clear_pct: number; valid: boolean; has_rgb: boolean; ndvi: number | null;
       }>`
         WITH best AS (
           SELECT DISTINCT ON (r.field_id, r.observed_on) r.field_id, r.observed_on, r.valid_pixel_pct, r.has_rgb
@@ -120,7 +120,7 @@ export class MonitoringService {
           WHERE (${field}::uuid IS NULL OR r.field_id = ${field}::uuid)
           ORDER BY r.field_id, r.observed_on, r.valid_pixel_pct DESC
         )
-        SELECT b.observed_on, count(*)::int AS field_count, round(avg(b.valid_pixel_pct), 1)::float AS clear_pct,
+        SELECT b.observed_on, count(*)::int AS field_count, array_agg(b.field_id::text) AS field_ids, round(avg(b.valid_pixel_pct), 1)::float AS clear_pct,
                bool_or(b.valid_pixel_pct >= 65) AS valid, bool_or(b.has_rgb) AS has_rgb,
                CASE WHEN ${field}::uuid IS NULL THEN NULL ELSE (
                  SELECT o.mean FROM field_observations o
@@ -134,6 +134,7 @@ export class MonitoringService {
       return rows.map((r) => ({
         date: r.observed_on,
         fieldCount: r.field_count,
+        fieldIds: r.field_ids,
         clearPct: r.clear_pct,
         valid: r.valid,
         hasRgb: r.has_rgb,

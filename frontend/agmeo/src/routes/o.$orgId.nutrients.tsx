@@ -30,7 +30,7 @@ function NutrientsPage() {
   const navigate = useNavigate({ from: Route.fullPath })
   return (
     <>
-      <PageHeader title={t('nutrients.title')} subtitle={season ? t('nutrients.subtitleSeason', { season: season.name }) : t('nutrients.subtitle')} />
+      <PageHeader title={t('nutrients.title')} subtitle={season ? t('nutrients.subtitleSeason', { season: season.harvestYear }) : t('nutrients.subtitle')} />
       <Tabs
         selectedKey={search.tab ?? 'balance'}
         onSelectionChange={(key) => navigate({ search: { tab: key === 'balance' ? undefined : (key as (typeof TABS)[number]) }, replace: true })}

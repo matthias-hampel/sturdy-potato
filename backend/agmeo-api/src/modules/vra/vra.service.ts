@@ -23,6 +23,7 @@ import { cropName } from '../crops/crop-name.js';
 import { taskDataXml } from './export/isoxml.js';
 import { polygonShapefile, type DbfField } from './export/shapefile.js';
 import { zip } from './export/zip.js';
+import { zoneRows } from '../productivity/zone-rows.js';
 
 type Input = Out<typeof VraMapInput>;
 
@@ -351,14 +352,30 @@ export class VraService {
     };
   }
 
+  /**
+   * The field parts a map is spread on: those its operation treats on the map's field. A map of
+   * an operation on a part holds only the part's share of the zones, so the rest of the field
+   * (e.g. a flower strip) is outside every zone and gets rate 0 in ISO-XML and nothing in
+   * Shapefile/GeoJSON. Null for the whole field.
+   */
+  private async parts(trx: Trx, row: MapRow): Promise<{ ids: string[]; area_ha: number } | null> {
+    if (!row.operation_id) return null;
+    const { rows } = await sql<{ whole: boolean | null; ids: string[] | null }>`
+      SELECT bool_or(field_part_id IS NULL) AS whole, array_agg(DISTINCT field_part_id) FILTER (WHERE field_part_id IS NOT NULL) AS ids
+      FROM operation_fields WHERE operation_id = ${row.operation_id}::uuid AND field_id = ${row.field_id}::uuid`.execute(trx);
+    const ids = rows[0]?.whole === false ? rows[0].ids : null;
+    if (!ids?.length) return null;
+    const area = await trx.selectFrom('field_parts').select((eb) => eb.fn.sum<number>('area_ha').as('area_ha')).where('id', 'in', ids).executeTakeFirstOrThrow();
+    return { ids, area_ha: Number(area.area_ha) };
+  }
+
   private async load(trx: Trx, fieldId: string, id: string): Promise<VraMap> {
     const [row] = await this.rows(trx, fieldId, id);
     if (!row) throw notFound('VRA map');
     const inputs = (await this.inputs(trx, [id])).get(id) ?? [];
-    const { rows: zones } = await sql<{ zone_no: number; area_ha: number; relative_productivity: number | null; geometry: string }>`
-      SELECT zone_no, area_ha, relative_productivity, ST_AsGeoJSON(geometry, 9) AS geometry
-      FROM zoning_zones WHERE zoning_id = ${row.zoning_id}::uuid ORDER BY zone_no`.execute(trx);
-    const area = await trx.selectFrom('field_geometry_versions').select('area_ha').where('id', '=', row.geometry_version_id).executeTakeFirstOrThrow();
+    const parts = await this.parts(trx, row);
+    const zones = await zoneRows(trx, [row.zoning_id], parts?.ids ?? null, 9);
+    const area = parts ?? (await trx.selectFrom('field_geometry_versions').select('area_ha').where('id', '=', row.geometry_version_id).executeTakeFirstOrThrow());
     const total = zones.reduce((s, z) => s + z.area_ha, 0);
     return {
       ...this.summary(row, inputs),

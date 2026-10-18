@@ -43,7 +43,7 @@ function OperationsPage() {
     <>
       <PageHeader
         title={t('operations.title')}
-        subtitle={season ? t('operations.subtitleSeason', { season: season.name }) : t('operations.subtitle')}
+        subtitle={season ? t('operations.subtitleSeason', { season: season.harvestYear }) : t('operations.subtitle')}
         actions={can('operation.write') && <Link to="/o/$orgId/operations/new" params={{ orgId }} search={{}} variant="primary"><Plus /> {t('operations.newOperation')}</Link>}
       />
       <div className="flex flex-wrap items-center gap-3 mb-4">

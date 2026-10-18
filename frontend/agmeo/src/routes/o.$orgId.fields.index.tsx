@@ -1,7 +1,7 @@
 import { FIELD_PART_USAGE_COLORS, IMAGERY_LAYERS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
 import type { FeatureCollection } from 'geojson'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, Download, Map as MapIcon, Minus, Plus, Upload } from 'lucide-react'
+import { ArrowDown, ArrowUp, Download, Info, Map as MapIcon, Minus, Plus, Upload } from 'lucide-react'
 import { type Ref, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -9,8 +9,8 @@ import { CropTag } from '#/components/labels'
 import { FieldMap } from '#/components/map/FieldMap'
 import { FieldShape } from '#/components/map/FieldShape'
 import { farmView } from '#/components/map/useMap'
-import { AcquisitionPicker, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
-import { INDEX_INFO, indexColor, type ShownIndex } from '#/components/monitoring/indices'
+import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
+import { INDEX_INFO, indexColor, NO_DATA_COLOR, type ShownIndex } from '#/components/monitoring/indices'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
 import { api, saveBlob } from '#/lib/api'
 import { fmt } from '#/lib/format'
@@ -19,6 +19,7 @@ import { useOrgQuery } from '#/lib/queries'
 import { Button, Link, SegmentedControl } from '#/ui/Button'
 import { Option, SearchField, Select } from '#/ui/Field'
 import { Badge, Card, DescriptionList, EmptyState, ErrorNotice, Loading, PageHeader } from '#/ui/Layout'
+import { Tooltip } from '#/ui/Overlay'
 import { cx } from '#/ui/utils'
 
 type Layer = 'crops' | 'imagery'
@@ -54,7 +55,8 @@ function FieldsPage() {
   const fields = useOrgQuery<Field[]>('/fields', { seasonId, farmId: farmId === ALL ? undefined : farmId })
   const allFields = useOrgQuery<Field[]>('/fields')
   const parts = useOrgQuery<FieldPart[]>('/field-parts', { seasonId, farmId: farmId === ALL ? undefined : farmId }, { enabled: layer === 'crops' })
-  const monitoring = useOrgQuery<FieldMonitoringSummary[]>('/monitoring/fields', { index }, { enabled: layer !== 'crops' })
+  // Keeps the previous index's values while another loads, so the map's framing (fitIds) doesn't jump.
+  const monitoring = useOrgQuery<FieldMonitoringSummary[]>('/monitoring/fields', { index }, { enabled: layer !== 'crops', keepPrevious: true })
   const [stretch, setStretch] = useState<ImageryStretch>('absolute')
   const satellite = useSatelliteLayer({ enabled: layer === 'imagery', layer: imageryLayer, stretch, fields: allFields.data ?? [] })
 
@@ -83,6 +85,14 @@ function FieldsPage() {
     [layer, partsByField],
   )
   const cropColorBy = useCallback((f: Field) => (partsByField.has(f.id) ? 'transparent' : (f.currentCrop?.color ?? null)), [partsByField])
+  // Fields without imagery on the shown date (imaged on another pass) are greyed out, not left looking empty.
+  const covered = satellite.covered
+  const imageryColorBy = useCallback((f: Field) => (covered && !covered.has(f.id) ? NO_DATA_COLOR : 'transparent'), [covered])
+  const uncovered = layer === 'imagery' && !!covered && visible.some((f) => !covered.has(f.id))
+  const missing =
+    layer === 'imagery' && selectedField && satellite.date && covered && !covered.has(selectedField.id)
+      ? { date: satellite.date.date, latest: satellite.latestFor(selectedField.id)?.date ?? null, onShow: satellite.setDate }
+      : undefined
 
   const latest = useMemo(() => new Map((monitoring.data ?? []).map((m) => [m.fieldId, m])), [monitoring.data])
   // Satellite layers frame the fields that have observations (farms can be far apart).
@@ -103,7 +113,7 @@ function FieldsPage() {
         title={t('fields.title')}
         subtitle={
           season
-            ? t('fields.subtitleSeason', { count: visible.length, area: fmt.ha(totalArea, 1), season: season.name })
+            ? t('fields.subtitleSeason', { count: visible.length, area: fmt.ha(totalArea, 1), season: season.harvestYear })
             : t('fields.subtitle', { count: visible.length, area: fmt.ha(totalArea, 1) })
         }
         actions={
@@ -150,6 +160,16 @@ function FieldsPage() {
                 </Select>
               )}
             </div>
+            {layer !== 'crops' && (
+              <div className="px-4 py-1.5 flex items-center justify-end gap-1 border-b border-line text-xs text-muted">
+                {t('fields.listValue.heading', { index: INDEX_INFO[index].label })}
+                <Tooltip content={t('fields.listValue.tooltip', { index: INDEX_INFO[index].label, description: INDEX_INFO[index].description })}>
+                  <Button size="icon-xs" variant="ghost" aria-label={t('fields.listValue.help', { index: INDEX_INFO[index].label })}>
+                    <Info />
+                  </Button>
+                </Tooltip>
+              </div>
+            )}
             <ul className="max-h-[calc(100dvh-16rem)] overflow-y-auto divide-y divide-line" aria-label={t('fields.list')}>
               {visible.map((f) => {
                 const value = latest.get(f.id)?.latest?.mean
@@ -180,7 +200,9 @@ function FieldsPage() {
                           fmt.ha(f.areaHa, 1)
                         ) : value != null ? (
                           <>
-                            <span className="font-medium text-fg">{fmt.fixed(value, 2)}</span>
+                            <span className="font-medium text-fg">
+                              <span className="text-xs font-normal text-muted">{INDEX_INFO[index].label}</span> {fmt.fixed(value, 2)}
+                            </span>
                             <span className="block text-xs text-muted">{fmt.shortDate(latest.get(f.id)?.latest?.observedOn)}</span>
                           </>
                         ) : (
@@ -195,7 +217,7 @@ function FieldsPage() {
             </ul>
           </Card>
 
-          <div className="space-y-3 min-w-0 max-xl:order-first">
+          <div className="flex flex-col gap-3 min-w-0 max-xl:order-first xl:h-[calc(100dvh-11.75rem)]">
             <div className="flex flex-wrap items-center gap-2">
               <SegmentedControl
                 aria-label={t('fields.layer.label')}
@@ -210,11 +232,7 @@ function FieldsPage() {
                 <>
                   <LayerPicker value={imageryLayer} onChange={setIndex} />
                   <StretchPicker value={stretch} onChange={setStretch} isDisabled={imageryLayer === 'rgb'} />
-                  {satellite.dates.length > 0 ? (
-                    <AcquisitionPicker dates={satellite.dates} date={satellite.date} onDate={satellite.setDate} />
-                  ) : (
-                    !satellite.isLoading && <span className="text-sm text-muted">{t('fields.noImagery')}</span>
-                  )}
+                  {!satellite.isLoading && satellite.dates.length === 0 && <span className="text-sm text-muted">{t('fields.noImagery')}</span>}
                   <OpacityPicker value={satellite.opacity} onChange={satellite.setOpacity} />
                 </>
               )}
@@ -224,21 +242,22 @@ function FieldsPage() {
               fields={visible}
               selectedId={selected}
               onSelect={setSelected}
-              colorBy={layer === 'crops' ? cropColorBy : undefined}
-              fillOpacity={layer === 'imagery' ? 0 : 0.32}
+              colorBy={layer === 'crops' ? cropColorBy : imageryColorBy}
+              fillOpacity={layer === 'imagery' ? 0.55 : 0.32}
               overlay={partOverlay}
               overlayOpacity={0.45}
               raster={satellite.raster}
               fitIds={fitIds}
               occludedBy={popupRef}
               view={farmView(farmId === ALL ? farms.data?.[0] : farms.data?.find((f) => f.id === farmId))}
-              className="h-[55vh] xl:h-[calc(100dvh-14rem)] min-h-96"
+              className="h-[55vh] xl:h-auto xl:flex-1 min-h-96"
             >
-              {layer === 'imagery' && !selectedField && <IndexLegend index={imageryLayer} stretch={stretch} />}
+              {layer === 'imagery' && !selectedField && <IndexLegend index={imageryLayer} stretch={stretch} uncovered={uncovered} />}
               {selectedField && (
-                <FieldPopup ref={popupRef} field={selectedField} parts={layer === 'crops' ? partsByField.get(selectedField.id) : undefined} summary={latest.get(selectedField.id)} index={index} showIndex={layer !== 'crops'} orgId={orgId} />
+                <FieldPopup ref={popupRef} field={selectedField} parts={layer === 'crops' ? partsByField.get(selectedField.id) : undefined} summary={latest.get(selectedField.id)} index={index} showIndex={layer !== 'crops'} missing={missing} orgId={orgId} />
               )}
             </FieldMap>
+            {layer === 'imagery' && satellite.dates.length > 0 && <AcquisitionTimeline dates={satellite.dates} date={satellite.date} onDate={satellite.setDate} />}
           </div>
         </div>
       )}
@@ -257,6 +276,7 @@ function FieldPopup({
   summary,
   index,
   showIndex,
+  missing,
   orgId,
 }: {
   ref: Ref<HTMLDivElement>
@@ -265,6 +285,8 @@ function FieldPopup({
   summary?: FieldMonitoringSummary
   index: ShownIndex
   showIndex: boolean
+  /** The shown acquisition date has no imagery of this field; `latest` is its newest date with imagery. */
+  missing?: { date: string; latest: string | null; onShow: (date: string) => void }
   orgId: string
 }) {
   const { t } = useTranslation()
@@ -333,6 +355,16 @@ function FieldPopup({
           ]}
         />
       </div>
+      {missing && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm" role="status">
+          <span className="text-fg-2">{t('fields.popup.noImageryOn', { date: fmt.date(missing.date) })}</span>
+          {missing.latest && (
+            <Button size="sm" variant="quiet" className="shrink-0" onPress={() => missing.onShow(missing.latest!)}>
+              {t('fields.popup.showDate', { date: fmt.shortDate(missing.latest) })}
+            </Button>
+          )}
+        </div>
+      )}
       <Link
         to="/o/$orgId/fields/$fieldId"
         params={{ orgId, fieldId: field.id }}

@@ -49,7 +49,8 @@ function CultivationPage() {
   const field = useOrgQuery<Field>(cycle ? `/fields/${cycle.fieldId}` : null)
   const parts = useOrgQuery<FieldPart[]>(cycle?.fieldPartId ? `/fields/${cycle.fieldId}/parts` : null, { seasonId: cycle?.seasonId })
   const allOperations = useOrgQuery<Operation[]>(cycle ? '/operations' : null, { fieldId: cycle?.fieldId })
-  const productivity = useOrgQuery<ProductivityState>(cycle ? `/fields/${cycle.fieldId}/productivity` : null, undefined, {
+  // A crop on a part gets the zones clipped to the part: areas, totals, map and saved VRA maps cover the part only.
+  const productivity = useOrgQuery<ProductivityState>(cycle ? `/fields/${cycle.fieldId}/productivity` : null, cycle?.fieldPartId ? { fieldPartId: cycle.fieldPartId } : undefined, {
     refetchInterval: (s) => (s?.pending ? 5_000 : false),
   })
   const maps = useOrgQuery<VraMapSummary[]>(cycle ? `/fields/${cycle.fieldId}/vra-maps` : null)

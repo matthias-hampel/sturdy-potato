@@ -13,7 +13,7 @@ import { Activity } from '#/components/Activity'
 import { CropCycleStatusBadge, CropTag } from '#/components/labels'
 import { DrawField, type DrawnGeometry } from '#/components/map/DrawField'
 import { FieldMap } from '#/components/map/FieldMap'
-import { AcquisitionPicker, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
+import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
 import { INDEX_INFO, type ShownIndex } from '#/components/monitoring/indices'
 import { ObservationsChart } from '#/components/monitoring/ObservationsChart'
 import { ProductivityZones } from '#/components/monitoring/ProductivityZones'
@@ -383,7 +383,6 @@ function SatelliteTab({
       <div className="flex flex-wrap items-center gap-2">
         <LayerPicker value={layer} onChange={onLayer} />
         <StretchPicker value={stretch} onChange={setStretch} isDisabled={layer === 'rgb'} />
-        <AcquisitionPicker dates={satellite.dates} date={shown} onDate={select} single />
         <OpacityPicker value={satellite.opacity} onChange={satellite.setOpacity} />
       </div>
       <ImageryProgress status={satellite.status} />
@@ -395,6 +394,7 @@ function SatelliteTab({
           <FieldMap fields={[field]} fillOpacity={0} raster={satellite.raster} labels={false} className="h-96 xl:h-[28rem]">
             <IndexLegend index={layer} stretch={stretch} />
           </FieldMap>
+          {satellite.dates.length > 0 && <AcquisitionTimeline dates={satellite.dates} date={shown} onDate={select} single />}
           {shown && layer === 'rgb' && !shown.hasRgb && <p className="text-xs text-muted">{t('fieldPage.satellite.noRgb')}</p>}
         </div>
         <Card title={t('fieldPage.satellite.overTime', { index: INDEX_INFO[index].label })} description={INDEX_INFO[index].description}>

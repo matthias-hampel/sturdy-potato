@@ -9,6 +9,7 @@ import { fmt } from '#/lib/format'
 import { SegmentedControl } from '#/ui/Button'
 import { cx } from '#/ui/utils'
 import { type Basemap, OWN } from './basemaps'
+import { frameBounds, MIN_FIT_ZOOM } from './framing'
 import { type MapView, useMap } from './useMap'
 
 const NO_CROP = '#9aa392'
@@ -28,7 +29,7 @@ export interface FieldMapProps {
   labels?: boolean
   /** Fit to these fields instead of all. */
   fitIds?: string[]
-  /** Open here (e.g. the farm's saved view) instead of fitting the fields, unless `fitIds` or `highlight` is set. */
+  /** Fallback view (e.g. the farm's saved view) when there are no fields or highlight to fit. */
   view?: MapView | null
   defaultBasemap?: Basemap
   children?: ReactNode
@@ -65,10 +66,11 @@ export function FieldMap({
 }: FieldMapProps) {
   const { t } = useTranslation()
   const [basemap, setBasemap] = useState<Basemap>(defaultBasemap)
-  const fixedView = view && !fitIds && !highlight ? view : null
-  const [initial] = useState(() =>
-    fixedView ? { center: fixedView.center, zoom: fixedView.zoom } : { bounds: boundsOf(fitIds ? fields.filter((f) => fitIds.includes(f.id)) : fields, highlight) },
-  )
+  const fitFields = useMemo(() => (fitIds ? fields.filter((f) => fitIds.includes(f.id)) : fields), [fields, fitIds])
+  // A highlight (e.g. an import preview) is always framed whole; fields far apart only by their largest group.
+  const fitBounds = useMemo(() => (highlight ? boundsOf(fitFields, highlight) : frameBounds(fitFields)), [fitFields, highlight])
+  const fallbackView = fitBounds ? null : (view ?? null)
+  const [initial] = useState(() => (fitBounds ? { bounds: fitBounds } : { center: fallbackView?.center, zoom: fallbackView?.zoom }))
   const { containerRef, map, styleVersion } = useMap({ basemap, interactive, ...initial })
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
@@ -175,21 +177,21 @@ export function FieldMap({
     map.easeTo({ center: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2], zoom, offset, duration: 500 })
   }, [map, selectedId, fields, occludedBy])
 
-  // Fit to fields when the set of fields changes; a fixed view wins over the fields.
-  const fitKey = fixedView
-    ? `view:${fixedView.center.join(',')}@${fixedView.zoom}`
-    : (fitIds ?? fields.map((f) => f.id)).join(',') + (highlight ? ':h' : '')
+  // Fit to fields when the set of fields changes; the fallback view only applies without any. A selected
+  // field that is still shown keeps the camera (e.g. while another index or layer loads).
+  const fitKey = fitBounds
+    ? fitFields.map((f) => f.id).join(',') + (highlight ? ':h' : '')
+    : fallbackView ? `view:${fallbackView.center.join(',')}@${fallbackView.zoom}` : ''
+  const fitted = useRef(false)
   useEffect(() => {
     if (!map) return
-    if (fixedView) {
-      map.resize()
-      map.jumpTo(fixedView)
-      return
-    }
-    const b = boundsOf(fitIds ? fields.filter((f) => fitIds.includes(f.id)) : fields, highlight)
-    if (!b) return
     map.resize()
-    map.fitBounds(b as LngLatBoundsLike, { padding: 48, maxZoom: 16.5, duration: 0 })
+    if (fitted.current && selectedId && fields.some((f) => f.id === selectedId)) return
+    fitted.current = true
+    if (fitBounds) {
+      const camera = map.cameraForBounds(fitBounds as LngLatBoundsLike, { padding: 48, maxZoom: 16.5 })
+      if (camera) map.jumpTo({ center: camera.center, zoom: highlight ? camera.zoom : Math.max(camera.zoom ?? MIN_FIT_ZOOM, MIN_FIT_ZOOM) })
+    } else if (fallbackView) map.jumpTo(fallbackView)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, fitKey])
 
