@@ -12,6 +12,8 @@ import {
   type CultivationTemplate,
   type OperationStatus,
   type OperationType,
+  type CarryForwardInput,
+  type CarryForwardResult,
   type RollOverInput,
   type RollOverResult,
   type RotationInput,
@@ -372,6 +374,77 @@ export class PlanningService {
    * year gets the rotation's next crop (and the catch crop sown ahead of it), unless it already has
    * a main crop there. Repeating the roll-over creates nothing new.
    */
+  /**
+   * Plans a season by repeating last season's crops: for each field without a crop in the
+   * target season, its whole-field crops of the previous harvest year are copied (crop,
+   * variety, role, template, expected yield; no dates). Divided fields are skipped.
+   */
+  carryForward(ctx: Ctx, input: Out<typeof CarryForwardInput>): Promise<CarryForwardResult> {
+    return this.db.run(ctx, async (trx) => {
+      if (input.applyTemplates && !can(ctx.role, 'operation.write')) throw forbidden('Applying templates needs permission to plan operations');
+      const season = await trx.selectFrom('growing_seasons').select(['id', 'harvest_year']).where('id', '=', input.targetSeasonId).executeTakeFirst();
+      if (!season) throw notFound('Season');
+      let fq = trx.selectFrom('fields').select(['id', 'name']).where('status', '=', 'active').orderBy('name');
+      if (input.fieldIds) fq = fq.where('id', 'in', input.fieldIds.length ? input.fieldIds : ['00000000-0000-0000-0000-000000000000']);
+      const fields = await fq.execute();
+      const result: CarryForwardResult = { created: 0, fields: [] };
+      if (!fields.length) return result;
+      const ids = fields.map((f) => f.id);
+      const planned = new Set((await trx.selectFrom('crop_cycles').select('field_id').where('season_id', '=', season.id).where('field_id', 'in', ids).execute()).map((r) => r.field_id));
+      const divided = new Set((await trx.selectFrom('field_parts').select('field_id').where('season_id', '=', season.id).where('field_id', 'in', ids).execute()).map((r) => r.field_id));
+      const previous = await trx
+        .selectFrom('crop_cycles as cc')
+        .innerJoin('growing_seasons as s', 's.id', 'cc.season_id')
+        .innerJoin('crops as c', 'c.id', 'cc.crop_id')
+        .select(['cc.field_id', 'cc.crop_id', 'cc.variety_id', 'cc.role', 'cc.template_id', 'cc.expected_yield_t_ha', 'cc.land_use_code', cropName('c').as('crop_name')])
+        .where('s.harvest_year', '=', season.harvest_year - 1)
+        .where('cc.field_part_id', 'is', null)
+        .where('cc.field_id', 'in', ids)
+        .orderBy(sql`array_position(array['catch_crop','main','undersown'], cc.role)`)
+        .execute();
+      for (const f of fields) {
+        const prev = previous.filter((p) => p.field_id === f.id)
+        const main = prev.find((p) => p.role === 'main') ?? prev[0]
+        if (planned.has(f.id) || divided.has(f.id)) {
+          result.fields.push({ fieldId: f.id, fieldName: f.name, cropName: main?.crop_name ?? null, outcome: divided.has(f.id) ? 'field_divided' : 'already_planned' });
+          continue;
+        }
+        if (!prev.length) {
+          result.fields.push({ fieldId: f.id, fieldName: f.name, cropName: null, outcome: 'no_previous' });
+          continue;
+        }
+        for (const p of prev) {
+          const { id } = await trx
+            .insertInto('crop_cycles')
+            .values({
+              organization_id: ctx.orgId,
+              field_id: f.id,
+              season_id: season.id,
+              crop_id: p.crop_id,
+              variety_id: p.variety_id,
+              role: p.role,
+              status: 'planned',
+              expected_yield_t_ha: p.expected_yield_t_ha,
+              land_use_code: p.land_use_code,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await record(trx, ctx, {
+            entityType: 'crop_cycle',
+            entityId: id,
+            action: 'created',
+            changes: { fieldId: f.id, cropId: p.crop_id, seasonId: season.id, role: p.role, carriedForward: true },
+            event: { type: 'crop_cycle.created', payload: { cropCycleId: id, fieldId: f.id, fieldPartId: null, cropId: p.crop_id, seasonId: season.id } },
+          });
+          if (p.template_id && input.applyTemplates) await this.applyTemplateIn(trx, ctx, id, p.template_id, false);
+          result.created += 1;
+        }
+        result.fields.push({ fieldId: f.id, fieldName: f.name, cropName: main.crop_name, outcome: 'created' });
+      }
+      return result;
+    });
+  }
+
   rollOver(ctx: Ctx, input: Out<typeof RollOverInput>): Promise<RollOverResult> {
     return this.db.run(ctx, async (trx) => {
       // Applying templates plans operations, which needs the right to plan work.

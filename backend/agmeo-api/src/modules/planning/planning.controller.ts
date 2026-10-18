@@ -1,5 +1,5 @@
 import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
-import { ApplyTemplateInput, AssignRotationInput, RollOverInput, RotationInput, TemplateInput } from '@agmeo/contracts';
+import { ApplyTemplateInput, AssignRotationInput, CarryForwardInput, RollOverInput, RotationInput, TemplateInput } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { type Out, ZBody } from '../../core/validation.js';
 import { PlanningService } from './planning.service.js';
@@ -78,6 +78,12 @@ export class PlanningController {
   @Requires('crop.write')
   unassignRotation(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string) {
     return this.planning.unassignRotation(ctx, id);
+  }
+
+  @Post('crop-cycles/carry-forward')
+  @Requires('crop.write')
+  carryForward(@OrgCtx() ctx: Ctx, @ZBody(CarryForwardInput) input: Out<typeof CarryForwardInput>) {
+    return this.planning.carryForward(ctx, input);
   }
 
   @Post('rotations/roll-over')

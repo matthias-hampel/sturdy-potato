@@ -20,6 +20,7 @@ import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics
 import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
+import { Route as OOrgIdRotationsRouteImport } from './routes/o.$orgId.rotations'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
 import { Route as OOrgIdTasksRouteImport } from './routes/o.$orgId.tasks'
 import { Route as OOrgIdTeamRouteImport } from './routes/o.$orgId.team'
@@ -31,6 +32,7 @@ import { Route as OOrgIdCropsIndexRouteImport } from './routes/o.$orgId.crops.in
 import { Route as OOrgIdCropsCropCycleIdRouteImport } from './routes/o.$orgId.crops.$cropCycleId'
 import { Route as OOrgIdFieldsIndexRouteImport } from './routes/o.$orgId.fields.index'
 import { Route as OOrgIdFieldsFieldIdRouteImport } from './routes/o.$orgId.fields.$fieldId'
+import { Route as OOrgIdFieldsManageRouteImport } from './routes/o.$orgId.fields.manage'
 import { Route as OOrgIdFieldsNewRouteImport } from './routes/o.$orgId.fields.new'
 import { Route as OOrgIdMachineryIndexRouteImport } from './routes/o.$orgId.machinery.index'
 import { Route as OOrgIdMachineryEquipmentIdRouteImport } from './routes/o.$orgId.machinery.$equipmentId'
@@ -93,6 +95,11 @@ const OOrgIdNutrientsRoute = OOrgIdNutrientsRouteImport.update({
   path: '/nutrients',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdRotationsRoute = OOrgIdRotationsRouteImport.update({
+  id: '/rotations',
+  path: '/rotations',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdSettingsRoute = OOrgIdSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -148,6 +155,11 @@ const OOrgIdFieldsFieldIdRoute = OOrgIdFieldsFieldIdRouteImport.update({
   path: '/fields/$fieldId',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdFieldsManageRoute = OOrgIdFieldsManageRouteImport.update({
+  id: '/fields/manage',
+  path: '/fields/manage',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdFieldsNewRoute = OOrgIdFieldsNewRouteImport.update({
   id: '/fields/new',
   path: '/fields/new',
@@ -192,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
@@ -201,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
@@ -221,6 +235,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
@@ -230,6 +245,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
@@ -252,6 +268,7 @@ export interface FileRoutesById {
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
@@ -261,6 +278,7 @@ export interface FileRoutesById {
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
@@ -284,6 +302,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
@@ -293,6 +312,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
@@ -313,6 +333,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
@@ -322,6 +343,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
@@ -343,6 +365,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
@@ -352,6 +375,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
@@ -450,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdNutrientsRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/rotations': {
+      id: '/o/$orgId/rotations'
+      path: '/rotations'
+      fullPath: '/o/$orgId/rotations'
+      preLoaderRoute: typeof OOrgIdRotationsRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/settings': {
       id: '/o/$orgId/settings'
       path: '/settings'
@@ -527,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdFieldsFieldIdRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/fields/manage': {
+      id: '/o/$orgId/fields/manage'
+      path: '/fields/manage'
+      fullPath: '/o/$orgId/fields/manage'
+      preLoaderRoute: typeof OOrgIdFieldsManageRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/fields/new': {
       id: '/o/$orgId/fields/new'
       path: '/fields/new'
@@ -578,6 +616,7 @@ interface OOrgIdRouteChildren {
   OOrgIdFilesRoute: typeof OOrgIdFilesRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
+  OOrgIdRotationsRoute: typeof OOrgIdRotationsRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
   OOrgIdTasksRoute: typeof OOrgIdTasksRoute
   OOrgIdTeamRoute: typeof OOrgIdTeamRoute
@@ -587,6 +626,7 @@ interface OOrgIdRouteChildren {
   OOrgIdComplianceReportRoute: typeof OOrgIdComplianceReportRoute
   OOrgIdCropsCropCycleIdRoute: typeof OOrgIdCropsCropCycleIdRoute
   OOrgIdFieldsFieldIdRoute: typeof OOrgIdFieldsFieldIdRoute
+  OOrgIdFieldsManageRoute: typeof OOrgIdFieldsManageRoute
   OOrgIdFieldsNewRoute: typeof OOrgIdFieldsNewRoute
   OOrgIdMachineryEquipmentIdRoute: typeof OOrgIdMachineryEquipmentIdRoute
   OOrgIdOperationsOperationIdRoute: typeof OOrgIdOperationsOperationIdRoute
@@ -604,6 +644,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdFilesRoute: OOrgIdFilesRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
+  OOrgIdRotationsRoute: OOrgIdRotationsRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
   OOrgIdTasksRoute: OOrgIdTasksRoute,
   OOrgIdTeamRoute: OOrgIdTeamRoute,
@@ -613,6 +654,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdComplianceReportRoute: OOrgIdComplianceReportRoute,
   OOrgIdCropsCropCycleIdRoute: OOrgIdCropsCropCycleIdRoute,
   OOrgIdFieldsFieldIdRoute: OOrgIdFieldsFieldIdRoute,
+  OOrgIdFieldsManageRoute: OOrgIdFieldsManageRoute,
   OOrgIdFieldsNewRoute: OOrgIdFieldsNewRoute,
   OOrgIdMachineryEquipmentIdRoute: OOrgIdMachineryEquipmentIdRoute,
   OOrgIdOperationsOperationIdRoute: OOrgIdOperationsOperationIdRoute,

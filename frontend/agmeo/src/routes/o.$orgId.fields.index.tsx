@@ -1,7 +1,7 @@
 import { FIELD_PART_USAGE_COLORS, IMAGERY_LAYERS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
 import type { FeatureCollection } from 'geojson'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, Download, Info, Map as MapIcon, Minus, Plus, Upload } from 'lucide-react'
+import { ArrowDown, ArrowUp, Download, Info, Map as MapIcon, Minus, Plus, Settings2, Upload } from 'lucide-react'
 import { type Ref, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -121,6 +121,9 @@ function FieldsPage() {
             <Button onPress={exportGeoJson} isDisabled={!visible.length}>
               <Download /> {t('common.export')}
             </Button>
+            <Link to="/o/$orgId/fields/manage" params={{ orgId }} variant="secondary">
+              <Settings2 /> {t('fieldsManage.title')}
+            </Link>
             {can('field.write') && (
               <>
                 <Link to="/o/$orgId/fields/new" params={{ orgId }} search={{ mode: 'import' }} variant="secondary">

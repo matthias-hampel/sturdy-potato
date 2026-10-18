@@ -322,9 +322,24 @@ export interface FieldGeometryVersions {
   geometry: string;
   id: Generated<string>;
   organization_id: string;
+  reason: string | null;
   source: Generated<string>;
   valid_from: Generated<Timestamp>;
   valid_to: Timestamp | null;
+}
+
+export interface FieldGroupMembers {
+  field_id: string;
+  group_id: string;
+  organization_id: string;
+}
+
+export interface FieldGroups {
+  color: Generated<string>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  organization_id: string;
 }
 
 export interface FieldImageryJobs {
@@ -397,14 +412,17 @@ export interface FieldRasters {
 }
 
 export interface Fields {
+  archived_from: string | null;
   created_at: Generated<Timestamp>;
   farm_id: string;
   id: Generated<string>;
   identifier: string | null;
+  merged_into_id: string | null;
   name: string;
   nitrate_sensitive_zone: Generated<boolean>;
   notes: string | null;
   organization_id: string;
+  parcel_number: string | null;
   phosphate_sensitive_zone: Generated<boolean>;
   soil_texture: string | null;
   soil_type: string | null;
@@ -932,6 +950,8 @@ export interface DB {
   field_crop_rotations: FieldCropRotations;
   field_current_geometry: FieldCurrentGeometry;
   field_geometry_versions: FieldGeometryVersions;
+  field_group_members: FieldGroupMembers;
+  field_groups: FieldGroups;
   field_imagery_jobs: FieldImageryJobs;
   field_observations: FieldObservations;
   field_parts: FieldParts;

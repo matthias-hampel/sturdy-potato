@@ -1,6 +1,6 @@
 import { IMAGERY_LAYERS, type CostEntry, type CropCycle, type Farm, type Field, type FieldGeometryVersion, type ImageryLayer, type ImageryStretch, type Operation } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Shapes, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, RotateCcw, Shapes, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -25,7 +25,7 @@ import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { costCategoryLabel } from '#/i18n/labels'
 import { Button, Link, buttonClass } from '#/ui/Button'
-import { DatePicker } from '#/ui/Field'
+import { DatePicker, TextField } from '#/ui/Field'
 import { Badge, Card, DescriptionList, ErrorNotice, Loading, Notice, PageHeader, Stat, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 import { ConfirmButton, Menu, MenuItem, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
@@ -264,17 +264,25 @@ function EditBoundaryDialog({ field, onClose }: { field: Field; onClose: () => v
   const { t } = useTranslation()
   const [geometry, setGeometry] = useState<DrawnGeometry | null>(field.geometry)
   const [validFrom, setValidFrom] = useState<string | null>(today())
+  const [reason, setReason] = useState('')
   const { result } = useGeometryCheck(geometry, field.id)
   const save = useOrgMutation(
-    (base, _: void) => api.put<Field>(`${base}/fields/${field.id}/geometry`, { geometry, validFrom: validFrom === today() ? undefined : new Date(`${validFrom}T00:00:00`).toISOString() }),
+    (base, _: void) =>
+      api.put<Field>(`${base}/fields/${field.id}/geometry`, {
+        geometry,
+        validFrom: validFrom === today() ? undefined : new Date(`${validFrom}T00:00:00`).toISOString(),
+        reason: reason.trim() || undefined,
+      }),
     { success: (f) => t('fieldPage.boundary.updated', { area: fmt.ha(f.areaHa) }), onSuccess: onClose },
   )
   return (
     <ModalDialog isOpen onOpenChange={(o) => !o && onClose()} title={t('fieldPage.boundary.title', { name: field.name })} description={t('fieldPage.boundary.description')} size="xl">
       <div className="space-y-4">
-        <DrawField initial={field.geometry} onChange={setGeometry} className="h-[55vh] min-h-80" />
+        {field.partCount > 0 && <Notice tone="warning">{t('fieldPage.boundary.dividedWarning', { count: field.partCount })}</Notice>}
+        <DrawField initial={field.geometry} onChange={setGeometry} advanced className="h-[55vh] min-h-80" />
         <div className="flex flex-wrap items-end gap-4">
           <DatePicker label={t('fieldPage.boundary.validFrom')} value={validFrom} onChange={setValidFrom} maxValue={today()} />
+          <TextField label={t('fieldPage.boundary.reason')} value={reason} onChange={setReason} placeholder={t('fieldPage.boundary.reasonPlaceholder')} className="w-64" />
           <div className="flex-1 min-w-60 text-sm">
             {result && !result.valid && <Notice tone="danger">{result.reason}</Notice>}
             {result?.valid && (
@@ -294,10 +302,23 @@ function EditBoundaryDialog({ field, onClose }: { field: Field; onClose: () => v
   )
 }
 
+const SOURCE_LABEL: Record<FieldGeometryVersion['source'], string> = {
+  drawn: 'fieldPage.boundary.source.drawn',
+  import: 'fieldPage.boundary.source.import',
+  edit: 'fieldPage.boundary.source.edit',
+  merge: 'fieldPage.boundary.source.merge',
+  restore: 'fieldPage.boundary.source.restore',
+}
+
 function BoundaryHistory({ fieldId }: { fieldId: string }) {
   const { t } = useTranslation()
+  const { can } = useOrg()
   const history = useOrgQuery<FieldGeometryVersion[]>(`/fields/${fieldId}/geometry-history`)
   const [selected, setSelected] = useState<string | null>(null)
+  const restore = useOrgMutation((base, v: FieldGeometryVersion) => api.post<Field>(`${base}/fields/${fieldId}/geometry/restore`, { versionId: v.id, reason: t('fieldPage.boundary.restoreReason', { date: fmt.date(v.validFrom) }) }), {
+    success: (f) => t('fieldPage.boundary.restored', { area: fmt.ha(f.areaHa) }),
+    onSuccess: () => setSelected(null),
+  })
   if (history.isLoading) return <Loading />
   const versions = history.data ?? []
   const shown = versions.find((v) => v.id === selected) ?? versions[0]
@@ -312,19 +333,32 @@ function BoundaryHistory({ fieldId }: { fieldId: string }) {
                   <span className="text-sm font-medium tabular">{fmt.date(v.validFrom)} – {v.validTo ? fmt.date(v.validTo) : t('fieldPage.boundary.today')}</span>
                   {i === 0 && <Badge tone="success">{t('fieldPage.boundary.current')}</Badge>}
                 </div>
-                <div className="text-xs text-muted mt-0.5">{fmt.ha(v.areaHa)} · {v.source === 'import' ? t('fieldPage.boundary.source.import') : v.source === 'edit' ? t('fieldPage.boundary.source.edit') : t('fieldPage.boundary.source.drawn')}</div>
+                <div className="text-xs text-muted mt-0.5">{fmt.ha(v.areaHa)} · {t(SOURCE_LABEL[v.source])}</div>
+                {v.reason && <div className="text-xs text-fg-2 mt-0.5 italic">{v.reason}</div>}
               </button>
             </li>
           ))}
         </ul>
       </Card>
       {shown && (
-        <FieldMap
-          fields={[]}
-          highlight={shown.geometry}
-          labels={false}
-          className="h-96"
-        />
+        <div className="space-y-3">
+          <FieldMap
+            fields={[]}
+            highlight={shown.geometry}
+            labels={false}
+            className="h-96"
+          />
+          {shown.validTo && can('field.write') && (
+            <ConfirmButton
+              title={t('fieldPage.boundary.restoreTitle')}
+              message={t('fieldPage.boundary.restoreMessage', { date: fmt.date(shown.validFrom), area: fmt.ha(shown.areaHa) })}
+              confirmLabel={t('fieldPage.boundary.restore')}
+              variant="primary"
+              onConfirm={() => restore.mutateAsync(shown)}
+              trigger={<Button><RotateCcw /> {t('fieldPage.boundary.restore')}</Button>}
+            />
+          )}
+        </div>
       )}
     </div>
   )

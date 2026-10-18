@@ -17,7 +17,9 @@ import { FilesController } from './modules/files/files.controller.js';
 import { FilesService } from './modules/files/files.service.js';
 import { ObjectStorage } from './storage/object-storage.js';
 import { FarmsService } from './modules/farms/farms.service.js';
-import { FieldPartsController, FieldsController } from './modules/fields/fields.controller.js';
+import { FieldGroupsController, FieldPartsController, FieldsController } from './modules/fields/fields.controller.js';
+import { FieldGroupsService } from './modules/fields/field-groups.service.js';
+import { FieldManagementService } from './modules/fields/field-management.service.js';
 import { FieldPartsService } from './modules/fields/field-parts.service.js';
 import { FieldsService } from './modules/fields/fields.service.js';
 import { IdentityController } from './modules/identity/identity.controller.js';
@@ -52,6 +54,8 @@ export const DOMAIN_SERVICES = [
   FarmsService,
   FieldsService,
   FieldPartsService,
+  FieldManagementService,
+  FieldGroupsService,
   CropsService,
   InventoryService,
   TeamService,
@@ -82,6 +86,7 @@ export const DOMAIN_SERVICES = [
     FarmsController,
     FieldsController,
     FieldPartsController,
+    FieldGroupsController,
     CropsController,
     InventoryController,
     TeamController,

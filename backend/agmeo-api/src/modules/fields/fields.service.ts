@@ -23,6 +23,12 @@ import { Database, type Trx } from '../../db/database.js';
 import { cropName } from '../crops/crop-name.js';
 import { resolveSeason } from '../crops/seasons.js';
 
+/** The transaction's timestamp (`now()`), which PostgreSQL keeps fixed for the whole transaction. */
+export async function dbNow(trx: Trx): Promise<Date> {
+  const { rows } = await sql<{ now: Date }>`SELECT now() AS now`.execute(trx);
+  return rows[0].now;
+}
+
 /** GeoJSON → 2D MultiPolygon in EPSG:4326. Never repairs geometry silently. */
 const geom = (g: FieldGeometry) => sql<string>`ST_Multi(ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(g)}), 4326)))`;
 
@@ -32,6 +38,7 @@ const MIN_OVERLAP_M2 = 1;
 export interface FieldQuery {
   ids?: string[];
   farmId?: string;
+  groupId?: string;
   seasonId?: string;
   includeArchived?: boolean;
 }
@@ -131,7 +138,15 @@ export class FieldsService {
     return id;
   }
 
-  private async insertVersion(trx: Trx, ctx: Ctx, fieldId: string, geometry: FieldGeometry, source: 'drawn' | 'import' | 'edit', validFrom?: string) {
+  private async insertVersion(
+    trx: Trx,
+    ctx: Ctx,
+    fieldId: string,
+    geometry: FieldGeometry,
+    source: 'drawn' | 'import' | 'edit' | 'restore',
+    validFrom?: string,
+    reason?: string,
+  ) {
     const row = await trx
       .insertInto('field_geometry_versions')
       .values({
@@ -141,6 +156,7 @@ export class FieldsService {
         area_ha: sql<number>`round((ST_Area(${geom(geometry)}::geography) / 10000)::numeric, 4)`,
         valid_from: validFrom ? new Date(validFrom) : sql<Date>`now()`,
         source,
+        reason: reason ?? null,
         created_by: ctx.userId,
       })
       .returning(['id', 'area_ha'])
@@ -156,10 +172,13 @@ export class FieldsService {
         farm_id: input.farmId,
         name: input.name,
         identifier: input.identifier,
+        parcel_number: input.parcelNumber,
         tenure: input.tenure,
         soil_type: input.soilType,
         notes: input.notes,
         status: input.status,
+        // Archiving here takes effect today; the bulk archive action can set another date.
+        archived_from: input.status === 'archived' && before.status !== 'archived' ? new Date().toLocaleDateString('sv-SE') : input.status === 'active' ? null : undefined,
       };
       await trx.updateTable('fields').set(values).where('id', '=', id).execute();
       await record(trx, ctx, {
@@ -175,46 +194,57 @@ export class FieldsService {
 
   /** Replaces the boundary from `validFrom`; the previous version stays as history. */
   updateGeometry(ctx: Ctx, id: string, input: Out<typeof UpdateFieldGeometryInput>): Promise<Field> {
-    return this.db.run(ctx, async (trx) => {
-      const current = await trx
-        .selectFrom('field_geometry_versions')
-        .select(['id', 'valid_from', 'area_ha'])
-        .where('field_id', '=', id)
-        .where('valid_to', 'is', null)
-        .forUpdate()
-        .executeTakeFirst();
-      if (!current) throw notFound('Field');
-      const check = await this.validateIn(trx, input.geometry, id);
-      if (!check.valid) throw badRequest('invalid_geometry', `Invalid field boundary: ${check.reason}`);
+    return this.db.run(ctx, (trx) => this.replaceGeometry(trx, ctx, id, input.geometry, { validFrom: input.validFrom, reason: input.reason, source: 'edit' }));
+  }
 
-      const validFrom = input.validFrom ? new Date(input.validFrom) : new Date();
-      if (validFrom > new Date(Date.now() + 60_000)) {
-        throw badRequest('invalid_valid_from', 'A boundary change cannot take effect in the future');
-      }
-      if (validFrom <= current.valid_from) {
-        throw badRequest('invalid_valid_from', 'The new boundary must take effect after the current one');
-      }
-      await trx.updateTable('field_geometry_versions').set({ valid_to: validFrom }).where('id', '=', current.id).execute();
-      const version = await this.insertVersion(trx, ctx, id, input.geometry, 'edit', validFrom.toISOString());
-      await record(trx, ctx, {
-        entityType: 'field',
-        entityId: id,
-        action: 'geometry_updated',
-        changes: { areaHa: { from: current.area_ha, to: version.areaHa }, validFrom: validFrom.toISOString() },
-        event: {
-          type: 'field.geometry_updated',
-          payload: { fieldId: id, geometryVersionId: version.id, previousVersionId: current.id, areaHa: version.areaHa },
-        },
-      });
-      return this.getIn(trx, id);
+  /** Closes the current boundary at `validFrom` and appends the new one. */
+  async replaceGeometry(
+    trx: Trx,
+    ctx: Ctx,
+    id: string,
+    geometry: FieldGeometry,
+    opts: { validFrom?: string; reason?: string; source: 'edit' | 'restore' },
+  ): Promise<Field> {
+    const current = await trx
+      .selectFrom('field_geometry_versions')
+      .select(['id', 'valid_from', 'area_ha'])
+      .where('field_id', '=', id)
+      .where('valid_to', 'is', null)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!current) throw notFound('Field');
+    const check = await this.validateIn(trx, geometry, id);
+    if (!check.valid) throw badRequest('invalid_geometry', `Invalid field boundary: ${check.reason}`);
+
+    // Without a date the change takes effect at the transaction's time, so the boundary reads
+    // as current within this transaction too.
+    const validFrom = opts.validFrom ? new Date(opts.validFrom) : await dbNow(trx);
+    if (validFrom > new Date(Date.now() + 60_000)) {
+      throw badRequest('invalid_valid_from', 'A boundary change cannot take effect in the future');
+    }
+    if (validFrom <= current.valid_from) {
+      throw badRequest('invalid_valid_from', 'The new boundary must take effect after the current one');
+    }
+    await trx.updateTable('field_geometry_versions').set({ valid_to: validFrom }).where('id', '=', current.id).execute();
+    const version = await this.insertVersion(trx, ctx, id, geometry, opts.source, validFrom.toISOString(), opts.reason);
+    await record(trx, ctx, {
+      entityType: 'field',
+      entityId: id,
+      action: opts.source === 'restore' ? 'geometry_restored' : 'geometry_updated',
+      changes: { areaHa: { from: current.area_ha, to: version.areaHa }, validFrom: validFrom.toISOString(), reason: opts.reason ?? null },
+      event: {
+        type: 'field.geometry_updated',
+        payload: { fieldId: id, geometryVersionId: version.id, previousVersionId: current.id, areaHa: version.areaHa },
+      },
     });
+    return this.getIn(trx, id);
   }
 
   geometryHistory(ctx: Ctx, id: string): Promise<FieldGeometryVersion[]> {
     return this.db.run(ctx, async (trx) => {
       const rows = await trx
         .selectFrom('field_geometry_versions')
-        .select(['id', 'area_ha', 'valid_from', 'valid_to', 'source', sql<MultiPolygon>`ST_AsGeoJSON(geometry, 7)::json`.as('geojson')])
+        .select(['id', 'area_ha', 'valid_from', 'valid_to', 'source', 'reason', sql<MultiPolygon>`ST_AsGeoJSON(geometry, 7)::json`.as('geojson')])
         .where('field_id', '=', id)
         .orderBy('valid_from', 'desc')
         .execute();
@@ -224,6 +254,7 @@ export class FieldsService {
         validFrom: iso(r.valid_from),
         validTo: iso(r.valid_to),
         source: r.source as FieldGeometryVersion['source'],
+        reason: r.reason,
         geometry: r.geojson,
       }));
     });
@@ -334,6 +365,13 @@ export class FieldsService {
         'f.phosphate_sensitive_zone',
         'f.notes',
         'f.status',
+        'f.parcel_number',
+        'f.archived_from',
+        'f.merged_into_id',
+        sql<{ id: string; name: string; color: string }[]>`coalesce((
+          SELECT json_agg(json_build_object('id', fg.id, 'name', fg.name, 'color', fg.color) ORDER BY fg.name)
+          FROM field_group_members m JOIN field_groups fg ON fg.id = m.group_id
+          WHERE m.field_id = f.id), '[]'::json)`.as('groups'),
         'f.created_at',
         'f.updated_at',
         'g.id as geometry_version_id',
@@ -353,6 +391,7 @@ export class FieldsService {
       .orderBy('f.name');
     if (q.ids) query = query.where('f.id', 'in', q.ids.length ? q.ids : ['00000000-0000-0000-0000-000000000000']);
     if (q.farmId) query = query.where('f.farm_id', '=', q.farmId);
+    if (q.groupId) query = query.where('f.id', 'in', (eb) => eb.selectFrom('field_group_members').select('field_id').where('group_id', '=', q.groupId!));
     if (!q.includeArchived) query = query.where('f.status', '=', 'active');
     const rows = await query.execute();
     return rows.map((r) => ({
@@ -368,6 +407,10 @@ export class FieldsService {
       phosphateSensitiveZone: r.phosphate_sensitive_zone,
       notes: r.notes,
       status: r.status as Field['status'],
+      parcelNumber: r.parcel_number,
+      archivedFrom: r.archived_from,
+      mergedIntoId: r.merged_into_id,
+      groups: r.groups,
       areaHa: r.area_ha ?? 0,
       geometry: r.geojson,
       centroid: { lat: r.lat, lng: r.lng },

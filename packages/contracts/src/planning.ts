@@ -147,6 +147,20 @@ export interface RollOverResult {
   fields: { fieldId: string; fieldName: string; cropName: string | null; outcome: 'created' | 'already_planned' | 'field_divided' }[];
 }
 
+/** Copies last season's crops to fields that have none yet in the target season. */
+export const CarryForwardInput = z.object({
+  targetSeasonId: id,
+  /** Limit to these fields; all active fields when left out. */
+  fieldIds: z.array(id).max(5000).optional(),
+  applyTemplates: z.boolean().default(false),
+});
+export type CarryForwardInput = z.input<typeof CarryForwardInput>;
+
+export interface CarryForwardResult {
+  created: number;
+  fields: { fieldId: string; fieldName: string; cropName: string | null; outcome: 'created' | 'already_planned' | 'field_divided' | 'no_previous' }[];
+}
+
 // ---------------------------------------------------------------------------
 // Crop calendar
 // ---------------------------------------------------------------------------
