@@ -1,6 +1,6 @@
 import { IMAGERY_LAYERS, type CostEntry, type CropCycle, type Farm, type Field, type FieldGeometryVersion, type ImageryLayer, type ImageryStretch, type Operation } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Shapes, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, CalendarClock, MoreHorizontal, Pencil, Plus, Shapes, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -100,6 +100,19 @@ function FieldPage() {
           )
         }
       />
+
+      {f.plannedGeometry && (
+        <Notice tone="info" icon={CalendarClock} className="mb-6">
+          <Trans
+            i18nKey="fieldPage.boundary.plannedNotice"
+            values={{ date: fmt.date(f.plannedGeometry.validFrom), area: fmt.ha(f.plannedGeometry.areaHa) }}
+            components={{ b: <strong className="tabular" /> }}
+          />{' '}
+          <AriaButton className="underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm" onPress={() => navigateTab({ search: (prev) => ({ ...prev, tab: 'boundary' }), replace: true })}>
+            {t('fieldPage.boundary.showPlanned')}
+          </AriaButton>
+        </Notice>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Stat label={t('fieldPage.area')} value={fmt.ha(f.areaHa)} hint={t('fieldPage.areaHint')} />
@@ -205,7 +218,7 @@ function FieldPage() {
           <ProductivityZones field={f} />
         </TabPanel>
         <TabPanel id="boundary">
-          <BoundaryHistory fieldId={fieldId} />
+          <BoundaryHistory fieldId={fieldId} canEdit={can('field.write')} />
         </TabPanel>
         {can('finance.read') && (
           <TabPanel id="costs">
@@ -267,16 +280,26 @@ function EditBoundaryDialog({ field, onClose }: { field: Field; onClose: () => v
   const [geometry, setGeometry] = useState<DrawnGeometry | null>(field.geometry)
   const [validFrom, setValidFrom] = useState<string | null>(today())
   const { result } = useGeometryCheck(geometry, field.id)
+  const planned = !!validFrom && validFrom > today()
   const save = useOrgMutation(
     (base, _: void) => api.put<Field>(`${base}/fields/${field.id}/geometry`, { geometry, validFrom: validFrom === today() ? undefined : new Date(`${validFrom}T00:00:00`).toISOString() }),
-    { success: (f) => t('fieldPage.boundary.updated', { area: fmt.ha(f.areaHa) }), onSuccess: onClose },
+    {
+      success: (f) =>
+        planned ? t('fieldPage.boundary.planned', { date: fmt.date(validFrom), area: fmt.ha(result?.areaHa ?? 0) }) : t('fieldPage.boundary.updated', { area: fmt.ha(f.areaHa) }),
+      onSuccess: onClose,
+    },
   )
   return (
     <ModalDialog isOpen onOpenChange={(o) => !o && onClose()} title={t('fieldPage.boundary.title', { name: field.name })} description={t('fieldPage.boundary.description')} size="xl">
       <div className="space-y-4">
         <DrawField initial={field.geometry} onChange={setGeometry} className="h-[55vh] min-h-80" />
         <div className="flex flex-wrap items-end gap-4">
-          <DatePicker label={t('fieldPage.boundary.validFrom')} value={validFrom} onChange={setValidFrom} maxValue={today()} />
+          <DatePicker
+            label={t('fieldPage.boundary.validFrom')}
+            value={validFrom}
+            onChange={setValidFrom}
+            description={planned ? t('fieldPage.boundary.validFromPlanned') : undefined}
+          />
           <div className="flex-1 min-w-60 text-sm">
             {result && !result.valid && <Notice tone="danger">{result.reason}</Notice>}
             {result?.valid && (
@@ -288,7 +311,7 @@ function EditBoundaryDialog({ field, onClose }: { field: Field; onClose: () => v
           </div>
           <Button onPress={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" isDisabled={!geometry || !result?.valid || !validFrom} isPending={save.isPending} onPress={() => save.mutate()}>
-            {t('fieldPage.boundary.save')}
+            {planned ? t('fieldPage.boundary.savePlanned') : t('fieldPage.boundary.save')}
           </Button>
         </div>
       </div>
@@ -296,26 +319,44 @@ function EditBoundaryDialog({ field, onClose }: { field: Field; onClose: () => v
   )
 }
 
-function BoundaryHistory({ fieldId }: { fieldId: string }) {
+function BoundaryHistory({ fieldId, canEdit }: { fieldId: string; canEdit: boolean }) {
   const { t } = useTranslation()
   const history = useOrgQuery<FieldGeometryVersion[]>(`/fields/${fieldId}/geometry-history`)
   const [selected, setSelected] = useState<string | null>(null)
+  const cancel = useOrgMutation((base, versionId: string) => api.delete<Field>(`${base}/fields/${fieldId}/geometry/${versionId}`), {
+    success: t('fieldPage.boundary.cancelled'),
+    onSuccess: () => setSelected(null),
+  })
   if (history.isLoading) return <Loading />
   const versions = history.data ?? []
-  const shown = versions.find((v) => v.id === selected) ?? versions[0]
+  const shown = versions.find((v) => v.id === selected) ?? versions.find((v) => v.status === 'current') ?? versions[0]
   return (
     <div className="grid lg:grid-cols-[1fr_1.3fr] gap-6">
       <Card title={t('fieldPage.boundary.versions')} padded={false}>
         <ul className="divide-y divide-line">
-          {versions.map((v, i) => (
-            <li key={v.id}>
-              <button type="button" onClick={() => setSelected(v.id)} className={`w-full text-left px-4 py-3 hover:bg-surface-2 outline-none focus-visible:bg-primary-soft ${shown?.id === v.id ? 'bg-primary-soft' : ''}`}>
+          {versions.map((v) => (
+            <li key={v.id} className={`flex items-center gap-2 pr-3 ${shown?.id === v.id ? 'bg-primary-soft' : ''}`}>
+              <button type="button" onClick={() => setSelected(v.id)} className="flex-1 min-w-0 text-left px-4 py-3 hover:bg-surface-2 outline-none focus-visible:bg-primary-soft">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium tabular">{fmt.date(v.validFrom)} – {v.validTo ? fmt.date(v.validTo) : t('fieldPage.boundary.today')}</span>
-                  {i === 0 && <Badge tone="success">{t('fieldPage.boundary.current')}</Badge>}
+                  <span className="text-sm font-medium tabular">
+                    {v.status === 'planned' && !v.validTo
+                      ? t('fieldPage.boundary.from', { date: fmt.date(v.validFrom) })
+                      : `${fmt.date(v.validFrom)} – ${v.validTo ? fmt.date(v.validTo) : t('fieldPage.boundary.today')}`}
+                  </span>
+                  {v.status === 'current' && <Badge tone="success">{t('fieldPage.boundary.current')}</Badge>}
+                  {v.status === 'planned' && <Badge tone="info">{t('fieldPage.boundary.plannedBadge')}</Badge>}
                 </div>
                 <div className="text-xs text-muted mt-0.5">{fmt.ha(v.areaHa)} · {v.source === 'import' ? t('fieldPage.boundary.source.import') : v.source === 'edit' ? t('fieldPage.boundary.source.edit') : t('fieldPage.boundary.source.drawn')}</div>
               </button>
+              {canEdit && v.status === 'planned' && (
+                <ConfirmButton
+                  title={t('fieldPage.boundary.cancelTitle')}
+                  message={t('fieldPage.boundary.cancelMessage', { date: fmt.date(v.validFrom) })}
+                  confirmLabel={t('fieldPage.boundary.cancel')}
+                  onConfirm={() => cancel.mutateAsync(v.id)}
+                  trigger={<Button variant="ghost" size="icon-sm" aria-label={t('fieldPage.boundary.cancel')}><X /></Button>}
+                />
+              )}
             </li>
           ))}
         </ul>

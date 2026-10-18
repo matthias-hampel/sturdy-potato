@@ -76,7 +76,7 @@ export type UpdateFieldInput = z.input<typeof UpdateFieldInput>;
 
 export const UpdateFieldGeometryInput = z.object({
   geometry: FieldGeometry,
-  /** When the new boundary takes effect; defaults to now. */
+  /** When the new boundary takes effect; defaults to now. A future date plans the change. */
   validFrom: isoDateTime.optional(),
 });
 export type UpdateFieldGeometryInput = z.input<typeof UpdateFieldGeometryInput>;
@@ -148,6 +148,8 @@ export interface Field {
   geometry: MultiPolygon;
   centroid: LatLng;
   geometryVersionId: string;
+  /** Next boundary change that has not taken effect yet. */
+  plannedGeometry: { id: string; validFrom: string; areaHa: number } | null;
   currentCrop: FieldCurrentCrop | null;
   /** Number of part fields (Teilschläge) in the requested season; 0 when the field is used as a whole. */
   partCount: number;
@@ -162,6 +164,8 @@ export interface FieldGeometryVersion {
   areaHa: number;
   validFrom: string;
   validTo: string | null;
+  /** `planned` versions take effect in the future and can still be cancelled. */
+  status: 'past' | 'current' | 'planned';
   source: 'drawn' | 'import' | 'edit';
   geometry: MultiPolygon;
 }

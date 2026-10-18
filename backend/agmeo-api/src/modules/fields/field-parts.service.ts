@@ -232,9 +232,12 @@ export class FieldPartsService {
         'fp.name',
         'fp.usage',
         'fp.is_remainder',
-        'fp.area_ha',
+        // Parts cut from an earlier boundary are shown within the current one until they are re-saved.
+        sql<number>`CASE WHEN fp.geometry_version_id IS DISTINCT FROM g.id AND g.geometry IS NOT NULL
+          THEN round((ST_Area(ST_Intersection(fp.geometry, g.geometry)::geography) / 10000)::numeric, 4) ELSE fp.area_ha END`.as('area_ha'),
         'fp.notes',
-        sql<MultiPolygon>`ST_AsGeoJSON(fp.geometry, 7)::json`.as('geojson'),
+        sql<MultiPolygon>`ST_AsGeoJSON(CASE WHEN fp.geometry_version_id IS DISTINCT FROM g.id AND g.geometry IS NOT NULL
+          THEN ST_Multi(ST_CollectionExtract(ST_Intersection(fp.geometry, g.geometry), 3)) ELSE fp.geometry END, 7)::json`.as('geojson'),
         sql<boolean>`fp.geometry_version_id IS DISTINCT FROM g.id`.as('outdated'),
       ])
       .where('fp.season_id', '=', q.seasonId)
