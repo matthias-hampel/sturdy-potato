@@ -400,4 +400,66 @@ describe('Bundessortenamt varieties', () => {
       await owner.destroy()
     }
   })
+
+  /** One EU species, two BSA species and crops for its winter and spring forms. */
+  it('splits EU catalogue varieties into winter and spring forms', async () => {
+    const owner = createKysely(process.env.DATABASE_URL_MIGRATE ?? 'postgres://agmeo_owner:agmeo_owner@localhost:5434/agmeo', 1)
+    const winter = `W${run.slice(0, 4).toUpperCase()}`
+    const spring = `S${run.slice(0, 4).toUpperCase()}`
+    const euSpecies = `ZZZZZ_S${run.slice(0, 4).toUpperCase()}`
+    try {
+      const o = as((await signIn('eu-season-owner')).token)
+      const org = (await o.post('/orgs', { name: `EU seasons ${run}` }).expect(201)).body
+      await sql`INSERT INTO bsa_species (code, name_de, botanical_name) VALUES
+        (${winter}, 'Testwinterweizen', 'Triticum testum'), (${spring}, 'Testsommerweizen', 'Triticum testum')`.execute(owner)
+      await sql`INSERT INTO bsa_varieties (species_code, registration_number, name, approval_granted_on) VALUES
+        (${winter}, 1, 'Winterkönig', '2020-02-01'),
+        (${spring}, 1, 'Lenz', '2020-02-01')`.execute(owner)
+      await sql`INSERT INTO eu_species (code, botanical_name) VALUES (${euSpecies}, 'Triticum testum')`.execute(owner)
+      await sql`INSERT INTO eu_varieties (species_code, name, countries, season) VALUES
+        (${euSpecies}, 'Hiver', '{FR}', 'winter'),
+        (${euSpecies}, 'Printemps', '{FR}', 'spring'),
+        (${euSpecies}, 'Wechsel', '{AT}', 'alternative'),
+        (${euSpecies}, 'Senza', '{IT}', NULL),
+        (${euSpecies}, 'Lenz', '{IT}', NULL),
+        (${euSpecies}, 'Winterkönig', '{PL}', 'winter')`.execute(owner)
+      const crops = await sql<{ id: string; code: string }>`INSERT INTO crops (organization_id, code, name, category, bsa_species_code, eu_species_code, eu_season) VALUES
+        (${org.id}, 'custom_winter_test', 'Test winter wheat', 'cereal', ${winter}, ${euSpecies}, 'winter'),
+        (${org.id}, 'custom_spring_test', 'Test spring wheat', 'cereal', ${spring}, ${euSpecies}, 'spring')
+        RETURNING id, code`
+        .execute(owner)
+        .then((r) => Object.fromEntries(r.rows.map((c) => [c.code, c.id])))
+      const list = async (cropId: string) =>
+        (await o.get(`/orgs/${org.id}/crops/${cropId}/registered-varieties`).expect(200)).body.map((v: { name: string; source: string; season: string | null }) => [v.name, v.source, v.season])
+
+      // Each form lists its own, the alternative and the unstated EU varieties; a name the BSA
+      // registers for the other form ("Lenz") is left out.
+      expect(await list(crops.custom_winter_test)).toEqual([
+        ['Hiver', 'eu', 'winter'],
+        ['Senza', 'eu', null],
+        ['Wechsel', 'eu', 'alternative'],
+        ['Winterkönig', 'bsa', null],
+      ])
+      expect(await list(crops.custom_spring_test)).toEqual([
+        ['Lenz', 'bsa', null],
+        ['Printemps', 'eu', 'spring'],
+        ['Senza', 'eu', null],
+        ['Wechsel', 'eu', 'alternative'],
+      ])
+      const cropList = (await o.get(`/orgs/${org.id}/crops`).expect(200)).body
+      expect(cropList.find((c: { id: string }) => c.id === crops.custom_winter_test)).toMatchObject({ euSpeciesCode: euSpecies, euSeason: 'winter' })
+
+      // A spring variety typed for the winter crop is kept as typed, not linked to the catalogue.
+      const hiver = (await o.post(`/orgs/${org.id}/varieties`, { cropId: crops.custom_winter_test, name: 'hiver' }).expect(201)).body
+      expect(hiver).toMatchObject({ name: 'Hiver' })
+      expect(hiver.registeredVarietyId).not.toBeNull()
+      const printemps = (await o.post(`/orgs/${org.id}/varieties`, { cropId: crops.custom_winter_test, name: 'printemps' }).expect(201)).body
+      expect(printemps).toMatchObject({ name: 'printemps', registeredVarietyId: null })
+    } finally {
+      await sql`DELETE FROM crops WHERE bsa_species_code IN (${winter}, ${spring})`.execute(owner)
+      await sql`DELETE FROM bsa_species WHERE code IN (${winter}, ${spring})`.execute(owner)
+      await sql`DELETE FROM eu_species WHERE code = ${euSpecies}`.execute(owner)
+      await owner.destroy()
+    }
+  })
 })

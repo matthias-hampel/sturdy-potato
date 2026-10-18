@@ -54,6 +54,7 @@ export async function syncEu(
               countries: eb.ref('excluded.countries'),
               registered_on: eb.ref('excluded.registered_on'),
               marketable_until: eb.ref('excluded.marketable_until'),
+              season: eb.ref('excluded.season'),
               synced_at: eb.ref('excluded.synced_at'),
             })),
           )
@@ -79,6 +80,7 @@ function row(v: EuVariety, syncedAt: string) {
     countries: v.countries,
     registered_on: v.registeredOn,
     marketable_until: v.marketableUntil,
+    season: v.season,
     synced_at: syncedAt,
   };
 }

@@ -14,6 +14,9 @@ export const EUPVP_URL = 'https://ec.europa.eu/food/plant-variety-portal/index.x
 /** EU member states, plus Northern Ireland (XI) where EU seed law applies. EUPVP writes Greece as EL. */
 const EU_COUNTRIES = new Set('AT BE BG HR CY CZ DK EE FI FR DE EL HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE XI'.split(' '));
 
+/** "Season Type" of a registration: the winter or spring form, or alternative (sown in autumn or spring). */
+export type EuSeason = 'winter' | 'spring' | 'alternative';
+
 export interface EuSpecies {
   /** Form value of the species in the search. */
   id: string;
@@ -35,6 +38,7 @@ export interface EuRegistration {
   gmo: boolean;
   conservation: boolean;
   amateur: boolean;
+  season: EuSeason | null;
 }
 
 export interface EuVariety {
@@ -43,6 +47,8 @@ export interface EuVariety {
   countries: string[];
   registeredOn: string | null;
   marketableUntil: string | null;
+  /** Season Type of the registrations; null when none states one or they disagree. */
+  season: EuSeason | null;
 }
 
 // --- XLSX -------------------------------------------------------------------------------------
@@ -123,6 +129,8 @@ export function parseSpeciesOptions(html: string): EuSpecies[] {
   });
 }
 
+const SEASONS: Record<string, EuSeason> = { Winter: 'winter', Spring: 'spring', Alternative: 'alternative' };
+
 /** Registrations from the export sheet, located by column header. */
 export function parseRegistrations(rows: string[][]): EuRegistration[] {
   const [header = [], ...body] = rows;
@@ -142,6 +150,7 @@ export function parseRegistrations(rows: string[][]): EuRegistration[] {
     gmo: col('GMO'),
     conservation: col('Conservation Variety'),
     amateur: col('Amateur Variety'),
+    season: col('Season Type'),
   };
   return body
     .filter((r) => r[c.name] && r[c.country])
@@ -156,6 +165,7 @@ export function parseRegistrations(rows: string[][]): EuRegistration[] {
       gmo: r[c.gmo] === 'Y',
       conservation: r[c.conservation] === 'Y',
       amateur: r[c.amateur] === 'Y',
+      season: SEASONS[r[c.season]] ?? null,
     }));
 }
 
@@ -164,10 +174,11 @@ export function parseRegistrations(rows: string[][]): EuRegistration[] {
  * member state, or with ended registrations whose marketing extension is known. Left out are
  * registrations outside the EU (Switzerland, Norway, CPVO), GMO varieties (their cultivation is
  * banned in Germany), and conservation and amateur varieties, which may only be marketed in their
- * region of origin or in small packages.
+ * region of origin or in small packages. The season is the one the counted registrations state;
+ * a variety some countries register as winter and others as spring form gets none.
  */
 export function aggregateVarieties(registrations: EuRegistration[], speciesCode: string): EuVariety[] {
-  const byName = new Map<string, { spellings: Map<string, number>; variety: EuVariety }>();
+  const byName = new Map<string, { spellings: Map<string, number>; seasons: Set<EuSeason>; variety: EuVariety }>();
   for (const r of registrations) {
     if (r.speciesCode !== speciesCode || !EU_COUNTRIES.has(r.country) || r.gmo || r.conservation || r.amateur) continue;
     const registered = r.status === 'Registered';
@@ -175,11 +186,12 @@ export function aggregateVarieties(registrations: EuRegistration[], speciesCode:
     const key = varietyKey(r.name);
     let entry = byName.get(key);
     if (!entry) {
-      entry = { spellings: new Map(), variety: { speciesCode, name: r.name, countries: [], registeredOn: null, marketableUntil: null } };
+      entry = { spellings: new Map(), seasons: new Set(), variety: { speciesCode, name: r.name, countries: [], registeredOn: null, marketableUntil: null, season: null } };
       byName.set(key, entry);
     }
     const v = entry.variety;
     entry.spellings.set(r.name, (entry.spellings.get(r.name) ?? 0) + 1);
+    if (r.season) entry.seasons.add(r.season);
     if (registered) {
       if (!v.countries.includes(r.country)) v.countries.push(r.country);
       if (r.registeredOn && (!v.registeredOn || r.registeredOn < v.registeredOn)) v.registeredOn = r.registeredOn;
@@ -187,8 +199,9 @@ export function aggregateVarieties(registrations: EuRegistration[], speciesCode:
       v.marketableUntil = r.marketableUntil;
     }
   }
-  return [...byName.values()].map(({ spellings, variety }) => ({
+  return [...byName.values()].map(({ spellings, seasons, variety }) => ({
     ...variety,
+    season: seasons.size === 1 ? [...seasons][0] : null,
     // The spelling most countries use (the first one seen on a tie).
     name: [...spellings].reduce((best, s) => (s[1] > best[1] ? s : best))[0],
     countries: variety.countries.sort(),

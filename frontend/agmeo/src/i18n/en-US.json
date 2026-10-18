@@ -253,6 +253,8 @@
   "crops.form.varietyConservation": "BSA no. {{number}} · conservation variety ({{region}})",
   "crops.form.varietyEu": "EU catalogue · registered in {{countries}}",
   "crops.form.varietyEuPhasingOut": "EU catalogue · registrations ended, seed on sale until {{date}}",
+  "crops.form.varietyEuAlternative": "winter or spring form",
+  "crops.form.varietyEuFormUnknown": "form not stated",
   "crops.form.varietyPhasingOut": "BSA no. {{number}} · approval ended, seed on sale until {{date}}",
   "crops.form.varietyPlaceholder": "Optional; type to add",
   "crops.form.varietyRegisteredHint": "{{count}} varieties approved by the Bundessortenamt; type to add another",

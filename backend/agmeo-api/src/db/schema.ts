@@ -146,6 +146,7 @@ export interface Crops {
   default_harvest_md: string | null;
   default_sowing_md: string | null;
   eppo_code: string | null;
+  eu_season: string | null;
   eu_species_code: string | null;
   id: Generated<string>;
   is_legume: Generated<boolean>;
@@ -240,6 +241,7 @@ export interface EuVarieties {
   marketable_until: string | null;
   name: string;
   registered_on: string | null;
+  season: string | null;
   species_code: string;
   synced_at: Generated<Timestamp>;
 }

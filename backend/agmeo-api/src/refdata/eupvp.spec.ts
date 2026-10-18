@@ -27,11 +27,13 @@ function workbook(rows: (string | number | null)[][]): Buffer {
 }
 
 // 45658 = 2025-01-01, 46934 = 2028-06-30.
-const header = ['Country / Org.', 'Register Type', 'UPOV Species Code', 'Variety Denomination', 'Variety Status', 'Registration Date', 'End Date', 'Market Extension Date', 'GMO', 'Conservation Variety', 'Amateur Variety'];
+const header = ['Country / Org.', 'Register Type', 'UPOV Species Code', 'Variety Denomination', 'Variety Status', 'Registration Date', 'End Date', 'Market Extension Date', 'GMO', 'Conservation Variety', 'Amateur Variety', 'Season Type'];
 const sheet = [
   header,
-  ['FR', 'NLI', 'ZEAAA_MAY_GMA', 'DKC2972', 'Registered', 45658, null, '', 'N', 'N', ''],
-  ['IT', 'NLI', 'ZEAAA_MAY_GMA', 'Bacardi & Co', 'Registered', 43000, null, '', 'N', 'N', ''],
+  ['FR', 'NLI', 'ZEAAA_MAY_GMA', 'DKC2972', 'Registered', 45658, null, '', 'N', 'N', '', ''],
+  ['IT', 'NLI', 'ZEAAA_MAY_GMA', 'Bacardi & Co', 'Registered', 43000, null, '', 'N', 'N', '', ''],
+  ['PL', 'NLI', 'TRITI_AES', 'Activus', 'Registered', 43000, null, '', 'N', 'N', '', 'Winter'],
+  ['FR', 'NLI', 'TRITI_AES', 'Wechsel', 'Registered', 43000, null, '', 'N', 'N', '', 'Alternative'],
 ];
 
 const reg = (r: Partial<EuRegistration>): EuRegistration => ({
@@ -45,6 +47,7 @@ const reg = (r: Partial<EuRegistration>): EuRegistration => ({
   gmo: false,
   conservation: false,
   amateur: false,
+  season: null,
   ...r,
 });
 
@@ -59,10 +62,12 @@ describe('EU Plant Variety Portal parsing', () => {
 
   it('reads the export workbook by column header', () => {
     const rows = readSheet(workbook(sheet));
-    expect(rows[1]).toEqual(['FR', 'NLI', 'ZEAAA_MAY_GMA', 'DKC2972', 'Registered', '45658.0', '', '', 'N', 'N', '']);
+    expect(rows[1]).toEqual(['FR', 'NLI', 'ZEAAA_MAY_GMA', 'DKC2972', 'Registered', '45658.0', '', '', 'N', 'N', '', '']);
     expect(parseRegistrations(rows)).toEqual([
       reg({ country: 'FR', name: 'DKC2972', registeredOn: '2025-01-01' }),
       reg({ country: 'IT', name: 'Bacardi & Co', registeredOn: '2017-09-22' }),
+      reg({ country: 'PL', speciesCode: 'TRITI_AES', name: 'Activus', registeredOn: '2017-09-22', season: 'winter' }),
+      reg({ country: 'FR', speciesCode: 'TRITI_AES', name: 'Wechsel', registeredOn: '2017-09-22', season: 'alternative' }),
     ]);
   });
 
@@ -91,8 +96,37 @@ describe('EU Plant Variety Portal parsing', () => {
       'ZEAAA_MAY_GMA',
     );
     expect(varieties).toEqual([
-      { speciesCode: 'ZEAAA_MAY_GMA', name: 'DKC2972', countries: ['CZ', 'FR', 'IT'], registeredOn: '2018-05-01', marketableUntil: '2028-06-30' },
-      { speciesCode: 'ZEAAA_MAY_GMA', name: 'Ouvea', countries: [], registeredOn: null, marketableUntil: '2028-06-30' },
+      { speciesCode: 'ZEAAA_MAY_GMA', name: 'DKC2972', countries: ['CZ', 'FR', 'IT'], registeredOn: '2018-05-01', marketableUntil: '2028-06-30', season: null },
+      { speciesCode: 'ZEAAA_MAY_GMA', name: 'Ouvea', countries: [], registeredOn: null, marketableUntil: '2028-06-30', season: null },
     ]);
+  });
+
+  it('takes the season the registrations state, and none when they disagree', () => {
+    const wheat = (r: Partial<EuRegistration>) => reg({ speciesCode: 'TRITI_AES', ...r });
+    const varieties = aggregateVarieties(
+      [
+        // Countries that leave Season Type empty do not count against the others.
+        wheat({ country: 'PL', name: 'Activus', season: 'winter' }),
+        wheat({ country: 'FR', name: 'Activus' }),
+        wheat({ country: 'AT', name: 'Activus', season: 'winter' }),
+        wheat({ country: 'FI', name: 'Quarna', season: 'spring' }),
+        wheat({ country: 'FR', name: 'Wechsel', season: 'alternative' }),
+        wheat({ country: 'IT', name: 'Senza' }),
+        wheat({ country: 'HU', name: 'Axaro', season: 'winter' }),
+        wheat({ country: 'SK', name: 'Axaro', season: 'spring' }),
+        // Ended registrations still within their marketing extension count too; others and non-EU ones do not.
+        wheat({ country: 'CZ', name: 'Senza', status: 'Expired', marketableUntil: '2028-06-30', season: 'spring' }),
+        wheat({ country: 'SE', name: 'Quarna', status: 'Surrendered', season: 'winter' }),
+        wheat({ country: 'CH', name: 'Quarna', season: 'winter' }),
+      ],
+      'TRITI_AES',
+    );
+    expect(Object.fromEntries(varieties.map((v) => [v.name, v.season]))).toEqual({
+      Activus: 'winter',
+      Quarna: 'spring',
+      Wechsel: 'alternative',
+      Senza: 'spring',
+      Axaro: null,
+    });
   });
 });

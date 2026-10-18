@@ -19,6 +19,8 @@ export interface Crop {
   bsaSpeciesCode: string | null;
   /** EU Plant Variety Portal (UPOV) species code whose EU Common Catalogue varieties apply to this crop. */
   euSpeciesCode: string | null;
+  /** Form of the crop within its EU species (wheat, barley, rye, triticale, oats, rapeseed); null for species without forms. */
+  euSeason: 'winter' | 'spring' | null;
   isLegume: boolean;
   isPerennial: boolean;
   /** Typical sowing and harvest day ('MM-DD'); winter and catch crops are sown in the year before harvest. */
@@ -63,6 +65,12 @@ export interface RegisteredVariety {
   conservationRegion: string | null;
   /** Countries that currently register an EU catalogue variety (EL = Greece, XI = Northern Ireland); empty for BSA varieties. */
   countries: string[];
+  /**
+   * Form an EU catalogue variety is registered as ("Season Type"): 'alternative' may be sown in
+   * autumn or spring; null when the catalogue does not state it, and for BSA varieties, whose
+   * species is the form.
+   */
+  season: 'winter' | 'spring' | 'alternative' | null;
 }
 
 export const CreateVarietyInput = z.object({ cropId: id, name });

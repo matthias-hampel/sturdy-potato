@@ -393,14 +393,17 @@ function CycleFields({ value, onChange, crops, showArea }: { value: CycleForm; o
     const q = varietyKey(value.varietyName)
     return (q ? varietyOptions.filter((o) => varietyKey(o.name).includes(q)) : varietyOptions).slice(0, 100)
   }, [varietyOptions, value.varietyName])
+  // For crops with a winter and a spring form the EU catalogue may not say which form a variety is.
+  const euSeason = crops.find((c) => c.id === value.cropId)?.euSeason
   const describeVariety = (o: (typeof varietyOptions)[number]) => {
     const r = o.registered
+    const form = euSeason && r?.source === 'eu' && r.season !== euSeason ? t(r.season === 'alternative' ? 'crops.form.varietyEuAlternative' : 'crops.form.varietyEuFormUnknown') : null
     const register = !r
       ? null
       : r.source === 'eu'
-        ? r.marketableUntil
-          ? t('crops.form.varietyEuPhasingOut', { date: fmt.date(r.marketableUntil) })
-          : t('crops.form.varietyEu', { countries: r.countries.length > 5 ? `${r.countries.slice(0, 4).join(', ')} +${r.countries.length - 4}` : r.countries.join(', ') })
+        ? (r.marketableUntil
+            ? t('crops.form.varietyEuPhasingOut', { date: fmt.date(r.marketableUntil) })
+            : t('crops.form.varietyEu', { countries: r.countries.length > 5 ? `${r.countries.slice(0, 4).join(', ')} +${r.countries.length - 4}` : r.countries.join(', ') })) + (form ? ` · ${form}` : '')
         : r.marketableUntil
           ? t('crops.form.varietyPhasingOut', { number: r.registrationNumber, date: fmt.date(r.marketableUntil) })
           : r.conservationRegion

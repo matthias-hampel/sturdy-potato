@@ -253,6 +253,8 @@
   "crops.form.varietyConservation": "BSA-Nr. {{number}} · Erhaltungssorte ({{region}})",
   "crops.form.varietyEu": "EU-Sortenkatalog · zugelassen in {{countries}}",
   "crops.form.varietyEuPhasingOut": "EU-Sortenkatalog · Zulassungen beendet, Saatgut im Handel bis {{date}}",
+  "crops.form.varietyEuAlternative": "Wechselform",
+  "crops.form.varietyEuFormUnknown": "Winter-/Sommerform nicht angegeben",
   "crops.form.varietyPhasingOut": "BSA-Nr. {{number}} · Zulassung beendet, Saatgut im Handel bis {{date}}",
   "crops.form.varietyPlaceholder": "Optional; zum Hinzufügen eintippen",
   "crops.form.varietyRegisteredHint": "{{count}} beim Bundessortenamt zugelassene Sorten; andere Sorten einfach eintippen",
