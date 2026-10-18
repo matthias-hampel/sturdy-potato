@@ -25,8 +25,9 @@ from .indices import FORMULAS, INPUTS, NATIVE_10M, calculate
 
 BAND_ORDER = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"]
 BANDS = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
-VERSION = "2"
-SCL_VALID = [4, 5, 6]
+VERSION = "3"
+# Vegetation and bare soil; water (6) is not a clear view of a field. 3: water excluded.
+SCL_VALID = [4, 5]
 # Cloud shadow, medium/high-probability cloud and thin cirrus; haze around them is not classified.
 SCL_CLOUD = [3, 8, 9, 10]
 
@@ -158,7 +159,7 @@ def process(source, output, selected, aoi=None, resolution=20, cloud_buffer=300)
                     processing_version=VERSION,
                     processing_baseline=baseline,
                     grid=f"native tile UTM, {resolution}m",
-                    cloud_mask=f"SCL classes 4,5,6 retained; {cloud_buffer:g} m buffer around SCL 3,8,9,10",
+                    cloud_mask=f"SCL classes {','.join(map(str, SCL_VALID))} retained; {cloud_buffer:g} m buffer around SCL 3,8,9,10",
                     reflectance="(DN+offset)/quantification",
                     aoi="configured boundary" if aoi is not None else "full tile",
                 )

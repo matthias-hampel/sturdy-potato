@@ -310,6 +310,24 @@ def test_cloud_buffer_does_not_depend_on_window_edges():
     assert unbuffered.sum() == 40 * 40 - 4
 
 
+def test_water_is_not_clear():
+    scl = np.full((10, 10), 5, dtype="uint8")
+    scl[:, :4] = 6
+    profile = {
+        "driver": "GTiff",
+        "width": 10,
+        "height": 10,
+        "count": 1,
+        "dtype": "uint8",
+        "crs": "EPSG:32632",
+        "transform": from_origin(500000, 5800000, 10, 10),
+    }
+    with MemoryFile() as memory, memory.open(**profile) as dataset:
+        dataset.write(scl, 1)
+        clear = processing.clear_pixels(dataset, Window(0, 0, 10, 10), 0, 10)
+    assert not clear[:, :4].any() and clear[:, 4:].all()
+
+
 def test_native_10m_grid_keeps_10m_detail(tmp_path):
     source = sample_product(tmp_path)
     with pytest.raises(ValueError, match="NDRE use 20 m bands"):
@@ -382,3 +400,14 @@ def test_derive_writes_assets_and_manifest(tmp_path):
     assert (directory / "soil-20m.tif").exists()
     assert (directory / "ndvi-10m.tif").stat().st_mtime_ns == ndvi_mtime
     assert derive.pending(db, archive, 10) == []
+
+    # An asset written by an older processing VERSION (e.g. another cloud mask) is processed again.
+    sidecar = directory / "ndvi-10m.json"
+    old = json.loads(sidecar.read_text())
+    old["processing_version"] = "2"
+    sidecar.write_text(json.dumps(old))
+    stale["processing_version"] = "s2-indices-2"
+    (directory / "manifest.json").write_text(json.dumps(stale))
+    derive.derive_product(rows[0], archive, cloud_buffer=0)
+    assert json.loads(sidecar.read_text())["processing_version"] == processing.VERSION
+    assert (directory / "ndvi-10m.tif").stat().st_mtime_ns != ndvi_mtime

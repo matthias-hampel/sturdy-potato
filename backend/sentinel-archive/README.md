@@ -148,8 +148,8 @@ older baselines may have zero offset. Negative reflectance is not silently clipp
 Division by near-zero and invalid square roots become nodata. No blanket [-1,1]
 clipping is applied, since several indices are not bounded that way.
 
-The default mask keeps SCL 4, 5 and 6 (vegetation, bare ground and water) and excludes
-cloud/shadow/snow/unclassified pixels. It also masks outside the configured boundary.
+The default mask keeps SCL 4 and 5 (vegetation and bare ground) and excludes
+water/cloud/shadow/snow/unclassified pixels. It also masks outside the configured boundary.
 
 SCL does not classify the haze around clouds. In the 2026-09-18 T31UGV scene, vegetation
 NDVI was about 0.07 lower within 200 m of cloud or cloud shadow (SCL 3, 8, 9, 10), still

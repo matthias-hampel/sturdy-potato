@@ -51,8 +51,8 @@ role), `NATS_URL`, `SENTINEL_ARCHIVE` (default: the `archive` in
   cloud mask is read first; the five bands and true colour only when ≥ 30 % of the field
   is clear. Typical cost: ~1.5 s for a cloudy acquisition, ~8 s for a clear one.
 - Reflectance = DN × scale + offset from the STAC `raster:bands` (collection 1 is processed
-  consistently, offset −0.1). Cloud mask as in sentinel-archive: SCL 4/5/6 kept, 300 m
-  around SCL 3/8/9/10 removed as haze.
+  consistently, offset −0.1). Cloud mask: SCL 4/5 kept (water, 6, is not counted as clear,
+  unlike sentinel-archive), 300 m around SCL 3/8/9/10 removed as haze.
 - After a run, `covered_until` is set; the scan re-queues finished jobs for newer
   acquisitions (looking back 10 days for late items). Unreadable acquisitions are retried.
 - A job records the processing version it finished with. After a version bump

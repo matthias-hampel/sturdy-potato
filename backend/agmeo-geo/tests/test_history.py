@@ -62,6 +62,16 @@ def test_cloud_buffer_removes_haze_around_clouds():
     assert clear_on_grid(scl, context, grid, buffer_m=0)[100, 130]
 
 
+def test_water_is_not_clear():
+    context = FieldGrid("EPSG:32632", Affine(20, 0, 0, 0, -20, 2000), 100, 100, box(0, 0, 2000, 2000))
+    grid = FieldGrid("EPSG:32632", Affine(10, 0, 0, 0, -10, 2000), 200, 200, box(0, 0, 2000, 2000))
+    scl = np.full((100, 100), 5, dtype="uint8")
+    scl[:, :50] = 6  # western half classified as water
+    clear = clear_on_grid(scl, context, grid, buffer_m=300)
+    assert not clear[100, 20]
+    assert clear[100, 180]
+
+
 def item(id_, day, platform="sentinel-2a", epsg=32632, cloud=10.0, geometry=None):
     return StacItem(
         id=id_,

@@ -28,7 +28,8 @@ from .fieldgrid import FieldGrid
 
 log = logging.getLogger("agmeo_geo.sources")
 
-SCL_VALID = [4, 5, 6]
+# Vegetation and bare soil only; water (6) is not a clear view of the field.
+SCL_VALID = [4, 5]
 SCL_CLOUD = [3, 8, 9, 10]
 # Earth Search asset keys for the bands the indices need.
 BANDS = {

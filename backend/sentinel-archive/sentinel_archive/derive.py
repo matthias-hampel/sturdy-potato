@@ -34,13 +34,23 @@ ASSETS = [
     ("soil-20m.tif", ["BSI", "NDTI"], 20),
 ]
 # Bumped whenever ASSETS changes. Part of the processing version, so older manifests are
-# re-derived (existing asset files are kept) and agmeo-geo recomputes their observations.
+# re-derived and agmeo-geo recomputes their observations. Asset files of the current
+# processing VERSION are kept; older ones are processed again.
 ASSETS_VERSION = 2
 PROCESSING_VERSION = f"s2-indices-{VERSION}/assets-{ASSETS_VERSION}"
 
 
 def product_dir(root, product_id):
     return Path(root) / "derived" / "products" / product_id
+
+
+def asset_current(output):
+    """Whether an asset file exists and its sidecar records the current processing VERSION."""
+    try:
+        sidecar = json.loads(output.with_suffix(".json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return output.exists() and sidecar.get("processing_version") == VERSION
 
 
 def current(directory):
@@ -95,8 +105,14 @@ def derive_product(row, root, cloud_buffer=300):
     assets = {}
     for filename, indices, resolution in ASSETS:
         output = directory / filename
-        if not output.exists():
-            process(source, output, indices, None, resolution, cloud_buffer)
+        if not asset_current(output):
+            # Written beside the old asset and swapped in, so the old manifest stays readable.
+            fresh = output.with_name(f"{output.stem}.next{output.suffix}")
+            fresh.unlink(missing_ok=True)
+            fresh.with_suffix(".json").unlink(missing_ok=True)
+            process(source, fresh, indices, None, resolution, cloud_buffer)
+            fresh.with_suffix(".json").replace(output.with_suffix(".json"))
+            fresh.replace(output)
         for band, name in enumerate(indices, 1):
             assets[name.lower()] = {"path": filename, "band": band, "resolution_m": resolution}
     clear = clear_fraction(directory / "ndvi-10m.tif", 1, area)
