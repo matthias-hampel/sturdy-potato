@@ -1,20 +1,36 @@
 """Productivity zones from several seasons of field rasters.
 
-Method (``ALGO_VERSION``):
+Method (``ALGO_VERSION`` pz-4; the scene selection follows OneSoil's productivity maps):
 
-1. Candidates: NDVI field rasters of the current boundary from April to August with at least
-   90 % of the field clear and a field-mean NDVI between 0.35 and 0.92: green canopy, not bare
-   soil, not fully saturated. User-excluded acquisitions are dropped.
-2. Per season (calendar year) the four acquisitions with the highest field mean, at least
-   ten days apart, are used.
-3. Pixels within 10 m of the boundary (mixed with hedges, ditches, tracks) are left out;
+1. Season windows from the NDVI curve: the field-median NDVI of every valid acquisition is
+   interpolated to days and smoothed (Savitzky–Golay, 91 days); peaks of at least 0.33, at
+   least 90 days apart and between 1 March and 1 October are crop seasons, named by the year
+   of the peak (one per year, the highest). A season's window runs from its peak towards the
+   following trough while the curve stays at or above max(0.25, 0.3 × peak). Years without a
+   peak fall back to 1 March–1 October, where a field-mean NDVI between 0.35 and 0.92 is
+   required.
+2. Candidates: NDVI field rasters of the current boundary inside a window with at least 90 %
+   of the field clear. User-excluded acquisitions are dropped, and so are seasons whose main
+   crop is vegetables, grassland, fruit, vines or flowers, if the crop is known.
+3. Cross-season consistency: every candidate is smoothed (Gaussian σ = 2 pixels) and compared
+   with the others on the field shrunk by 2 pixels. One acquisition per season is chosen so
+   that every pair correlates above 0.545 (Pearson), maximising the number of seasons first
+   and the mean correlation second; one of the two most recent seasons must be included.
+   Fewer than two consistent seasons fail with ``not_enough_seasons``. The other seasons are
+   listed as ``inconsistent``.
+4. Pixels within 10 m of the boundary (mixed with hedges, ditches, tracks) are left out;
    they take the nearest interior value. Each acquisition is normalised by its field mean (1 = field average). A season's map is
    the mean of its acquisitions; the productivity map is the mean over the seasons, so every
    season weighs the same however many clear dates it had. A light Gaussian smoothing
    (σ = 1 pixel) removes pixel noise.
-4. Stability: for each season, the Pearson correlation of its map with the mean of the other
-   seasons; suitability is the mean of those correlations (negative ones count as 0).
-5. Zones: 1-D k-means of the productivity values (2 % tails clipped) into 3, 5 and 7 classes, small patches
+5. Stability: for each season, the Pearson correlation of its map with the mean of the other
+   seasons; ``suitability`` is the mean of those correlations (negative ones count as 0).
+   Tercile stability is the share of pixels in the bottom tercile of every chosen acquisition
+   plus the share in the top tercile of every one (smoothed maps; at most 2/3). The label is
+   ``suitable`` with more than two acquisitions, a minimum pairwise correlation of at least
+   0.545 and stability ≥ 0.6, ``partially_suitable`` with stability ≥ 0.4, else (and always
+   with fewer than two acquisitions) ``not_suitable``.
+6. Zones: 1-D k-means of the productivity values (2 % tails clipped) into 3, 5 and 7 classes, small patches
    sieved into their neighbours, vectorised, simplified as a coverage and clipped to the
    boundary. Zone 1 is the least productive; each zone carries its mean productivity as % of
    the field mean.
@@ -22,8 +38,9 @@ Method (``ALGO_VERSION``):
 
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -31,7 +48,8 @@ import psycopg
 import shapely
 from pyproj import Transformer
 from rasterio.features import shapes, sieve
-from scipy.ndimage import distance_transform_edt, gaussian_filter
+from scipy.ndimage import binary_erosion, distance_transform_edt, gaussian_filter
+from scipy.signal import find_peaks, savgol_filter
 from shapely.geometry import MultiPolygon, mapping, shape
 from shapely.ops import unary_union
 
@@ -41,16 +59,35 @@ from .pipeline import connect
 
 log = logging.getLogger("agmeo_geo.productivity")
 
-ALGO_VERSION = "pz-3"
+ALGO_VERSION = "pz-4"
 ZONE_COUNTS = (3, 5, 7)
 MIN_CLEAR_PCT = 90.0
-NDVI_RANGE = (0.35, 0.92)
-# Main canopy period of arable crops and grassland in Central Europe (April to August).
-GROWING_MONTHS = range(4, 9)
-PER_SEASON = 4
-MIN_SPACING_DAYS = 10
 MIN_SEASONS = 2
-MIN_SCENES = 3
+
+# Season windows (OneSoil's season detection).
+SAVGOL_WINDOW_DAYS = 91
+SAVGOL_ORDER = 3
+PEAK_HEIGHT = 0.33
+PEAK_DISTANCE_DAYS = 90
+WINDOW_FLOOR = 0.25
+WINDOW_PEAK_SHARE = 0.3
+# The main canopy period of arable crops in Europe: peaks outside it are not crop seasons.
+# Without a peak it is the window, with a sanity check on the field mean (green canopy, not
+# bare soil, not fully saturated).
+FALLBACK_WINDOW = ((3, 1), (10, 1))
+FALLBACK_NDVI_RANGE = (0.35, 0.92)
+
+# Seasons with these crops do not show soil-driven productivity (OneSoil's BAD_CROPS). agmeo's
+# catalogue has no fruit, vine or flower category yet; they are listed for when it does.
+BAD_CROP_CATEGORIES = frozenset({"vegetable", "grassland", "fruit", "vine", "flower"})
+
+# Cross-season consistency.
+CONSISTENCY_THRESHOLD = 0.545
+CONSISTENCY_SIGMA = 2.0
+CONSISTENCY_ERODE_PX = 2
+PER_SEASON = 1
+# The search is exponential in the worst case; the clearest-canopy candidates per season are kept.
+MAX_CANDIDATES_PER_SEASON = 8
 
 
 @dataclass
@@ -59,32 +96,81 @@ class Candidate:
     day: date
     path: Path
     mean: float
-
-    @property
-    def season(self) -> int:
-        return self.day.year
+    # Set when the acquisition falls into a season window.
+    season: int | None = None
 
 
-def eligible(c: Candidate) -> bool:
-    return c.day.month in GROWING_MONTHS and NDVI_RANGE[0] <= c.mean <= NDVI_RANGE[1]
+@dataclass
+class Window:
+    season: int
+    start: date
+    end: date
+    # "curve" (from an NDVI peak) or "calendar" (fallback).
+    source: str
+    peak: float | None = None
+
+    def contains(self, c: Candidate) -> bool:
+        if not self.start <= c.day <= self.end:
+            return False
+        if self.source == "calendar":
+            return FALLBACK_NDVI_RANGE[0] <= c.mean <= FALLBACK_NDVI_RANGE[1]
+        return True
 
 
-def select(candidates: list[Candidate], excluded: set[str]) -> list[Candidate]:
-    """Up to PER_SEASON acquisitions per season with the highest field mean, spaced apart."""
-    chosen: list[Candidate] = []
-    by_season: dict[int, list[Candidate]] = {}
+def in_season(day: date) -> bool:
+    (m0, d0), (m1, d1) = FALLBACK_WINDOW
+    return date(day.year, m0, d0) <= day <= date(day.year, m1, d1)
+
+
+def season_windows(series: Sequence[tuple[date, float]], years: set[int]) -> list[Window]:
+    """Season windows from the field-median NDVI series; calendar windows for the other years."""
+    windows: dict[int, Window] = {}
+    points = sorted((d, v) for d, v in series if v is not None and np.isfinite(v))
+    if points and (points[-1][0] - points[0][0]).days + 1 >= SAVGOL_WINDOW_DAYS:
+        first = points[0][0]
+        offsets = np.array([(d - first).days for d, _ in points], dtype=float)
+        days = np.arange(int(offsets[-1]) + 1)
+        # Acquisitions on the same day (overlapping orbits) are averaged.
+        unique, inverse = np.unique(offsets, return_inverse=True)
+        values = np.bincount(inverse, weights=[v for _, v in points]) / np.bincount(inverse)
+        curve = savgol_filter(np.interp(days, unique, values), SAVGOL_WINDOW_DAYS, SAVGOL_ORDER)
+        peaks, props = find_peaks(curve, height=PEAK_HEIGHT, distance=PEAK_DISTANCE_DAYS)
+        heights = props["peak_heights"]
+        for i, p in enumerate(int(p) for p in peaks):
+            peak_day = first + timedelta(days=p)
+            season = peak_day.year
+            if not in_season(peak_day):
+                continue  # green winter cereals or a catch crop, not a crop season
+            if season in windows and windows[season].peak >= heights[i]:
+                continue
+            following = int(peaks[i + 1]) if i + 1 < len(peaks) else len(curve)
+            trough = p + int(np.argmin(curve[p:following]))
+            floor = max(WINDOW_FLOOR, WINDOW_PEAK_SHARE * heights[i])
+            below = np.nonzero(curve[p : trough + 1] < floor)[0]
+            end = p + int(below[0]) - 1 if below.size else trough
+            windows[season] = Window(
+                season,
+                peak_day,
+                first + timedelta(days=end),
+                "curve",
+                float(heights[i]),
+            )
+    for year in years - windows.keys():
+        (m0, d0), (m1, d1) = FALLBACK_WINDOW
+        windows[year] = Window(year, date(year, m0, d0), date(year, m1, d1), "calendar")
+    return sorted(windows.values(), key=lambda w: w.season)
+
+
+def assign_seasons(candidates: list[Candidate], windows: list[Window]) -> list[Candidate]:
+    """Candidates inside a season window, with their season set. Peak windows win over calendar ones."""
+    ordered = sorted(windows, key=lambda w: w.source != "curve")
+    result = []
     for c in candidates:
-        if c.scene_id not in excluded and eligible(c):
-            by_season.setdefault(c.season, []).append(c)
-    for season in sorted(by_season):
-        picked: list[Candidate] = []
-        for c in sorted(by_season[season], key=lambda c: -c.mean):
-            if all(abs((c.day - p.day).days) >= MIN_SPACING_DAYS for p in picked):
-                picked.append(c)
-            if len(picked) == PER_SEASON:
-                break
-        chosen.extend(sorted(picked, key=lambda c: c.day))
-    return chosen
+        window = next((w for w in ordered if w.contains(c)), None)
+        if window:
+            c.season = window.season
+            result.append(c)
+    return result
 
 
 def nan_gaussian(values: np.ndarray, sigma: float) -> np.ndarray:
@@ -96,6 +182,106 @@ def nan_gaussian(values: np.ndarray, sigma: float) -> np.ndarray:
     with np.errstate(invalid="ignore", divide="ignore"):
         out = num / den
     return np.where(finite, out, np.nan)
+
+
+def consistency_mask(inside: np.ndarray) -> np.ndarray:
+    """The field shrunk by CONSISTENCY_ERODE_PX pixels (the whole field if too little is left)."""
+    eroded = binary_erosion(inside, iterations=CONSISTENCY_ERODE_PX)
+    return eroded if eroded.sum() >= 10 else inside
+
+
+def smoothed(ndvi: np.ndarray, inside: np.ndarray) -> np.ndarray:
+    return nan_gaussian(np.where(inside, ndvi, np.nan), CONSISTENCY_SIGMA)
+
+
+def pearson(a: np.ndarray, b: np.ndarray, mask: np.ndarray) -> float:
+    """Correlation over the mask where both maps have values; 0 when undefined."""
+    ok = mask & np.isfinite(a) & np.isfinite(b)
+    if ok.sum() < 10:
+        return 0.0
+    x, y = a[ok], b[ok]
+    if np.std(x) == 0 or np.std(y) == 0:
+        return 0.0
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def correlation_matrix(maps: list[np.ndarray], mask: np.ndarray) -> np.ndarray:
+    n = len(maps)
+    corr = np.eye(n)
+    for i in range(n):
+        for j in range(i + 1, n):
+            corr[i, j] = corr[j, i] = pearson(maps[i], maps[j], mask)
+    return corr
+
+
+def consistent_selection(
+    seasons: Sequence[int],
+    corr: np.ndarray,
+    threshold: float = CONSISTENCY_THRESHOLD,
+    per_season: int = PER_SEASON,
+) -> list[int]:
+    """Indices of mutually consistent acquisitions, at most ``per_season`` per season.
+
+    Branch and bound over one acquisition (or none) per season, newest season first: every
+    chosen pair must correlate above ``threshold``; the most seasons win, then the highest
+    mean pairwise correlation; one of the two newest seasons must be included. Further
+    acquisitions of the chosen seasons are then added while they agree with all chosen ones.
+    Empty if fewer than MIN_SEASONS seasons agree.
+    """
+    order = sorted(set(seasons), reverse=True)
+    groups = [[i for i, s in enumerate(seasons) if s == season] for season in order]
+    best: tuple[int, float, list[int]] = (0, -1.0, [])
+
+    def search(g: int, chosen: list[int], total: float) -> None:
+        nonlocal best
+        if g == 2 and not chosen:
+            return  # neither of the two newest seasons
+        if len(chosen) + len(groups) - g < best[0]:
+            return
+        if g == len(groups):
+            pairs = len(chosen) * (len(chosen) - 1) / 2
+            mean = total / pairs if pairs else 0.0
+            if (len(chosen), mean) > best[:2]:
+                best = (len(chosen), mean, list(chosen))
+            return
+        for i in groups[g]:
+            if all(corr[i, j] > threshold for j in chosen):
+                search(g + 1, [*chosen, i], total + sum(corr[i, j] for j in chosen))
+        search(g + 1, chosen, total)
+
+    search(0, [], 0.0)
+    selected = best[2]
+    if len(selected) < MIN_SEASONS:
+        return []
+    for i in list(selected):
+        season = seasons[i]
+        rest = [j for j in range(len(seasons)) if seasons[j] == season and j not in selected]
+        rest.sort(key=lambda j: -np.mean([corr[j, k] for k in selected]))
+        for j in rest:
+            if sum(seasons[k] == season for k in selected) >= per_season:
+                break
+            if all(corr[j, k] > threshold for k in selected):
+                selected.append(j)
+    return sorted(selected)
+
+
+def tercile_stability(maps: list[np.ndarray], mask: np.ndarray) -> float | None:
+    """Share of pixels in the bottom tercile of every map plus the share in the top tercile of every map."""
+    if len(maps) < 2:
+        return None
+    ok = mask.copy()
+    for m in maps:
+        ok &= np.isfinite(m)
+    if ok.sum() < 10:
+        return None
+    low = np.ones(int(ok.sum()), dtype=bool)
+    high = low.copy()
+    for m in maps:
+        values = m[ok]
+        lo, hi = np.percentile(values, [100 / 3, 200 / 3])
+        low &= values <= lo
+        high &= values >= hi
+    return float((low.sum() + high.sum()) / ok.sum())
 
 
 def productivity_map(layers_by_season: dict[int, list[np.ndarray]], inside: np.ndarray):
@@ -150,10 +336,17 @@ def stability(seasons: dict[int, np.ndarray], inside: np.ndarray) -> float | Non
     return float(np.mean(scores)) if scores else None
 
 
-def suitability_status(value: float | None) -> str | None:
-    if value is None:
-        return None
-    return "suitable" if value >= 0.6 else "partially_suitable" if value >= 0.4 else "not_suitable"
+def suitability_status(value: float | None, min_correlation: float | None, scene_count: int) -> str:
+    if value is None or scene_count < 2:
+        return "not_suitable"
+    if (
+        value >= 0.6
+        and scene_count > 2
+        and min_correlation is not None
+        and min_correlation >= CONSISTENCY_THRESHOLD
+    ):
+        return "suitable"
+    return "partially_suitable" if value >= 0.4 else "not_suitable"
 
 
 def kmeans_1d(values: np.ndarray, k: int, iterations: int = 50) -> np.ndarray:
@@ -308,16 +501,118 @@ def _candidates(conn: psycopg.Connection, geometry_version_id: str, data_dir: Pa
     ]
 
 
+def _ndvi_series(conn: psycopg.Connection, geometry_version_id: str) -> list[tuple[date, float]]:
+    """Field-median NDVI of every valid acquisition, for the season windows."""
+    rows = conn.execute(
+        """
+        SELECT observed_on, COALESCE(median, mean) AS value
+        FROM field_observations
+        WHERE geometry_version_id = %s AND index_type = 'ndvi' AND status = 'valid'
+          AND COALESCE(median, mean) IS NOT NULL
+        """,
+        (geometry_version_id,),
+    ).fetchall()
+    return [(r["observed_on"], float(r["value"])) for r in rows]
+
+
+def _bad_crop_seasons(conn: psycopg.Connection, field_id: str) -> set[int]:
+    """Harvest years in which a main crop of the field is one that shows no soil-driven pattern."""
+    rows = conn.execute(
+        """
+        SELECT DISTINCT s.harvest_year, c.category
+        FROM crop_cycles cc
+        JOIN growing_seasons s ON s.id = cc.season_id
+        JOIN crops c ON c.id = cc.crop_id
+        WHERE cc.field_id = %s AND cc.role = 'main'
+        """,
+        (field_id,),
+    ).fetchall()
+    return {int(r["harvest_year"]) for r in rows if r["category"] in BAD_CROP_CATEGORIES}
+
+
+@dataclass
+class Selection:
+    # Acquisitions inside a season window, with their season.
+    listed: list[Candidate]
+    used: list[Candidate]
+    # Why a listed acquisition's season was left out: "crop" or "inconsistent".
+    reasons: dict[str, str]
+    # Smoothed NDVI of the used acquisitions, as compared in the consistency check.
+    smoothed: list[np.ndarray]
+    min_correlation: float | None
+
+
+def select_scenes(
+    candidates: list[Candidate],
+    series: Sequence[tuple[date, float]],
+    excluded: set[str],
+    bad_seasons: set[int],
+    load,
+    inside: np.ndarray,
+) -> Selection:
+    """Season windows, crop and user exclusions, then the cross-season consistency search.
+
+    ``load(candidate)`` returns the acquisition's NDVI on the field grid.
+    """
+    windows = season_windows(series, {c.day.year for c in candidates})
+    listed = assign_seasons(candidates, windows)
+    reasons = {c.scene_id: "crop" for c in listed if c.season in bad_seasons}
+    by_season: dict[int, list[Candidate]] = {}
+    for c in listed:
+        if c.scene_id not in excluded and c.season not in bad_seasons:
+            by_season.setdefault(c.season, []).append(c)
+    pool = [
+        c
+        for season in sorted(by_season)
+        for c in sorted(by_season[season], key=lambda c: -c.mean)[:MAX_CANDIDATES_PER_SEASON]
+    ]
+    if len(by_season) < MIN_SEASONS:
+        return Selection(listed, [], reasons, [], None)
+
+    mask = consistency_mask(inside)
+    maps = [smoothed(load(c), inside) for c in pool]
+    corr = correlation_matrix(maps, mask)
+    chosen = consistent_selection([c.season for c in pool], corr)
+    seasons_used = {pool[i].season for i in chosen}
+    for c in listed:
+        if c.season in by_season and c.season not in seasons_used:
+            reasons[c.scene_id] = "inconsistent"
+    pairs = [corr[i, j] for i in chosen for j in chosen if i < j]
+    return Selection(
+        listed,
+        [pool[i] for i in chosen],
+        reasons,
+        [maps[i] for i in chosen],
+        float(min(pairs)) if pairs else None,
+    )
+
+
 def compute(conn: psycopg.Connection, settings: Settings, row) -> None:
     analysis_id = str(row["id"])
+    geometry_version_id = str(row["geometry_version_id"])
     geometry = json.loads(row["geometry"])
     grid = field_grid(geometry)
     inside = grid.mask()
     # Mixed pixels at the boundary are left out of the analysis, as for field statistics.
     core = analysis_mask(grid, settings.inner_buffer_m)
     excluded = {str(s) for s in row["excluded_scene_ids"] or []}
-    candidates = _candidates(conn, str(row["geometry_version_id"]), settings.data_dir)
-    used = select(candidates, excluded)
+    candidates = _candidates(conn, geometry_version_id, settings.data_dir)
+    layers: dict[str, np.ndarray] = {}
+
+    def load(c: Candidate) -> np.ndarray:
+        if c.scene_id not in layers:
+            layers[c.scene_id] = read_layer(c.path, "ndvi")
+        return layers[c.scene_id]
+
+    selection = select_scenes(
+        candidates,
+        _ndvi_series(conn, geometry_version_id),
+        excluded,
+        _bad_crop_seasons(conn, str(row["field_id"])),
+        load,
+        inside,
+    )
+    used = selection.used
     used_ids = {c.scene_id for c in used}
     scenes = [
         {
@@ -326,9 +621,9 @@ def compute(conn: psycopg.Connection, settings: Settings, row) -> None:
             "season": c.season,
             "ndviMean": round(c.mean, 4),
             "used": c.scene_id in used_ids,
+            "reason": selection.reasons.get(c.scene_id),
         }
-        for c in candidates
-        if eligible(c)
+        for c in selection.listed
     ]
     seasons_used = sorted({c.season for c in used})
 
@@ -337,7 +632,8 @@ def compute(conn: psycopg.Connection, settings: Settings, row) -> None:
             """
             UPDATE productivity_analyses SET status = %(status)s, status_code = %(code)s, scenes = %(scenes)s,
               season_count = %(seasons)s, scene_count = %(count)s, suitability = %(suitability)s,
-              suitability_status = %(suitability_status)s, raster_path = %(raster)s, algo_version = %(algo)s,
+              suitability_status = %(suitability_status)s, tercile_stability = %(tercile)s,
+              min_correlation = %(min_correlation)s, raster_path = %(raster)s, algo_version = %(algo)s,
               finished_at = now()
             WHERE id = %(id)s
             """,
@@ -348,7 +644,9 @@ def compute(conn: psycopg.Connection, settings: Settings, row) -> None:
                 "seasons": len(seasons_used),
                 "count": len(used),
                 "suitability": values.get("suitability"),
-                "suitability_status": suitability_status(values.get("suitability")),
+                "suitability_status": values.get("suitability_status"),
+                "tercile": values.get("tercile"),
+                "min_correlation": values.get("min_correlation"),
                 "raster": values.get("raster"),
                 "algo": ALGO_VERSION,
                 "id": analysis_id,
@@ -361,18 +659,17 @@ def compute(conn: psycopg.Connection, settings: Settings, row) -> None:
     if len(seasons_used) < MIN_SEASONS:
         finish("failed", "not_enough_seasons")
         return
-    if len(used) < MIN_SCENES:
-        finish("failed", "not_enough_scenes")
-        return
 
     by_season: dict[int, list[np.ndarray]] = {}
     for c in used:
-        by_season.setdefault(c.season, []).append(read_layer(c.path, "ndvi"))
+        by_season.setdefault(c.season, []).append(load(c))
     productivity, season_maps = productivity_map(by_season, core)
     if productivity is None or not np.isfinite(productivity[core]).any():
         finish("failed", "no_imagery")
         return
     score = stability(season_maps, core)
+    terciles = tercile_stability(selection.smoothed, consistency_mask(inside))
+    min_correlation = selection.min_correlation
     # Edge pixels show the nearest core value, like the zones.
     productivity = fill_nearest(productivity, core & np.isfinite(productivity))
     relative = (
@@ -405,13 +702,22 @@ def compute(conn: psycopg.Connection, settings: Settings, row) -> None:
                     zone.relative_productivity,
                 ),
             )
-    finish("finished", "ok", suitability=None if score is None else round(score, 3), raster=str(relative))
+    finish(
+        "finished",
+        "ok",
+        suitability=None if score is None else round(score, 3),
+        suitability_status=suitability_status(score, min_correlation, len(used)),
+        tercile=None if terciles is None else round(terciles, 3),
+        min_correlation=None if min_correlation is None else round(min_correlation, 3),
+        raster=str(relative),
+    )
     log.info(
-        "Productivity analysis %s: %d acquisitions over %d seasons, stability %s",
+        "Productivity analysis %s: %d acquisitions over %d seasons, stability %s, terciles %s",
         analysis_id,
         len(used),
         len(seasons_used),
         "n/a" if score is None else f"{score:.2f}",
+        "n/a" if terciles is None else f"{terciles:.2f}",
     )
 
 
