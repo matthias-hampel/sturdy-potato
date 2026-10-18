@@ -17,6 +17,7 @@ import {
   type ProductCategory,
   type ReopenOperationInput,
   type StockShortage,
+  type TaskPriority,
 } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
@@ -740,6 +741,8 @@ export class OperationsService {
         status: o.status as OperationStatus,
         plannedOn: o.planned_on,
         performedAt: iso(o.performed_at),
+        priority: o.priority as TaskPriority,
+        dueOn: o.due_on,
         responsibleEmployee: o.responsible_employee_id ? { id: o.responsible_employee_id, name: o.employee_name! } : null,
         contractorName: o.contractor_name,
         contractorCost: o.contractor_cost,

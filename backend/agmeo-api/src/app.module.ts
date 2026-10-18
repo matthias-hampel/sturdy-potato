@@ -39,6 +39,10 @@ import { NutrientsService } from './modules/nutrients/nutrients.service.js';
 import { RegulatoryController } from './modules/regulatory/regulatory.controller.js';
 import { RegulatoryService } from './modules/regulatory/regulatory.service.js';
 import { OperationsController } from './modules/operations/operations.controller.js';
+import { BoardController } from './modules/operations/board.controller.js';
+import { BoardService } from './modules/operations/board.service.js';
+import { CommentsController } from './modules/comments/comments.controller.js';
+import { CommentsService } from './modules/comments/comments.service.js';
 import { OperationsService } from './modules/operations/operations.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
 import { VraService } from './modules/vra/vra.service.js';
@@ -73,6 +77,8 @@ export const DOMAIN_SERVICES = [
   VraService,
   DashboardService,
   FilesService,
+  BoardService,
+  CommentsService,
 ];
 
 /**
@@ -104,6 +110,8 @@ export const DOMAIN_SERVICES = [
     VraController,
     DashboardController,
     FilesController,
+    BoardController,
+    CommentsController,
   ],
   providers: [
     TokenService,

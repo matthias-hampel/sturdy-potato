@@ -190,6 +190,8 @@ export interface Operation {
   status: OperationStatus;
   plannedOn: string | null;
   performedAt: string | null;
+  priority: TaskPriority;
+  dueOn: string | null;
   responsibleEmployee: Ref | null;
   contractorName: string | null;
   contractorCost: number | null;
@@ -223,6 +225,70 @@ export interface StockShortage {
   required: number;
   available: number;
 }
+
+// ---------------------------------------------------------------------------
+// Task board: operations as cards in planned / in progress / completed
+// ---------------------------------------------------------------------------
+
+export const TASK_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+/** Completed operations stay on the board this many days. */
+export const BOARD_DONE_DAYS = 14;
+
+export const OperationBoardQuery = z.object({
+  seasonId: id.optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+  type: z.enum(OPERATION_TYPES).optional(),
+  cropId: id.optional(),
+  fieldId: id.optional(),
+  assigneeEmployeeId: id.optional(),
+  unassigned: z.coerce.boolean().optional(),
+});
+export type OperationBoardQuery = z.input<typeof OperationBoardQuery>;
+
+export interface BoardCard {
+  id: string;
+  type: OperationType;
+  title: string;
+  status: OperationStatus;
+  plannedOn: string | null;
+  performedAt: string | null;
+  completedAt: string | null;
+  priority: TaskPriority;
+  dueOn: string | null;
+  assignee: Ref | null;
+  crops: { name: string; color: string }[];
+  fields: Ref[];
+  inputs: string[];
+  equipment: string[];
+  totalAreaHa: number;
+  commentCount: number;
+  version: number;
+}
+
+export interface OperationBoard {
+  planned: BoardCard[];
+  in_progress: BoardCard[];
+  completed: BoardCard[];
+}
+
+/** Board metadata: editable in any status without touching the operation's version. */
+export const OperationMetaInput = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  priority: z.enum(TASK_PRIORITIES).optional(),
+  dueOn: isoDate.nullish(),
+  responsibleEmployeeId: id.nullish(),
+});
+export type OperationMetaInput = z.input<typeof OperationMetaInput>;
+
+export const BulkOperationMetaInput = OperationMetaInput.omit({ title: true }).extend({ operationIds: z.array(id).min(1).max(500) });
+export type BulkOperationMetaInput = z.input<typeof BulkOperationMetaInput>;
+
+/** Moves an open operation between planned and in progress (completion has its own endpoint). */
+export const SetOperationStatusInput = z.object({ status: z.enum(['planned', 'in_progress']), version: z.int().positive() });
+export type SetOperationStatusInput = z.input<typeof SetOperationStatusInput>;
 
 export const OperationListQuery = z.object({
   status: z.enum(OPERATION_STATUSES).optional(),

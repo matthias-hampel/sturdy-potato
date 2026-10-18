@@ -62,6 +62,19 @@ export interface BsaVarieties {
   synced_at: Generated<Timestamp>;
 }
 
+export interface Comments {
+  author_name: string;
+  author_user_id: string | null;
+  body: string;
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  edited_at: Timestamp | null;
+  entity_id: string;
+  entity_type: string;
+  id: Generated<string>;
+  organization_id: string;
+}
+
 export interface CostEntries {
   amount: Numeric;
   basis: Generated<string>;
@@ -609,12 +622,14 @@ export interface Operations {
   created_at: Generated<Timestamp>;
   created_by: string | null;
   details: Generated<Json>;
+  due_on: string | null;
   farm_id: string;
   id: Generated<string>;
   notes: string | null;
   organization_id: string;
   performed_at: Timestamp | null;
   planned_on: string | null;
+  priority: Generated<string>;
   responsible_employee_id: string | null;
   status: Generated<string>;
   target_organism: string | null;
@@ -830,6 +845,7 @@ export interface Tasks {
   completed_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  deleted_at: Timestamp | null;
   description: string | null;
   due_on: string | null;
   farm_id: string;
@@ -932,6 +948,7 @@ export interface DB {
   audit_events: AuditEvents;
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
+  comments: Comments;
   cost_entries: CostEntries;
   crop_cycles: CropCycles;
   crop_prices: CropPrices;
