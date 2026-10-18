@@ -1,0 +1,1718 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xsd:schema
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    version="Dube2.5"
+>
+    <!-- root element --> 
+    <xsd:complexType name="endo">
+        <xsd:all>
+            <xsd:element
+                name="betrieb"
+                type="betrieb"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="bezugsjahr"
+                type="bezugsjahr"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="duengebedarf"
+                type="duengebedarf"
+                minOccurs="0"
+                maxOccurs="1" 
+            />
+            <xsd:element
+                name="dokumentation-der-duengung"
+                type="dokumentation-der-duengung"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-170-begrenzung"
+                type="n-170-begrenzung"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+        <xsd:attribute
+            name="version"
+            type="xsd:string"
+            use="required" 
+        />
+    </xsd:complexType>
+
+    <xsd:complexType name="bodenartgruppe">
+        <xsd:all>
+            <xsd:element
+                name="bezeichnung"
+                type="string-255"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:element
+        name="endo"
+        type="endo" 
+    />
+
+    <xsd:complexType name="duengebedarf">
+        <xsd:all>
+            <xsd:element
+                name="bezugsjahr"
+                type="xsd:integer"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="duengejahrbeginn"
+                type="duengejahrbeginn"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="betriebsdaten"
+                type="betriebsdaten"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="schlaege"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                     <xsd:sequence>
+                        <xsd:element
+                            name="schlag"
+                            type="schlag"
+                            minOccurs="0"
+                            maxOccurs="5000"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType 
+        name="betriebsdaten">
+        <xsd:all>
+            <xsd:element
+                name="andere-duenger-ausgebracht"
+                type="xsd:boolean"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="kompost-ausgebracht"
+                type="xsd:boolean"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="duengungs-oder-beweidungseinschraenkungen"
+                type="xsd:boolean"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="oekologisch-zertifiziert"
+                type="xsd:boolean"
+                minOccurs="0"
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType 
+        name="n170-betriebsdaten">
+        <xsd:all>
+            <xsd:element
+                name="hofeigene-biogasanlage"
+                type="xsd:boolean"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="schlag">
+        <xsd:all>
+            <xsd:element
+                name="schlagnummer"
+                minOccurs="1"
+                maxOccurs="1"
+                type="xsd:integer"
+            /> 
+            <xsd:element
+                name="schlagname"
+                type="string-255"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="anbau-keine-aufzeichnungspflicht"
+                type="anbau-keine-aufzeichnungspflicht"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+            	name="naturraum"
+            	type="naturraum"
+            	minOccurs="0"
+            	maxOccurs="1"
+            />
+            <xsd:element
+                name="eu-code"
+                type="xsd:int"
+                minOccurs="0"
+                maxOccurs="1"
+            />  
+            <xsd:element
+                name="flaeche"
+                type="flaeche-in-ha"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element 
+                name="flik"
+                type="string-16"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-restriktion-kg-pro-ha"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-kulisse"
+                type="xsd:boolean"
+                minOccurs="0"
+                maxOccurs="1"
+            />  
+            <xsd:element
+                name="p-kulisse"
+                type="xsd:boolean"
+                minOccurs="0"
+                maxOccurs="1"
+            />  
+            <xsd:element
+                name="n-kompost-vor-drei-jahren"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-kompost-vor-einem-jahr"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-kompost-vor-zwei-jahren"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-org-duengung-vorjahr"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="nutzungsart"
+                type="nutzungsart"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="anbauten"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="anbau"
+                            type="anbau"
+                            minOccurs="0"
+                            maxOccurs="500"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element
+                name="bodenuntersuchungen"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="bodenuntersuchung"
+                            type="bodenuntersuchung"
+                            minOccurs="0"
+                            maxOccurs="500"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element
+                name="beweidungen"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="beweidung"
+                            type="beweidung"
+                            minOccurs="0"
+                            maxOccurs="500"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType 
+        name="anbau-keine-aufzeichnungspflicht"
+    >
+        <xsd:all>
+            <xsd:element
+                name="kulturcode"
+                type="xsd:integer"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="bezeichnung"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="duengungen-keine-aufzeichnungspflicht"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="duengung"
+                            type="duengung"
+                            minOccurs="0"
+                            maxOccurs="500"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="anbau">
+        <xsd:all>
+	    <xsd:element
+			name="aussaattermin"
+			type="aussaattermin"
+			minOccurs="0"
+			maxOccurs="1"
+	    />
+	    <xsd:element
+                name="anbau-im-fremdbetrieb"
+                type="xsd:boolean"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-nachtraegliche-umstaende"
+                type="kg-pro-ha-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-nachtraegliche-umstaende-info"
+                type="string-255"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-min"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-min-probe-in-4-wochen-nach-einarbeitung-vorkultur"
+                type="xsd:boolean"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-ausnutzung-aus-herbstduengung"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="mistduengung-n-ausnutzung-aus-herbstduengung"
+                type="kg-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="p2o5-abfuhr"
+                type="kg-pro-ha-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="anbauflaeche"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="bezugszeitraum"
+                type="string-255"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="ernterueckstand"
+                type="ernterueckstand"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="ertrag"
+                type="dt-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element 
+                name="fruchtart"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element 
+                name="fruchtart-bezeichnung"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="fruchtklasse"
+                type="fruchtklasse"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="kulturfolge"
+                type="xsd:int"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="leguminosenanteil"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="rp-gehalt-prozent"
+                type="prozentzahl"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="vorfruchtart"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gartenbau-vorfrucht"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="folie"
+                type="xsd:boolean"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="beginn-anbausatz"
+                type="datum"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+            	name="gueltigkeit-bei-satzweisem-anbau"
+            	type="datum"
+		        minOccurs="0"
+	 	        maxOccurs="1"
+            />
+            <xsd:element
+            	name="nmin-probenahmetiefe"
+            	type="nmin-probenahmetiefe"
+            	minOccurs="0"
+            	maxOccurs="1"
+            />
+	        <xsd:element
+                name="vorkultur-lfd-nr"
+                type="xsd:integer"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+	        <xsd:element
+                name="lfd-nr"
+                type="xsd:integer"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="duengungen"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="duengung"
+                            type="duengung"
+                            minOccurs="0"
+                            maxOccurs="500"
+                        />
+                        <xsd:element
+	                        name="keine-aktive-duengung"
+	                        type="xsd:boolean"
+	                        minOccurs="0"
+	                        maxOccurs="1"
+	                    />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="dokumentation-der-duengung">
+        <xsd:all>
+            <xsd:element
+                name="duengemittel"
+                minOccurs="1"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="duenger"
+                            type="duenger"
+                            minOccurs="0"
+                            maxOccurs="5000"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="duenger">
+        <xsd:all>
+            <xsd:element
+                name="duenger-bezeichnung"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="duenger-bezeichnung-betrieb"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="mineralduenger-id"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="org-duenger-id"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="naehrstofftraegerart"
+                type="naehrstofftraegerart"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="dunggruppe"
+                type="dunggruppe"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="mineralduengergruppe"
+                type="mineralduengergruppe"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="art-der-werte"
+                type="art-der-werte"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="einheit"
+                type="einheit-naehrstofftraeger"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-P2O5"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-NH4"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-N-gesamt"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="verfuegbar-N"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="anteil-trockensubstanz"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="beweidung">
+        <xsd:all>
+            <xsd:element
+                name="weidetierart"
+                type="weidetierart"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="weidetage"
+                type="xsd:decimal"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="tieranzahl"
+                type="xsd:integer"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="bemerkung"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="duengung">
+        <xsd:all>
+            <xsd:element
+                name="duenger-bezeichnung"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="duenger-bezeichnung-betrieb"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="naehrstofftraegerart"
+                type="naehrstofftraegerart"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="menge-in-einheit-naehrstofftraeger-pro-ha"
+                type="einheit-naehrstofftraeger-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="aufbringdatum"
+                type="datum"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="mistduengung"
+                type="xsd:boolean"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="leguminosenanteil">
+        <xsd:all>
+            <xsd:element
+                name="bezeichnung"
+                type="string-255"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="fruchtart">
+        <xsd:all>
+            <xsd:element
+                name="bezeichnung"
+                type="string-255"
+            />
+            <xsd:element
+            	name="gartenbau-vorauswahl-1"
+            	type="xsd:string"
+            	minOccurs="0"
+            	maxOccurs="1"
+            />
+            <xsd:element
+            	name="vorauswahl"
+            	type="xsd:string"
+            />
+            <xsd:element
+                name="dvo-eu-code"
+                type="xsd:int"
+                minOccurs="0" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="dvo-fruchtgruppe"
+                type="string-255"
+                minOccurs="0" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="dvo-fruchtklasse"
+                type="string-255"
+                minOccurs="0" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="ernterest"
+                type="string-255"
+                minOccurs="0" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="ertragsniveau"
+                type="ertrag-dt-pro-ha"
+                minOccurs="0" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="rp-gehalt"
+                type="prozentzahl"
+                minOccurs="0" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="n-bedarfswert"
+                type="kg-pro-ha-6-nachkommastellen"
+                minOccurs="0" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="fixierung-n-ertragsanteil-id"
+                type="xsd:integer"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="frucht-id"
+                type="string-80" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="gueltig-bis"
+                type="datum"
+                minOccurs="0"    
+            />
+            <xsd:element
+                name="gueltig-von"
+                type="datum" 
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="bodenuntersuchung">
+        <xsd:all>
+            <xsd:element
+                name="analysedatum"
+                type="datum"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="analysenr"
+                type="string-255"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="kalkbedarf"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="bodenartgruppe"
+                type="xsd:string"
+                maxOccurs="1"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-k"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-k2o"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-k-leicht"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-mg"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-mgo"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-p"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-p2o5"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="1"
+                maxOccurs="1"
+            />           
+            <xsd:element
+                name="gehaltsklasse-k"
+                type="gehaltsklasse"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="gehaltsklasse-mg"
+                type="gehaltsklasse"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="gehaltsklasse-p"
+                type="gehaltsklasse"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gueltig-bis"
+                type="datum"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="gueltig-von"
+                type="datum"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="humusgehalt"
+                type="prozentzahl"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="humusklasse"
+                type="humusklasse"
+                maxOccurs="1"
+                minOccurs="1"
+            />
+            <xsd:element
+                name="labor"
+                type="string-255"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+            <xsd:element
+                name="ph-wert"
+                type="ph-wert"
+                maxOccurs="1"
+                minOccurs="0"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="adressdaten">
+        <xsd:all>
+            <xsd:element
+                name="email"
+                type="string-320"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="fax"
+                type="string-30"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="mobil"
+                type="string-30"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="telefon"
+                type="string-30"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="betrieb">
+        <xsd:all>
+            <xsd:element
+                name="ansprechpartner"
+                type="ansprechpartner"
+                minOccurs="0" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="betriebsstaette"
+                type="betriebsstaette" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="betriebsnummer"
+                type="xsd:string"
+                maxOccurs="1"     
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="ansprechpartner">
+        <xsd:all>
+            <xsd:element
+                name="adresse"
+                type="adresse" 
+                minOccurs="0"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="betriebsstaette">
+        <xsd:all>
+            <xsd:element
+                name="adresse"
+                type="adresse" 
+                minOccurs="0"
+            />
+        </xsd:all>
+    </xsd:complexType>
+
+    <xsd:complexType name="adresse">
+        <xsd:all>
+            <xsd:element
+                name="email"
+                minOccurs="0"
+                type="string-320" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="faxnummer"
+                minOccurs="0"
+                type="string-30" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="firma"
+                minOccurs="0"
+                type="string-100" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="mobilnummer"
+                minOccurs="0"
+                type="string-30" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="nachname"
+                minOccurs="0"
+                type="string-100" 
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="ort"
+                minOccurs="0"
+                type="string-100" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="plz"
+                minOccurs="0"
+                type="string-5" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="strasse"
+                minOccurs="0"
+                type="string-100" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="telefonnummer"
+                minOccurs="0"
+                type="string-30" 
+                maxOccurs="1"    
+            />
+            <xsd:element
+                name="vorname"
+                minOccurs="0"
+                type="string-100" 
+                maxOccurs="1"    
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+     <xsd:complexType name="n-170-begrenzung">
+        <xsd:all>
+            <xsd:element
+                name="flaechen"
+                type="n-170-flaechen"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="tierhaltungen"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="tierhaltung"
+                            type="n-170-tierhaltung"
+                            minOccurs="0"
+                            maxOccurs="5000"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element
+                name="stallbilanzen"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="stallbilanz"
+                            type="n-170-stallbilanz"
+                            minOccurs="0"
+                            maxOccurs="5000"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element
+                name="organische-duenger-aufnahmen"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="organische-duenger-aufnahme"
+                            type="n-170-organische-duenger-aufnahme"
+                            minOccurs="0"
+                            maxOccurs="5000"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element
+                name="organische-duenger-abgaben"
+                minOccurs="0"
+                maxOccurs="1"
+            >
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element
+                            name="organische-duenger-abgabe"
+                            type="n-170-organische-duenger-abgabe"
+                            minOccurs="0"
+                            maxOccurs="5000"
+                        />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element
+                name="betriebsdaten"
+                type="n170-betriebsdaten"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="n-170-duenger">
+        <xsd:all>
+            <xsd:element
+                name="duenger-bezeichnung"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="naehrstofftraegerart"
+                type="naehrstofftraegerart"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType> 
+    
+    <xsd:complexType name="n-170-organische-duenger-abgabe">
+        <xsd:all>
+            <xsd:element
+                name="duenger"
+                type="n-170-duenger"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="lieferschein-bezeichnung"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="lieferdatum"
+                type="datum"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="beteiligter-betrieb"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="menge"
+                type="einheit-naehrstofftraeger-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-n-gesamt"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-p2o5"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType> 
+    
+    <xsd:complexType name="n-170-organische-duenger-aufnahme">
+        <xsd:all>
+            <xsd:element
+                name="duenger"
+                type="n-170-duenger"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="lieferschein-bezeichnung"
+                type="xsd:string"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="lieferdatum"
+                type="datum"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="beteiligter-betrieb"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="menge"
+                type="einheit-naehrstofftraeger-pro-ha-6-nachkommastellen-inkl-null"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-n-gesamt"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="gehalt-p2o5"
+                type="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>    
+    
+    <xsd:complexType name="n-170-stallbilanz">
+        <xsd:all>
+            <xsd:element
+                name="tier-bezeichnung"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="anzahl-tiere"
+                type="xsd:integer"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="stall-bezeichnung"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="tieranfall-n"
+                type="xsd:decimal"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="tieranfall-p2o5"
+                type="xsd:decimal"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="weidefaktor"
+                type="xsd:decimal"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="weidetage"
+                type="xsd:integer"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="n-170-tierhaltung">
+        <xsd:all>
+            <xsd:element
+                name="tier-bezeichnung"
+                type="xsd:string"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="anzahl-tiere"
+                type="xsd:integer"
+                minOccurs="1"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="weidefaktor"
+                type="xsd:decimal"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="weidetage"
+                type="xsd:integer"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="milchleistung-kg-ecm"
+                type="xsd:decimal"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:complexType name="n-170-flaechen">
+        <xsd:all>
+            <xsd:element
+                name="flaeche-ackerbau"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="flaeche-gruenland"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="flaeche-gartenbau"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="flaeche-ka-mit-beruecksichtigung-fuer-n-170"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="flaechensumme-n-170"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="flaechensumme-beruecksichtigungsfaehige-flaeche"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+            <xsd:element
+                name="flaeche-ka-ohne-beruecksichtigung-fuer-n-170"
+                type="flaeche-in-ha"
+                minOccurs="0"
+                maxOccurs="1"
+            />
+        </xsd:all>
+    </xsd:complexType>
+    
+    <xsd:simpleType name="humusklasse">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="HUMUSARM" />
+            <xsd:enumeration value="STARK_HUMOS" />
+            <xsd:enumeration value="SEHR_STARK_HUMOS" />
+            <xsd:enumeration value="ANMOORIG" />
+            <xsd:enumeration value="HOCHMOOR" />
+            <xsd:enumeration value="NIEDERMOOR" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="gehaltsklasse">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="A"/>
+            <xsd:enumeration value="B"/>
+            <xsd:enumeration value="C"/>
+            <xsd:enumeration value="D"/>
+            <xsd:enumeration value="E"/>
+            <xsd:enumeration value="F"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="fruchtklasse">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="VORFRUCHT-ACKERBAU" />
+            <xsd:enumeration value="VORFRUCHT-GARTENBAU" />
+            <xsd:enumeration value="VORFRUCHT-GRUENLAND" />
+            <xsd:enumeration value="VORFRUCHT-KA" />
+            <xsd:enumeration value="HERBSTANSAAT" />
+            <xsd:enumeration value="ERSTEFRUCHT" />
+            <xsd:enumeration value="ZWEITEFRUCHT" />
+            <xsd:enumeration value="GRUENLAND" />
+            <xsd:enumeration value="GARTENBAU" />
+            <xsd:enumeration value="GARTENBAU-VORFRUCHT-ACKERBAU" />
+            <xsd:enumeration value="GARTENBAU-VORFRUCHT-GRUENLAND" />
+            <xsd:enumeration value="GARTENBAU-VORFRUCHT-GARTENBAU" />
+            <xsd:enumeration value="GARTENBAU-VORFRUCHT-KA" />
+        </xsd:restriction>    
+    </xsd:simpleType>
+
+    <xsd:simpleType name="nutzungsart">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="ACKER"/>
+            <xsd:enumeration value="GRUENLAND"/>
+            <xsd:enumeration value="GARTENBAU"/>
+            <xsd:enumeration value="ACKER-GARTENBAU"/>
+            <xsd:enumeration value="ACKER-GRUENLAND"/>
+            <xsd:enumeration value="GRUENLAND-GARTENBAU"/>
+            <xsd:enumeration value="KEINE-AUFZEICHNUNGSPFLICHT"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="duengejahrbeginn">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="JANUAR"/>
+            <xsd:enumeration value="FEBRUAR"/>
+            <xsd:enumeration value="MAERZ"/>
+            <xsd:enumeration value="APRIL"/>
+            <xsd:enumeration value="MAI"/>
+            <xsd:enumeration value="JUNI"/>
+            <xsd:enumeration value="JULI"/>
+            <xsd:enumeration value="AUGUST"/>
+            <xsd:enumeration value="SEPTEMBER"/>
+            <xsd:enumeration value="OKTOBER"/>
+            <xsd:enumeration value="NOVEMBER"/>
+            <xsd:enumeration value="DEZEMBER"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="naturraum">
+        <xsd:restriction base="xsd:string">
+        	<xsd:enumeration value="Marsch" />
+            <xsd:enumeration value="Geest" />
+            <xsd:enumeration value="Hügelland" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="nmin-probenahmetiefe">
+        <xsd:restriction base="tiefe-in-cm">
+            <xsd:enumeration value="15" />
+            <xsd:enumeration value="30" />
+            <xsd:enumeration value="60" />
+            <xsd:enumeration value="90" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="ernterueckstand">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="VERBLEIBT" />
+            <xsd:enumeration value="ABGEFAHREN" />
+            <xsd:enumeration value="ABGEFROREN" />
+            <xsd:enumeration value="NICHT_ABGEFROREN_EINARBEITUNG_FRUEHJAHR" />
+            <xsd:enumeration value="NICHT_ABGEFROREN_EINARBEITUNG_HERBST" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="bodenart">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="LEICHT" />
+            <xsd:enumeration value="SCHWER" />
+        </xsd:restriction>
+    </xsd:simpleType>
+	
+    <xsd:simpleType name="aussaattermin">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="bis 15.09." />
+            <xsd:enumeration value="bis 01.10." />
+            <xsd:enumeration value="nach 15.09." />
+            <xsd:enumeration value="nach 01.10." />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="naehrstofftraegerart">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="WIRTSCHAFTSDUENGER" />
+            <xsd:enumeration value="MINERALDUENGER" />
+            <xsd:enumeration value="SONSTIGE" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="art-der-werte">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="STANDARD" />
+            <xsd:enumeration value="ANALYSE" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="dunggruppe">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="Entengülle" />
+            <xsd:enumeration value="Entenmist" />
+            <xsd:enumeration value="Färsengülle" />
+            <xsd:enumeration value="Färsenmist" />
+            <xsd:enumeration value="Ferkelgülle" />
+
+            <xsd:enumeration value="Gänsemist" />
+            <xsd:enumeration value="Gärrest" />
+            <xsd:enumeration value="Hähnchen, Mastelterntiere" />
+            <xsd:enumeration value="Hähnchenmist" />
+            <xsd:enumeration value="Kälbergülle" />
+
+            <xsd:enumeration value="Kälbermist" />
+            <xsd:enumeration value="Kaninchenmist" />
+            <xsd:enumeration value="Kompost" />
+            <xsd:enumeration value="Legehennen - HTK" />
+            <xsd:enumeration value="Legehennengülle" />
+
+            <xsd:enumeration value="Mastbullengülle" />
+            <xsd:enumeration value="Mastbullenmist" />
+            <xsd:enumeration value="Mastschw.-Gülle" />
+            <xsd:enumeration value="Mastschw.-Mist" />
+            <xsd:enumeration value="Milchkuhgülle" />
+
+            <xsd:enumeration value="Milchkuhmist" />
+            <xsd:enumeration value="Mischgülle" />
+            <xsd:enumeration value="Mischmist" />
+            <xsd:enumeration value="Pferdemist" />
+            <xsd:enumeration value="Pilzkultursubstrat" />
+
+            <xsd:enumeration value="Pilzsubstrat" />
+            <xsd:enumeration value="Putenmist" />
+            <xsd:enumeration value="Reinigungswasser" />
+            <xsd:enumeration value="Rindergülle" />
+            <xsd:enumeration value="Rindermist" />
+
+            <xsd:enumeration value="Rinderjauche" />
+            <xsd:enumeration value="Sauengülle" />
+            <xsd:enumeration value="Schafmist" />
+            <xsd:enumeration value="Schweinegülle" />
+            <xsd:enumeration value="Schweinejauche" />
+            
+            <xsd:enumeration value="Jauche andere Tierarten" />
+
+            <xsd:enumeration value="Schweinemist" />
+            <xsd:enumeration value="Ziegenmist" />
+            
+            <xsd:enumeration value="Klärschlamm" />
+            <xsd:enumeration value="Sonstiger organischer Dünger" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+     <xsd:simpleType name="mineralduengergruppe">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="Stickstoffdünger" />
+            <xsd:enumeration value="Phosphatdünger" />
+            <xsd:enumeration value="Kalidünger" />
+            <xsd:enumeration value="Mg-Dünger" />
+            <xsd:enumeration value="Kalkdünger" />
+            <xsd:enumeration value="PK-Dünger" />
+            <xsd:enumeration value="NP-Dünger" />
+            <xsd:enumeration value="NPK-Dünger" />
+            <xsd:enumeration value="NK-Dünger" />
+            <xsd:enumeration value="NMG-Dünger" />
+            <xsd:enumeration value="Flüssigdünger" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="einheit-naehrstofftraeger">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="kg / cbm" />
+            <xsd:enumeration value="kg / dt" />
+            <xsd:enumeration value="kg / hl" />
+            <xsd:enumeration value="kg / l" />
+            <xsd:enumeration value="kg / t" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="weidetierart">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="Geflügel" />    
+            <xsd:enumeration value="Kälber" />
+            <xsd:enumeration value="Jungrinder" />
+            <xsd:enumeration value="Milchkühe" />
+            <xsd:enumeration value="Mutterkühe" />
+            <xsd:enumeration value="Ochsen" />
+            <xsd:enumeration value="Pferde" />
+            <xsd:enumeration value="Schafe" />
+            <xsd:enumeration value="Ziegen" />
+            <xsd:enumeration value="Sonstige" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <!-- weitere simple types -->
+
+    <xsd:simpleType name="ph-wert">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:minInclusive value="-1.00" />
+            <xsd:maxInclusive value="15.00" />
+            <xsd:fractionDigits value="4" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="gehalt-in-einheit-naehrstofftraeger-6-nachkommastellen">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:minInclusive value="-1000000.00" />
+            <xsd:maxInclusive value="1000000.00" />
+            <xsd:fractionDigits value="6" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="prozentzahl">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:minInclusive value="0.000" />
+            <xsd:maxInclusive value="100.000" />
+            <xsd:fractionDigits value="3" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="datum">
+        <xsd:restriction base="xsd:date">
+            <xsd:minInclusive value="1900-01-01" />
+            <xsd:maxInclusive value="2100-01-01" />
+            <xsd:pattern value=".{10}"></xsd:pattern>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="string-320">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="320" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="string-255">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="255" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="string-100">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="100" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="string-80">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="80" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="string-30">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="30" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="string-5">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="5" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="string-16">
+        <xsd:restriction base="xsd:string">
+            <xsd:maxLength value="16" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="bezugsjahr">
+        <xsd:restriction base="xsd:int">
+            <xsd:minInclusive value="2014" />
+            <xsd:maxInclusive value="2100" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="flaeche-in-ha">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:minInclusive value="0.0000" />
+            <xsd:maxExclusive value="100000.0000" />
+            <xsd:fractionDigits value="4" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="ertrag-dt-pro-ha">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:minInclusive value="0.00" />
+            <xsd:maxExclusive value="10000.00" />
+            <xsd:fractionDigits value="2" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="dt-pro-ha-6-nachkommastellen-inkl-null">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:fractionDigits value="6" />
+            <xsd:minInclusive value="0.000000" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="kg-pro-ha-6-nachkommastellen">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:fractionDigits value="6" />
+            <xsd:minExclusive value="0.000000" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="kg-pro-ha-6-nachkommastellen-inkl-null">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:fractionDigits value="6" />
+            <xsd:minInclusive value="0.000000" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="einheit-naehrstofftraeger-pro-ha-6-nachkommastellen-inkl-null">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:fractionDigits value="6" />
+            <xsd:minInclusive value="0.000000" />
+        </xsd:restriction>
+    </xsd:simpleType>
+    
+    <xsd:simpleType name="einheit-naehrstofftraeger-pro-ha-6-nachkommastellen">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:fractionDigits value="6" />
+            <xsd:minExclusive value="0.000000" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="tiefe-in-cm">
+        <xsd:restriction base="xsd:decimal">
+            <xsd:fractionDigits value="6" />
+            <xsd:minExclusive value="0.000000" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+</xsd:schema>

@@ -1,0 +1,47 @@
+name: agmeo
+
+services:
+  postgres:
+    # Multi-arch PostGIS build; the official postgis/postgis image has no arm64 variant.
+    image: imresamu/postgis:18-3.6
+    environment:
+      POSTGRES_DB: agmeo
+      POSTGRES_USER: agmeo_owner
+      POSTGRES_PASSWORD: agmeo_owner
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./db/docker/init-roles.sql:/docker-entrypoint-initdb.d/10-init-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agmeo_owner -d agmeo"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  nats:
+    image: nats:2.12-alpine
+    command: ["--jetstream", "--store_dir", "/data", "--http_port", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+
+  # One-shot migration runner, identical to what CI/CD should run.
+  migrate:
+    image: migrate/migrate:v4.19.1
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database=postgres://agmeo_owner:agmeo_owner@postgres:5432/agmeo?sslmode=disable
+      - up
+
+volumes:
+  postgres-data:
+  nats-data:

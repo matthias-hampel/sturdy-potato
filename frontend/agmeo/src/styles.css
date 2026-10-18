@@ -1,0 +1,131 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/rubik';
+@import 'maplibre-gl/dist/maplibre-gl.css';
+@plugin 'tailwindcss-react-aria-components';
+
+/* Design tokens. Components only use these, so dark mode is a variable swap. */
+@theme {
+  --font-sans: 'Rubik Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #f6f5f1;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0efe9;
+  --color-surface-3: #e6e4dc;
+  --color-line: #dedbd1;
+  --color-line-strong: #c8c4b7;
+  --color-fg: #1f2419;
+  --color-fg-2: #4a5043;
+  --color-muted: #737a6b;
+
+  --color-primary: #3d6b2f;
+  --color-primary-hover: #335a27;
+  --color-primary-soft: #e4eedc;
+  --color-primary-fg: #ffffff;
+  --color-accent: #c98a1b;
+  --color-accent-soft: #f7ecd5;
+
+  --color-danger: #b4372b;
+  --color-danger-soft: #f8e1dd;
+  --color-warning: #a8670c;
+  --color-warning-soft: #f8ebd2;
+  --color-info: #2f6690;
+  --color-info-soft: #dde9f2;
+  --color-success: #3d7a3a;
+  --color-success-soft: #e0efdc;
+
+  --color-sidebar: #1e2a1b;
+  --color-sidebar-fg: #d9e2d2;
+  --color-sidebar-muted: #8f9c88;
+  --color-sidebar-active: #2e3f29;
+
+  /* Chart series (validated: CVD-safe pair, >= 3:1 on surface, both modes). */
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
+  --color-grid: #e9e7e0;
+
+  --radius-control: 0.5rem;
+  --shadow-overlay: 0 12px 32px -8px rgb(20 24 16 / 0.22), 0 2px 6px rgb(20 24 16 / 0.08);
+}
+
+@layer base {
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --color-canvas: #12160f;
+      --color-surface: #1a1f16;
+      --color-surface-2: #222820;
+      --color-surface-3: #2c3329;
+      --color-line: #313a2d;
+      --color-line-strong: #46513f;
+      --color-fg: #e7eae2;
+      --color-fg-2: #bfc6b7;
+      --color-muted: #8b9483;
+      --color-primary: #7fb069;
+      --color-primary-hover: #93c27c;
+      --color-primary-soft: #26361f;
+      --color-primary-fg: #10170c;
+      --color-accent: #e0a63a;
+      --color-accent-soft: #3a2e17;
+      --color-danger: #ec7b6e;
+      --color-danger-soft: #3d1f1b;
+      --color-warning: #e7a646;
+      --color-warning-soft: #3a2b14;
+      --color-info: #79acd6;
+      --color-info-soft: #1b2b38;
+      --color-success: #86c47f;
+      --color-success-soft: #1f321d;
+      --color-series-1: #3987e5;
+      --color-series-2: #d95926;
+      --color-grid: #2a3226;
+      --color-sidebar: #0d110b;
+      --color-sidebar-active: #1d2719;
+      color-scheme: dark;
+    }
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+  }
+  html,
+  body {
+    min-height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-fg);
+  }
+  * {
+    box-sizing: border-box;
+  }
+  /* Tailwind v4 dropped the pointer cursor on buttons; restore it for all clickables. */
+  a[href],
+  button,
+  [role='button'],
+  [role='link'] {
+    cursor: pointer;
+  }
+  :is(a[href], button, [role='button'], [role='link']):is(:disabled, [data-disabled], [aria-disabled='true']) {
+    cursor: default;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* MapLibre controls in the app's style. */
+.maplibregl-ctrl-group {
+  border-radius: var(--radius-control) !important;
+  box-shadow: var(--shadow-overlay) !important;
+}
+.maplibregl-popup-content {
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-overlay);
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--color-surface) !important;
+}

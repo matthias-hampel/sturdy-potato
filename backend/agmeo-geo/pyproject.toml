@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agmeo-geo"
+version = "0.1.0"
+description = "agmeo satellite pipeline: per-field Sentinel-2 statistics and index map tiles"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2,<3",
+    "rasterio>=1.4,<2",
+    "shapely>=2,<3",
+    "psycopg[binary]>=3.2,<4",
+    "nats-py>=2.9,<3",
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+    "rio-tiler>=7,<10",
+    "scipy>=1.14,<2",
+    "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+
+[project.scripts]
+agmeo-geo = "agmeo_geo.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agmeo_geo"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# PNG tiles decoded in tests carry no georeferencing.
+filterwarnings = ["ignore::rasterio.errors.NotGeoreferencedWarning"]
+
+[tool.ruff]
+line-length = 110

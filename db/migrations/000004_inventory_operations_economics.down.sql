@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS harvests;
+DROP TABLE IF EXISTS cost_entries;
+DROP VIEW IF EXISTS stock_balances;
+DROP TABLE IF EXISTS stock_movements;
+DROP TABLE IF EXISTS operation_equipment;
+DROP TABLE IF EXISTS operation_labor;
+DROP TABLE IF EXISTS operation_inputs;
+DROP TABLE IF EXISTS operation_fields;
+DROP TABLE IF EXISTS operations;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS storage_locations;

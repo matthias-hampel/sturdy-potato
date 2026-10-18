@@ -1,0 +1,57 @@
+{
+  "name": "@agmeo/web",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "generate-routes": "tsr generate",
+    "i18n:check": "node scripts/check-i18n.mjs"
+  },
+  "dependencies": {
+    "@agmeo/contracts": "workspace:*",
+    "@fontsource-variable/rubik": "^5.3.0",
+    "@internationalized/date": "^3.12.4",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-devtools": "0.10.13",
+    "@tanstack/react-query": "5.104.4",
+    "@tanstack/react-query-devtools": "5.104.4",
+    "@tanstack/react-router": "1.170.45",
+    "@tanstack/react-router-devtools": "1.167.2",
+    "@tanstack/react-router-ssr-query": "1.167.3",
+    "@tanstack/react-start": "1.169.3",
+    "@tmcw/togeojson": "^7.1.3",
+    "@turf/area": "^7.4.0",
+    "@turf/bbox": "^7.4.0",
+    "i18next": "^26.4.7",
+    "lucide-react": "^1.58.0",
+    "maplibre-gl": "^6.14.0",
+    "react": "^19.2.0",
+    "react-aria-components": "^1.22.1",
+    "react-dom": "^19.2.0",
+    "react-i18next": "^17.0.20",
+    "shpjs": "^6.2.0",
+    "tailwindcss": "^4.1.18",
+    "tailwindcss-react-aria-components": "^2.2.0",
+    "terra-draw": "^1.37.0",
+    "terra-draw-maplibre-gl-adapter": "^1.5.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tanstack/devtools-vite": "0.8.5",
+    "@tanstack/router-cli": "^1.132.0",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.0"
+  },
+  "description": "agmeo farm management web app"
+}

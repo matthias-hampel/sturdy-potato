@@ -1,0 +1,1 @@
+ALTER TABLE farms DROP COLUMN IF EXISTS map_zoom;

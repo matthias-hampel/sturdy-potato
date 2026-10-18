@@ -1,0 +1,34 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "agmeo-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@agmeo/api",
+        "dev"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "agmeo-worker",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@agmeo/api",
+        "dev:worker"
+      ]
+    },
+    {
+      "name": "agmeo-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@agmeo/web",
+        "dev"
+      ],
+      "port": 3000
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "sturdy-potato",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @agmeo/contracts --filter @agmeo/api --filter @agmeo/web dev",
+    "dev:worker": "pnpm --filter @agmeo/api dev:worker",
+    "infra:up": "docker compose up -d postgres nats",
+    "infra:down": "docker compose down",
+    "db:migrate": "migrate -path db/migrations -database \"${DATABASE_URL_MIGRATE:-postgres://agmeo_owner:agmeo_owner@localhost:5434/agmeo?sslmode=disable}\" up",
+    "db:rollback": "migrate -path db/migrations -database \"${DATABASE_URL_MIGRATE:-postgres://agmeo_owner:agmeo_owner@localhost:5434/agmeo?sslmode=disable}\" down 1",
+    "db:seed": "pnpm --filter @agmeo/contracts build && pnpm --filter @agmeo/api build && pnpm --filter @agmeo/api seed",
+    "db:types": "pnpm --filter @agmeo/api db:types",
+    "sync:bsa": "pnpm --filter @agmeo/contracts build && pnpm --filter @agmeo/api build && pnpm --filter @agmeo/api sync:bsa",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @agmeo/api test && pnpm --filter @agmeo/api test:e2e",
+    "sync:psm": "pnpm --filter @agmeo/contracts build && pnpm --filter @agmeo/api build && pnpm --filter @agmeo/api sync:psm"
+  }
+}
