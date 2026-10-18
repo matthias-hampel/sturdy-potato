@@ -833,6 +833,7 @@ export interface VraMaps {
   field_id: string;
   geometry_version_id: string;
   id: Generated<string>;
+  operation_id: string | null;
   organization_id: string;
   status: Generated<string>;
   title: string;

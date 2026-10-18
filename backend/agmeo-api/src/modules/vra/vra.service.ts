@@ -31,6 +31,7 @@ interface MapRow {
   field_id: string;
   zoning_id: string;
   zone_count: number;
+  operation_id: string | null;
   geometry_version_id: string;
   type: VraMap['type'];
   title: string;
@@ -75,9 +76,10 @@ export class VraService {
   create(ctx: Ctx, fieldId: string, input: Input): Promise<VraMap> {
     return this.db.run(ctx, async (trx) => {
       const zoning = await this.zoning(trx, fieldId, input.zoningId);
+      const operationId = await this.operation(trx, fieldId, input.operationId);
       const { rows } = await sql<{ id: string }>`
-        INSERT INTO vra_maps (organization_id, field_id, geometry_version_id, zoning_id, type, title, unit_system, status, created_by)
-        VALUES (${ctx.orgId}::uuid, ${fieldId}::uuid, ${zoning.geometry_version_id}::uuid, ${zoning.id}::uuid, ${input.type},
+        INSERT INTO vra_maps (organization_id, field_id, geometry_version_id, zoning_id, operation_id, type, title, unit_system, status, created_by)
+        VALUES (${ctx.orgId}::uuid, ${fieldId}::uuid, ${zoning.geometry_version_id}::uuid, ${zoning.id}::uuid, ${operationId}::uuid, ${input.type},
                 ${input.title}, ${input.unitSystem}, ${input.status}, ${ctx.userId}::uuid)
         RETURNING id`.execute(trx);
       const id = rows[0].id;
@@ -86,7 +88,7 @@ export class VraService {
         entityType: 'vra_map',
         entityId: id,
         action: 'vra_map.created',
-        changes: { fieldId, zoningId: zoning.id, type: input.type, title: input.title, inputs: input.inputs.length },
+        changes: { fieldId, zoningId: zoning.id, operationId, type: input.type, title: input.title, inputs: input.inputs.length },
       });
       return this.load(trx, fieldId, id);
     });
@@ -105,9 +107,11 @@ export class VraService {
       if (input.version == null) throw badRequest('version_required', 'Send the version the change is based on');
       if (input.version !== current.version) throw conflict('version_conflict', 'This VRA map was changed by someone else. Reload and try again.');
       const zoning = await this.zoning(trx, fieldId, input.zoningId);
+      const operationId = input.operationId === undefined ? undefined : await this.operation(trx, fieldId, input.operationId);
       await trx
         .updateTable('vra_maps')
         .set({
+          ...(operationId === undefined ? {} : { operation_id: operationId }),
           zoning_id: zoning.id,
           geometry_version_id: zoning.geometry_version_id,
           type: input.type,
@@ -231,6 +235,19 @@ export class VraService {
     return zoning;
   }
 
+  /** The operation a map is linked to; it must treat the map's field (a second map for it fails on the unique index). */
+  private async operation(trx: Trx, fieldId: string, operationId: string | null | undefined): Promise<string | null> {
+    if (!operationId) return null;
+    const treats = await trx
+      .selectFrom('operation_fields')
+      .select('operation_id')
+      .where('operation_id', '=', operationId)
+      .where('field_id', '=', fieldId)
+      .executeTakeFirst();
+    if (!treats) throw notFound('Operation');
+    return operationId;
+  }
+
   private async writeInputs(trx: Trx, ctx: Ctx, mapId: string, input: Input, zoneCount: number) {
     const zoneNos = Array.from({ length: zoneCount }, (_, i) => String(i + 1));
     const productIds = input.inputs.map((i) => i.productId).filter((p): p is string => !!p);
@@ -269,7 +286,7 @@ export class VraService {
 
   private async rows(trx: Trx, fieldId: string, id?: string): Promise<MapRow[]> {
     const { rows } = await sql<MapRow>`
-      SELECT m.id, m.field_id, m.zoning_id, z.zone_count, m.geometry_version_id, m.type, m.title, m.unit_system, m.status,
+      SELECT m.id, m.field_id, m.zoning_id, z.zone_count, m.operation_id, m.geometry_version_id, m.type, m.title, m.unit_system, m.status,
              m.version, (m.geometry_version_id = g.id) AS current, u.display_name AS created_by, m.created_at, m.updated_at
       FROM vra_maps m
       JOIN zonings z ON z.id = m.zoning_id
@@ -320,6 +337,7 @@ export class VraService {
       fieldId: r.field_id,
       zoningId: r.zoning_id,
       zoneCount: r.zone_count,
+      operationId: r.operation_id,
       type: r.type,
       title: r.title,
       unitSystem: r.unit_system,

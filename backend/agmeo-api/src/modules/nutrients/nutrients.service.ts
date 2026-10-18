@@ -24,6 +24,7 @@ import {
   type SuggestedRates,
   type SuggestRatesInput,
   sumNutrients,
+  zoneRates,
   type PhMethod,
 } from '@agmeo/contracts';
 import { sql } from 'kysely';
@@ -38,7 +39,6 @@ import { addDays } from '../planning/dates.js';
 import { baseFertilizationNeed, kClass, limeRequirement, mgClass, pClass, phClass } from './lib/base-fertilization.js';
 import { closedPeriod, inClosedPeriod, restrictedByClosedPeriod } from './lib/closed-periods.js';
 import { DEFAULT_NMIN, DUEV_CROPS, DUEV_RULESET, nitrogenNeed, organicFollowUpShare } from './lib/duev.js';
-import { zoneRates } from './lib/zone-rates.js';
 
 type Overrides = Out<typeof FertilizerNeedOverrides>;
 type SampleRow = {

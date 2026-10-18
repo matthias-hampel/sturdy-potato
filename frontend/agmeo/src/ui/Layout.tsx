@@ -145,7 +145,7 @@ export function Tabs(props: TabsProps) {
 }
 
 export function TabList<T extends object>(props: TabListProps<T>) {
-  return <AriaTabList {...props} className={composeClass(props.className, 'flex gap-1 border-b border-line overflow-x-auto')} />
+  return <AriaTabList {...props} className={composeClass(props.className, 'flex gap-1 border-b border-line overflow-x-auto overflow-y-hidden')} />
 }
 
 export function Tab(props: TabProps) {
@@ -156,7 +156,7 @@ export function Tab(props: TabProps) {
         props.className,
         cx(
           'relative px-3 py-2 text-sm font-medium text-muted cursor-pointer whitespace-nowrap rounded-t-md hover:text-fg selected:text-primary',
-          'after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full selected:after:bg-primary',
+          'after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full selected:after:bg-primary',
           focusRing,
         ),
       )}

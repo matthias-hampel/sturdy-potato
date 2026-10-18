@@ -15,7 +15,6 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OOrgIdRouteImport } from './routes/o.$orgId'
 import { Route as OOrgIdIndexRouteImport } from './routes/o.$orgId.index'
 import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
-import { Route as OOrgIdCropsRouteImport } from './routes/o.$orgId.crops'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
@@ -26,6 +25,8 @@ import { Route as OOrgIdTemplatesRouteImport } from './routes/o.$orgId.templates
 import { Route as OOrgIdWeatherRouteImport } from './routes/o.$orgId.weather'
 import { Route as OOrgIdComplianceIndexRouteImport } from './routes/o.$orgId.compliance.index'
 import { Route as OOrgIdComplianceReportRouteImport } from './routes/o.$orgId.compliance.report'
+import { Route as OOrgIdCropsIndexRouteImport } from './routes/o.$orgId.crops.index'
+import { Route as OOrgIdCropsCropCycleIdRouteImport } from './routes/o.$orgId.crops.$cropCycleId'
 import { Route as OOrgIdFieldsIndexRouteImport } from './routes/o.$orgId.fields.index'
 import { Route as OOrgIdFieldsFieldIdRouteImport } from './routes/o.$orgId.fields.$fieldId'
 import { Route as OOrgIdFieldsNewRouteImport } from './routes/o.$orgId.fields.new'
@@ -63,11 +64,6 @@ const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
 const OOrgIdCalendarRoute = OOrgIdCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
-  getParentRoute: () => OOrgIdRoute,
-} as any)
-const OOrgIdCropsRoute = OOrgIdCropsRouteImport.update({
-  id: '/crops',
-  path: '/crops',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdEconomicsRoute = OOrgIdEconomicsRouteImport.update({
@@ -120,6 +116,16 @@ const OOrgIdComplianceReportRoute = OOrgIdComplianceReportRouteImport.update({
   path: '/compliance/report',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdCropsIndexRoute = OOrgIdCropsIndexRouteImport.update({
+  id: '/crops/',
+  path: '/crops/',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdCropsCropCycleIdRoute = OOrgIdCropsCropCycleIdRouteImport.update({
+  id: '/crops/$cropCycleId',
+  path: '/crops/$cropCycleId',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdFieldsIndexRoute = OOrgIdFieldsIndexRouteImport.update({
   id: '/fields/',
   path: '/fields/',
@@ -169,7 +175,6 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
-  '/o/$orgId/crops': typeof OOrgIdCropsRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
@@ -180,12 +185,14 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
+  '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
   '/o/$orgId/operations/new': typeof OOrgIdOperationsNewRoute
   '/o/$orgId/compliance/': typeof OOrgIdComplianceIndexRoute
+  '/o/$orgId/crops/': typeof OOrgIdCropsIndexRoute
   '/o/$orgId/fields/': typeof OOrgIdFieldsIndexRoute
   '/o/$orgId/machinery/': typeof OOrgIdMachineryIndexRoute
   '/o/$orgId/operations/': typeof OOrgIdOperationsIndexRoute
@@ -195,7 +202,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
-  '/o/$orgId/crops': typeof OOrgIdCropsRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
@@ -206,12 +212,14 @@ export interface FileRoutesByTo {
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
+  '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
   '/o/$orgId/operations/new': typeof OOrgIdOperationsNewRoute
   '/o/$orgId/compliance': typeof OOrgIdComplianceIndexRoute
+  '/o/$orgId/crops': typeof OOrgIdCropsIndexRoute
   '/o/$orgId/fields': typeof OOrgIdFieldsIndexRoute
   '/o/$orgId/machinery': typeof OOrgIdMachineryIndexRoute
   '/o/$orgId/operations': typeof OOrgIdOperationsIndexRoute
@@ -223,7 +231,6 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
-  '/o/$orgId/crops': typeof OOrgIdCropsRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
@@ -234,12 +241,14 @@ export interface FileRoutesById {
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
+  '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
   '/o/$orgId/operations/new': typeof OOrgIdOperationsNewRoute
   '/o/$orgId/compliance/': typeof OOrgIdComplianceIndexRoute
+  '/o/$orgId/crops/': typeof OOrgIdCropsIndexRoute
   '/o/$orgId/fields/': typeof OOrgIdFieldsIndexRoute
   '/o/$orgId/machinery/': typeof OOrgIdMachineryIndexRoute
   '/o/$orgId/operations/': typeof OOrgIdOperationsIndexRoute
@@ -252,7 +261,6 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
-    | '/o/$orgId/crops'
     | '/o/$orgId/economics'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
@@ -263,12 +271,14 @@ export interface FileRouteTypes {
     | '/o/$orgId/weather'
     | '/o/$orgId/'
     | '/o/$orgId/compliance/report'
+    | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
     | '/o/$orgId/operations/new'
     | '/o/$orgId/compliance/'
+    | '/o/$orgId/crops/'
     | '/o/$orgId/fields/'
     | '/o/$orgId/machinery/'
     | '/o/$orgId/operations/'
@@ -278,7 +288,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/o/$orgId/calendar'
-    | '/o/$orgId/crops'
     | '/o/$orgId/economics'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
@@ -289,12 +298,14 @@ export interface FileRouteTypes {
     | '/o/$orgId/weather'
     | '/o/$orgId'
     | '/o/$orgId/compliance/report'
+    | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
     | '/o/$orgId/operations/new'
     | '/o/$orgId/compliance'
+    | '/o/$orgId/crops'
     | '/o/$orgId/fields'
     | '/o/$orgId/machinery'
     | '/o/$orgId/operations'
@@ -305,7 +316,6 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
-    | '/o/$orgId/crops'
     | '/o/$orgId/economics'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
@@ -316,12 +326,14 @@ export interface FileRouteTypes {
     | '/o/$orgId/weather'
     | '/o/$orgId/'
     | '/o/$orgId/compliance/report'
+    | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
     | '/o/$orgId/operations/new'
     | '/o/$orgId/compliance/'
+    | '/o/$orgId/crops/'
     | '/o/$orgId/fields/'
     | '/o/$orgId/machinery/'
     | '/o/$orgId/operations/'
@@ -376,13 +388,6 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/o/$orgId/calendar'
       preLoaderRoute: typeof OOrgIdCalendarRouteImport
-      parentRoute: typeof OOrgIdRoute
-    }
-    '/o/$orgId/crops': {
-      id: '/o/$orgId/crops'
-      path: '/crops'
-      fullPath: '/o/$orgId/crops'
-      preLoaderRoute: typeof OOrgIdCropsRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/economics': {
@@ -455,6 +460,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdComplianceReportRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/crops/': {
+      id: '/o/$orgId/crops/'
+      path: '/crops'
+      fullPath: '/o/$orgId/crops/'
+      preLoaderRoute: typeof OOrgIdCropsIndexRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/crops/$cropCycleId': {
+      id: '/o/$orgId/crops/$cropCycleId'
+      path: '/crops/$cropCycleId'
+      fullPath: '/o/$orgId/crops/$cropCycleId'
+      preLoaderRoute: typeof OOrgIdCropsCropCycleIdRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/fields/': {
       id: '/o/$orgId/fields/'
       path: '/fields'
@@ -516,7 +535,6 @@ declare module '@tanstack/react-router' {
 
 interface OOrgIdRouteChildren {
   OOrgIdCalendarRoute: typeof OOrgIdCalendarRoute
-  OOrgIdCropsRoute: typeof OOrgIdCropsRoute
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
@@ -527,12 +545,14 @@ interface OOrgIdRouteChildren {
   OOrgIdWeatherRoute: typeof OOrgIdWeatherRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
   OOrgIdComplianceReportRoute: typeof OOrgIdComplianceReportRoute
+  OOrgIdCropsCropCycleIdRoute: typeof OOrgIdCropsCropCycleIdRoute
   OOrgIdFieldsFieldIdRoute: typeof OOrgIdFieldsFieldIdRoute
   OOrgIdFieldsNewRoute: typeof OOrgIdFieldsNewRoute
   OOrgIdMachineryEquipmentIdRoute: typeof OOrgIdMachineryEquipmentIdRoute
   OOrgIdOperationsOperationIdRoute: typeof OOrgIdOperationsOperationIdRoute
   OOrgIdOperationsNewRoute: typeof OOrgIdOperationsNewRoute
   OOrgIdComplianceIndexRoute: typeof OOrgIdComplianceIndexRoute
+  OOrgIdCropsIndexRoute: typeof OOrgIdCropsIndexRoute
   OOrgIdFieldsIndexRoute: typeof OOrgIdFieldsIndexRoute
   OOrgIdMachineryIndexRoute: typeof OOrgIdMachineryIndexRoute
   OOrgIdOperationsIndexRoute: typeof OOrgIdOperationsIndexRoute
@@ -540,7 +560,6 @@ interface OOrgIdRouteChildren {
 
 const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdCalendarRoute: OOrgIdCalendarRoute,
-  OOrgIdCropsRoute: OOrgIdCropsRoute,
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
@@ -551,12 +570,14 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdWeatherRoute: OOrgIdWeatherRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,
   OOrgIdComplianceReportRoute: OOrgIdComplianceReportRoute,
+  OOrgIdCropsCropCycleIdRoute: OOrgIdCropsCropCycleIdRoute,
   OOrgIdFieldsFieldIdRoute: OOrgIdFieldsFieldIdRoute,
   OOrgIdFieldsNewRoute: OOrgIdFieldsNewRoute,
   OOrgIdMachineryEquipmentIdRoute: OOrgIdMachineryEquipmentIdRoute,
   OOrgIdOperationsOperationIdRoute: OOrgIdOperationsOperationIdRoute,
   OOrgIdOperationsNewRoute: OOrgIdOperationsNewRoute,
   OOrgIdComplianceIndexRoute: OOrgIdComplianceIndexRoute,
+  OOrgIdCropsIndexRoute: OOrgIdCropsIndexRoute,
   OOrgIdFieldsIndexRoute: OOrgIdFieldsIndexRoute,
   OOrgIdMachineryIndexRoute: OOrgIdMachineryIndexRoute,
   OOrgIdOperationsIndexRoute: OOrgIdOperationsIndexRoute,

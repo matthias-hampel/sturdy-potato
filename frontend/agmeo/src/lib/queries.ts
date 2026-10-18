@@ -1,4 +1,4 @@
-import { type QueryKey, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, type QueryKey, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, errorMessage } from './api'
 import { useOrg } from './org'
 import { toast } from '#/ui/Toast'
@@ -6,14 +6,19 @@ import { t } from '#/i18n'
 
 type Query = Record<string, string | number | boolean | null | undefined>
 
-/** GET an organization-scoped resource: `useOrgQuery<Farm[]>('/farms')`. */
-export function useOrgQuery<T>(path: string | null, query?: Query, options?: { enabled?: boolean; staleTime?: number; refetchInterval?: number | false | ((data: T | undefined) => number | false) }) {
+/** GET an organization-scoped resource: `useOrgQuery<Farm[]>('/farms')`. `keepPrevious` shows the last data while new parameters load. */
+export function useOrgQuery<T>(
+  path: string | null,
+  query?: Query,
+  options?: { enabled?: boolean; staleTime?: number; keepPrevious?: boolean; refetchInterval?: number | false | ((data: T | undefined) => number | false) },
+) {
   const { orgId } = useOrg()
   return useQuery<T>({
     queryKey: ['org', orgId, path, query ?? {}] as QueryKey,
     queryFn: () => api.get<T>(`/orgs/${orgId}${path}`, query),
     enabled: path != null && (options?.enabled ?? true),
     staleTime: options?.staleTime ?? 15_000,
+    placeholderData: options?.keepPrevious ? keepPreviousData : undefined,
     refetchInterval: typeof options?.refetchInterval === 'function' ? (q) => (options.refetchInterval as (d: T | undefined) => number | false)(q.state.data) : options?.refetchInterval,
   })
 }

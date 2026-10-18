@@ -123,7 +123,7 @@ export interface OperationFormState {
 let keySeq = 1
 const nextKey = () => keySeq++
 
-export function initialState(opts: { farmId: string | null; fieldIds?: string[]; fields: Field[]; operation?: Operation | null }): OperationFormState {
+export function initialState(opts: { farmId: string | null; fieldIds?: string[]; fields: Field[]; operation?: Operation | null; type?: OperationType }): OperationFormState {
   const op = opts.operation
   if (op) {
     const performed = op.performedAt ? new Date(op.performedAt) : null
@@ -154,8 +154,8 @@ export function initialState(opts: { farmId: string | null; fieldIds?: string[];
   const byId = new Map(opts.fields.map((f) => [f.id, f]))
   return {
     farmId: opts.farmId,
-    type: 'fertilization',
-    title: operationTypeLabel('fertilization'),
+    type: opts.type ?? 'fertilization',
+    title: operationTypeLabel(opts.type ?? 'fertilization'),
     titleTouched: false,
     plannedOn: today(),
     done: false,

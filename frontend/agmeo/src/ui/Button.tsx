@@ -14,7 +14,7 @@ import {
 import { composeClass, cx, focusRing } from './utils'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'quiet'
-export type ButtonSize = 'sm' | 'md' | 'icon' | 'icon-sm'
+export type ButtonSize = 'sm' | 'md' | 'icon' | 'icon-sm' | 'icon-xs'
 
 const variants: Record<ButtonVariant, string> = {
   primary: 'bg-primary text-primary-fg hover:bg-primary-hover pressed:bg-primary-hover shadow-sm',
@@ -29,6 +29,7 @@ const sizes: Record<ButtonSize, string> = {
   md: 'h-9.5 px-4 text-sm gap-2',
   icon: 'size-9.5 justify-center',
   'icon-sm': 'size-8 justify-center',
+  'icon-xs': 'size-6 justify-center',
 }
 
 export function buttonClass(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md') {
