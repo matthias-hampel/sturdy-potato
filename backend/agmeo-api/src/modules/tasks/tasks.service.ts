@@ -86,34 +86,38 @@ export class TasksService {
   }
 
   create(ctx: Ctx, input: Out<typeof TaskInput>): Promise<Task> {
-    return this.db.run(ctx, async (trx) => {
-      await this.assertField(trx, input.farmId, input.fieldId);
-      const { id } = await trx
-        .insertInto('tasks')
-        .values({
-          organization_id: ctx.orgId,
-          farm_id: input.farmId,
-          field_id: input.fieldId ?? null,
-          title: input.title,
-          description: input.description ?? null,
-          assignee_employee_id: input.assigneeEmployeeId ?? null,
-          due_on: input.dueOn ?? null,
-          priority: input.priority,
-          status: input.status,
-          completed_at: input.status === 'done' ? new Date() : null,
-          created_by: ctx.userId,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      await record(trx, ctx, {
-        entityType: 'task',
-        entityId: id,
-        action: 'created',
-        changes: { title: input.title },
-        event: { type: 'task.created', payload: { taskId: id, assigneeEmployeeId: input.assigneeEmployeeId ?? null, dueOn: input.dueOn ?? null } },
-      });
-      return this.getIn(trx, id);
+    return this.db.run(ctx, (trx) => this.createIn(trx, ctx, input));
+  }
+
+  /** Creates a task in the caller's transaction, optionally for planned field work. */
+  async createIn(trx: Trx, ctx: Ctx, input: Out<typeof TaskInput>, operationId?: string | null): Promise<Task> {
+    await this.assertField(trx, input.farmId, input.fieldId);
+    const { id } = await trx
+      .insertInto('tasks')
+      .values({
+        organization_id: ctx.orgId,
+        farm_id: input.farmId,
+        field_id: input.fieldId ?? null,
+        operation_id: operationId ?? null,
+        title: input.title,
+        description: input.description ?? null,
+        assignee_employee_id: input.assigneeEmployeeId ?? null,
+        due_on: input.dueOn ?? null,
+        priority: input.priority,
+        status: input.status,
+        completed_at: input.status === 'done' ? new Date() : null,
+        created_by: ctx.userId,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await record(trx, ctx, {
+      entityType: 'task',
+      entityId: id,
+      action: 'created',
+      changes: { title: input.title },
+      event: { type: 'task.created', payload: { taskId: id, assigneeEmployeeId: input.assigneeEmployeeId ?? null, dueOn: input.dueOn ?? null } },
     });
+    return this.getIn(trx, id);
   }
 
   update(ctx: Ctx, id: string, input: Out<typeof UpdateTaskInput>): Promise<Task> {

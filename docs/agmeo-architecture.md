@@ -150,6 +150,7 @@ is a module in `backend/agmeo-api/src/modules`:
 | `carbon` | CO2e of completed operations by source (diesel, machinery, N2O direct/indirect, fertilizer production, lime/urea CO2, plant protection, seed). |
 | `economics` (extended) | DfL, DB I, DB II per crop cycle and crop; plan values from planned operations and expected yield; crop prices per harvest year; overheads and CAP payments → indicative farm result. |
 | `regulatory` | Farm master data for the authorities; annual totals (DüV Anlage 5); 170 kg N balance; ENNI (Niedersachsen) and ENDO (Schleswig-Holstein) XML through the ported `harmonie` library, validated against the official XSDs in tests; subsidy application Shapefile per state portal (ETRS89/UTM); land-use codes. |
+| `recommendations` | Field recommendations (what, when, where, why): rule set `AGMEO-REC-2026.1` over planned operations, the farm forecast, NDVI observations, productivity zones, the season N balance, closed periods and PSM checks. Decisions are typed (kind, action, window, zones, priority, confidence) with evidence codes; one open recommendation per decision key; accepting reschedules the operation or creates a task, dismissing records the reason. An OpenAI model (optional, `OPENAI_API_KEY`) phrases the reasons and a daily briefing with structured output; it never adds or changes a decision. |
 
 ## Domain notes and open points
 
@@ -173,6 +174,11 @@ is a module in `backend/agmeo-api/src/modules`:
 - **Farm result**: CAP payments are indicative and not checked against the paying agency's rules.
 - **170 kg N**: the farm average is the higher of what the records show was applied and the
   livestock balance (excretion + intake − delivery) entered by the user.
+- **Recommendations** are orientation, not advice: weather thresholds (spray, fertilization, soil
+  work, harvest) use the farm forecast, not field soil moisture; NDVI anomalies compare with the
+  previous observation and with the same crop on other fields. Recalculated on demand (and by the
+  UI when older than six hours); there is no scheduled daily run yet. Decided keys stay quiet for
+  seven days.
 - Weather: Open-Meteo forecast API, cached 30 minutes per location; spray windows are
   indicative thresholds only (no daylight, inversion or product-label rules).
 - Aerial imagery: Esri World Imagery for development; production needs a licensed provider.

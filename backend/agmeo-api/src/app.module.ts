@@ -31,6 +31,9 @@ import { ProtectionController } from './modules/protection/protection.controller
 import { ProtectionService } from './modules/protection/protection.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
+import { ExplainerService } from './modules/recommendations/explainer.service.js';
+import { RecommendationsController } from './modules/recommendations/recommendations.controller.js';
+import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
 import { RegulatoryController } from './modules/regulatory/regulatory.controller.js';
 import { RegulatoryService } from './modules/regulatory/regulatory.service.js';
 import { OperationsController } from './modules/operations/operations.controller.js';
@@ -64,6 +67,8 @@ export const DOMAIN_SERVICES = [
   MonitoringService,
   ProductivityService,
   VraService,
+  ExplainerService,
+  RecommendationsService,
   DashboardService,
 ];
 
@@ -93,6 +98,7 @@ export const DOMAIN_SERVICES = [
     MonitoringController,
     ProductivityController,
     VraController,
+    RecommendationsController,
     DashboardController,
   ],
   providers: [

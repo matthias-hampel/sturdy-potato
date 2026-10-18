@@ -6,6 +6,7 @@ import { localDate, noticeKind, noticeMessage, weatherCode } from '#/components/
 import { CropCycleStatusBadge, CropRoleBadge, CropTag } from '#/components/labels'
 import { INDEX_INFO, type ShownIndex } from '#/components/monitoring/indices'
 import { ObservationsChart } from '#/components/monitoring/ObservationsChart'
+import { RecommendationsCard } from '#/components/recommendations/RecommendationsCard'
 import { fmt } from '#/lib/format'
 import { useOrg } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
@@ -25,6 +26,8 @@ export function CultivationInfo({ cycle, field, operations, onEdit }: { cycle: C
 
   return (
     <div className="grid lg:grid-cols-2 gap-6 items-start">
+      <RecommendationsCard cropCycleId={cycle.id} className="lg:col-span-2" />
+
       <Card
         title={t('cultivation.info.crop')}
         actions={onEdit && <Button size="sm" variant="quiet" onPress={onEdit}><Pencil /> {t('common.edit')}</Button>}

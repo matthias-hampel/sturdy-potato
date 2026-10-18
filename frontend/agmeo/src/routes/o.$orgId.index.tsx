@@ -20,6 +20,7 @@ import { BarList } from '#/components/charts'
 import { noticeMessage } from '#/components/insights/weather'
 import { OperationTypeLabel, TaskStatusBadge } from '#/components/labels'
 import { FieldMap } from '#/components/map/FieldMap'
+import { RecommendationsCard } from '#/components/recommendations/RecommendationsCard'
 import { errorMessage } from '#/lib/api'
 import { fmt } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
@@ -64,6 +65,7 @@ function Overview() {
 
       <div className="grid xl:grid-cols-[1.6fr_1fr] gap-6">
         <div className="space-y-6 min-w-0">
+          {d.setup.hasCropCycles && <RecommendationsCard />}
           <Card title={t('dashboard.fields')} padded={false} actions={<Link to="/o/$orgId/fields" params={{ orgId }} className="text-sm">{t('dashboard.openMap')}</Link>}>
             {fields.data && fields.data.length > 0 ? (
               <FieldMap fields={fields.data} className="h-80 rounded-none rounded-b-xl border-0" />

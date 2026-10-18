@@ -19,6 +19,7 @@ import { ObservationsChart } from '#/components/monitoring/ObservationsChart'
 import { ProductivityZones } from '#/components/monitoring/ProductivityZones'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
 import { OperationsTable } from '#/components/operations/OperationsTable'
+import { RecommendationsCard } from '#/components/recommendations/RecommendationsCard'
 import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
@@ -140,6 +141,7 @@ function FieldPage() {
               />
             </Card>
           </div>
+          <RecommendationsCard fieldId={f.id} className="mt-6" />
         </TabPanel>
         <TabPanel id="parts">
           <FieldPartsTab field={f} />
