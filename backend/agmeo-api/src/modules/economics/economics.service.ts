@@ -218,7 +218,7 @@ export class EconomicsService {
         area_ha: number; expected_yield_t_ha: number | null; expected_price_per_t: number | null;
         qty: number | null; harvested_area: number | null; revenue: number | null; all_actual: boolean | null; harvests: number;
       }>`
-        SELECT cc.id, cc.field_id, concat_ws(' · ', f.name, fp.name) AS field_name, cc.crop_id, coalesce(c.name_de, c.name) AS crop_name, c.color, cc.status,
+        SELECT cc.id, cc.field_id, concat_ws(' · ', f.name, fp.name) AS field_name, cc.crop_id, coalesce(c.name_de, c.name) AS crop_name, coalesce((SELECT occ.color FROM org_crop_colors occ WHERE occ.crop_id = c.id), c.color) AS color, cc.status,
                coalesce(cc.area_ha, fp.area_ha, g.area_ha, 0) AS area_ha, cc.expected_yield_t_ha,
                coalesce(cc.expected_price_per_t, cp.price_per_t) AS expected_price_per_t,
                h.qty, h.harvested_area, h.revenue, h.all_actual, coalesce(h.n, 0) AS harvests

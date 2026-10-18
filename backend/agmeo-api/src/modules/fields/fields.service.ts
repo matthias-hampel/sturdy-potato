@@ -20,7 +20,7 @@ import { diff, record } from '../../core/events.js';
 import { iso, round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
-import { cropName } from '../crops/crop-name.js';
+import { cropColor, cropName } from '../crops/crop-name.js';
 import { resolveSeason } from '../crops/seasons.js';
 
 /** The transaction's timestamp (`now()`), which PostgreSQL keeps fixed for the whole transaction. */
@@ -328,7 +328,7 @@ export class FieldsService {
             .selectFrom('crop_cycles as cc')
             .innerJoin('crops as c', 'c.id', 'cc.crop_id')
             .innerJoin('growing_seasons as s', 's.id', 'cc.season_id')
-            .select(['cc.id as crop_cycle_id', cropName('c').as('crop_name'), 'c.color', 's.name as season_name', 'cc.status as cycle_status'])
+            .select(['cc.id as crop_cycle_id', cropName('c').as('crop_name'), cropColor('c').as('color'), 's.name as season_name', 'cc.status as cycle_status'])
             .leftJoin('field_parts as fp', 'fp.id', 'cc.field_part_id')
             .whereRef('cc.field_id', '=', 'f.id')
             .where('cc.season_id', '=', season?.id ?? null)

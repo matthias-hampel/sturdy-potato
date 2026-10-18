@@ -1,11 +1,13 @@
 import {
   CROP_CYCLE_STATUSES,
   CROP_ROLES,
+  CROP_USAGES,
   type ApplyTemplateResult,
   type Crop,
   type CropCycle,
   type CropCycleStatus,
   type CropRole,
+  type CropUsage,
   type CultivationTemplate,
   type FieldPart,
   type RegisteredVariety,
@@ -24,7 +26,7 @@ import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button, Link } from '#/ui/Button'
 import { ComboBox, DatePicker, NumberField, Option, Select, TextField, num } from '#/ui/Field'
 import { Loading, Notice } from '#/ui/Layout'
-import { ModalDialog } from '#/ui/Overlay'
+import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
 
 export interface CycleForm {
   cropId: string | null
@@ -36,8 +38,20 @@ export interface CycleForm {
   expectedYieldTHa: number
   expectedPricePerT: number
   areaHa: number
+  usage: CropUsage
+  seedLot: string
+  multiplicationGeneration: string
   notes: string
 }
+
+export const EMPTY_CYCLE_FORM: CycleForm = { cropId: null, varietyName: '', status: 'planned', role: 'main', sowingDate: null, expectedHarvestDate: null, expectedYieldTHa: NaN, expectedPricePerT: NaN, areaHa: NaN, usage: 'commercial', seedLot: '', multiplicationGeneration: '', notes: '' }
+
+/** Usage and seed details of a cycle form, as the API takes them. */
+export const seedPayload = (f: CycleForm) => ({
+  usage: f.usage,
+  seedLot: f.usage === 'seed_multiplication' ? f.seedLot.trim() || null : null,
+  multiplicationGeneration: f.usage === 'seed_multiplication' ? f.multiplicationGeneration.trim() || null : null,
+})
 
 export function useVarietyResolver() {
   return async (orgPath: string, cropId: string, name: string) => {
@@ -112,13 +126,22 @@ export function CycleFields({ value, onChange, crops, showArea }: { value: Cycle
       <DatePicker label={t('crops.form.expectedHarvest')} value={value.expectedHarvestDate} onChange={(v) => set('expectedHarvestDate', v)} />
       <NumberField label={t('crops.form.expectedYield')} unit="t/ha" minValue={0} step={0.1} formatOptions={{ maximumFractionDigits: 2 }} value={value.expectedYieldTHa} onChange={(v) => set('expectedYieldTHa', v)} />
       <NumberField label={t('crops.form.expectedPrice')} unit="€/t" minValue={0} value={value.expectedPricePerT} onChange={(v) => set('expectedPricePerT', v)} />
+      <Select label={t('crops.form.usage')} items={CROP_USAGES.map((u) => ({ id: u, name: t(`crops.usage.${u}`) }))} value={value.usage} onChange={(v) => v && set('usage', v as CropUsage)}>
+        {(u) => <Option id={u.id}>{u.name}</Option>}
+      </Select>
+      {value.usage === 'seed_multiplication' ? (
+        <div className="grid grid-cols-2 gap-3">
+          <TextField label={t('crops.form.seedLot')} value={value.seedLot} onChange={(v) => set('seedLot', v)} />
+          <TextField label={t('crops.form.generation')} placeholder="Z1" value={value.multiplicationGeneration} onChange={(v) => set('multiplicationGeneration', v)} />
+        </div>
+      ) : <div />}
       {showArea && <NumberField label={t('crops.form.plantedArea')} unit="ha" minValue={0} step={0.01} description={t('crops.form.plantedAreaHint')} value={value.areaHa} onChange={(v) => set('areaHa', v)} />}
       <TextField label={t('common.notes')} multiline rows={2} value={value.notes} onChange={(v) => set('notes', v)} className="sm:col-span-2" />
     </div>
   )
 }
 
-export function EditCycleDialog({ cycle, onClose }: { cycle: CropCycle; onClose: () => void }) {
+export function EditCycleDialog({ cycle, onClose, onDelete }: { cycle: CropCycle; onClose: () => void; onDelete?: () => Promise<unknown> }) {
   const { t } = useTranslation()
   const crops = useOrgQuery<Crop[]>('/crops')
   const resolveVariety = useVarietyResolver()
@@ -135,6 +158,9 @@ export function EditCycleDialog({ cycle, onClose }: { cycle: CropCycle; onClose:
     expectedYieldTHa: cycle.expectedYieldTHa ?? NaN,
     expectedPricePerT: cycle.expectedPricePerT ?? NaN,
     areaHa: NaN,
+    usage: cycle.usage,
+    seedLot: cycle.seedLot ?? '',
+    multiplicationGeneration: cycle.multiplicationGeneration ?? '',
     notes: cycle.notes ?? '',
   })
   const save = useOrgMutation(
@@ -151,6 +177,7 @@ export function EditCycleDialog({ cycle, onClose }: { cycle: CropCycle; onClose:
         expectedPricePerT: num(form.expectedPricePerT),
         ...(Number.isNaN(form.areaHa) ? {} : { areaHa: form.areaHa }),
         ...(fieldPartId && fieldPartId !== cycle.fieldPartId ? { fieldPartId } : {}),
+        ...seedPayload(form),
         notes: form.notes || null,
       })
     },
@@ -185,6 +212,12 @@ export function EditCycleDialog({ cycle, onClose }: { cycle: CropCycle; onClose:
         )}
         <CycleFields value={form} onChange={setForm} crops={crops.data ?? []} showArea />
         <div className="flex justify-end gap-2">
+          {onDelete && (
+            <>
+              <ConfirmButton title={t('crops.removeTitle', { name: cycle.cropName })} message={t('crops.removeMessage')} confirmLabel={t('crops.remove')} onConfirm={async () => { await onDelete(); onClose() }} trigger={<Button variant="danger">{t('crops.remove')}</Button>} />
+              <div className="flex-1" />
+            </>
+          )}
           <Button onPress={onClose}>{t('common.cancel')}</Button>
           <Button type="submit" variant="primary" isDisabled={!form.cropId || parts.isLoading} isPending={save.isPending}>{t('common.save')}</Button>
         </div>

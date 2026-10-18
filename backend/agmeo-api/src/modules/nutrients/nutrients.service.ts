@@ -34,7 +34,7 @@ import { diff, record } from '../../core/events.js';
 import { iso, round, today } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
-import { cropName } from '../crops/crop-name.js';
+import { cropColor, cropName } from '../crops/crop-name.js';
 import { addDays } from '../planning/dates.js';
 import { baseFertilizationNeed, kClass, limeRequirement, mgClass, pClass, phClass } from './lib/base-fertilization.js';
 import { closedPeriod, inClosedPeriod, restrictedByClosedPeriod } from './lib/closed-periods.js';
@@ -603,7 +603,7 @@ export class NutrientsService {
           'fp.name as part_name',
           'f.nitrate_sensitive_zone',
           cropName('c').as('crop_name'),
-          'c.color',
+          cropColor('c').as('color'),
           sql<number>`coalesce(cc.area_ha, fp.area_ha, g.area_ha, 0)`.as('area_ha'),
         ])
         .where('cc.season_id', '=', seasonId)

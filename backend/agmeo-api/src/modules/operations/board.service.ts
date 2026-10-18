@@ -18,7 +18,7 @@ import { diff, record } from '../../core/events.js';
 import { iso, round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
-import { cropName } from '../crops/crop-name.js';
+import { cropColor, cropName } from '../crops/crop-name.js';
 import { resolveSeason } from '../crops/seasons.js';
 
 const PLANNED_LIMIT = 500;
@@ -72,7 +72,7 @@ export class BoardService {
         .innerJoin('fields as f', 'f.id', 'of.field_id')
         .leftJoin('crop_cycles as cc', 'cc.id', 'of.crop_cycle_id')
         .leftJoin('crops as c', 'c.id', 'cc.crop_id')
-        .select(['of.operation_id', 'of.field_id', 'f.name as field_name', 'of.treated_area_ha', cropName<string | null>('c').as('crop_name'), 'c.color as crop_color'])
+        .select(['of.operation_id', 'of.field_id', 'f.name as field_name', 'of.treated_area_ha', cropName<string | null>('c').as('crop_name'), cropColor<string | null>('c').as('crop_color')])
         .where('of.operation_id', 'in', ids)
         .orderBy('f.name')
         .execute(),

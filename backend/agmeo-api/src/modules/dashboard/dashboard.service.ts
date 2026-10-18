@@ -39,7 +39,7 @@ export class DashboardService {
       const crops = season
         ? (
             await sql<{ crop_id: string; name: string; color: string; area: number }>`
-              SELECT c.id AS crop_id, coalesce(c.name_de, c.name) AS name, c.color, sum(coalesce(cc.area_ha, fp.area_ha, g.area_ha)) AS area
+              SELECT c.id AS crop_id, coalesce(c.name_de, c.name) AS name, coalesce((SELECT occ.color FROM org_crop_colors occ WHERE occ.crop_id = c.id), c.color) AS color, sum(coalesce(cc.area_ha, fp.area_ha, g.area_ha)) AS area
               FROM crop_cycles cc
               JOIN crops c ON c.id = cc.crop_id
               JOIN fields f ON f.id = cc.field_id AND f.status = 'active'

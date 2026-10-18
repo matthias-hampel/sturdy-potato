@@ -107,16 +107,19 @@ export interface CropCycles {
   film_or_fleece: Generated<boolean>;
   id: Generated<string>;
   land_use_code: string | null;
+  multiplication_generation: string | null;
   notes: string | null;
   organization_id: string;
   protein_pct: Numeric | null;
   role: Generated<string>;
   season_id: string;
+  seed_lot: string | null;
   sowing_date: string | null;
   status: Generated<string>;
   straw_removed: Generated<boolean>;
   template_id: string | null;
   updated_at: Generated<Timestamp>;
+  usage: Generated<string>;
   variety_id: string | null;
 }
 
@@ -641,6 +644,12 @@ export interface Operations {
   weather_conditions: string | null;
 }
 
+export interface OrgCropColors {
+  color: string;
+  crop_id: string;
+  organization_id: string;
+}
+
 export interface Organizations {
   country: Generated<string>;
   created_at: Generated<Timestamp>;
@@ -989,6 +998,7 @@ export interface DB {
   operation_inputs: OperationInputs;
   operation_labor: OperationLabor;
   operations: Operations;
+  org_crop_colors: OrgCropColors;
   organizations: Organizations;
   outbox_events: OutboxEvents;
   productivity_analyses: ProductivityAnalyses;

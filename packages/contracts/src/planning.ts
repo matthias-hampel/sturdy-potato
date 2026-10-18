@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { amount, id, isoDate, longText, name, positive, shortText } from './common.js';
-import type { CropRole } from './crops.js';
+import type { CropRole, CropUsage } from './crops.js';
 import type { BaseUnit } from './inventory.js';
 import { OPERATION_TYPES, type OperationStatus, type OperationType } from './operations.js';
 
@@ -178,6 +178,16 @@ export interface CalendarOperation {
 
 export interface CalendarRow {
   cropCycleId: string;
+  seasonId: string;
+  harvestYear: number;
+  cropId: string;
+  varietyId: string | null;
+  varietyName: string | null;
+  fieldPartId: string | null;
+  usage: CropUsage;
+  seedLot: string | null;
+  multiplicationGeneration: string | null;
+  templateId: string | null;
   fieldId: string;
   fieldName: string;
   fieldPartName: string | null;
@@ -194,6 +204,19 @@ export interface CropCalendar {
   seasonId: string;
   from: string;
   to: string;
+  rows: CalendarRow[];
+}
+
+/** Several harvest years at once, every active field a row (also those without crops). */
+export const CalendarYearsQuery = z.object({
+  fromYear: z.coerce.number().int().min(1990).max(2200),
+  toYear: z.coerce.number().int().min(1990).max(2200),
+});
+export type CalendarYearsQuery = z.input<typeof CalendarYearsQuery>;
+
+export interface CropCalendarYears {
+  seasons: { id: string; name: string; harvestYear: number; startDate: string; endDate: string }[];
+  fields: { id: string; name: string; areaHa: number }[];
   rows: CalendarRow[];
 }
 

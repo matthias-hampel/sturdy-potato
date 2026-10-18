@@ -16,7 +16,7 @@ import { Button as AriaButton, Form, type Selection } from 'react-aria-component
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
-import { ApplyTemplateDialog, CycleFields, EditCycleDialog, useVarietyResolver, type CycleForm } from '#/components/crops/CycleDialogs'
+import { ApplyTemplateDialog, CycleFields, EMPTY_CYCLE_FORM, EditCycleDialog, seedPayload, useVarietyResolver, type CycleForm } from '#/components/crops/CycleDialogs'
 import { OPERATION_TABS, OperationTabPanel, operationTabType, type OperationTab } from '#/components/crops/OperationTab'
 import { PartUsageBadge } from '#/components/fields/FieldParts'
 import { FieldShape } from '#/components/map/FieldShape'
@@ -543,7 +543,7 @@ function AssignDialog({ season, fields, initialFieldIds, onClose }: { season: Se
   const crops = useOrgQuery<Crop[]>('/crops')
   const resolveVariety = useVarietyResolver()
   const [fieldIds, setFieldIds] = useState<string[]>(initialFieldIds)
-  const [form, setForm] = useState<CycleForm>({ cropId: null, varietyName: '', status: 'planned', role: 'main', sowingDate: null, expectedHarvestDate: null, expectedYieldTHa: NaN, expectedPricePerT: NaN, areaHa: NaN, notes: '' })
+  const [form, setForm] = useState<CycleForm>(EMPTY_CYCLE_FORM)
   const area = fields.filter((f) => fieldIds.includes(f.id)).reduce((s, f) => s + f.areaHa, 0)
   const save = useOrgMutation(
     async (base, _: void) => {
@@ -561,6 +561,7 @@ function AssignDialog({ season, fields, initialFieldIds, onClose }: { season: Se
         expectedYieldTHa: num(form.expectedYieldTHa),
         expectedPricePerT: num(form.expectedPricePerT),
         areaHa: fieldIds.length === 1 ? num(form.areaHa) : null,
+        ...seedPayload(form),
         notes: form.notes || null,
       })
     },
