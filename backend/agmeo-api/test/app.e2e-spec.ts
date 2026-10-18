@@ -348,4 +348,56 @@ describe('Bundessortenamt varieties', () => {
       await owner.destroy()
     }
   })
+
+  /** The EU catalogue is written by the same sync job; again a made-up species written as the owner. */
+  it('adds EU catalogue varieties the BSA register lacks and links picks to them', async () => {
+    const owner = createKysely(process.env.DATABASE_URL_MIGRATE ?? 'postgres://agmeo_owner:agmeo_owner@localhost:5434/agmeo', 1)
+    const species = `Y${run.slice(0, 4).toUpperCase()}`
+    const euSpecies = `ZZZZZ_${run.slice(0, 4).toUpperCase()}`
+    try {
+      const o = as((await signIn('eu-owner')).token)
+      const org = (await o.post('/orgs', { name: `EU ${run}` }).expect(201)).body
+      await sql`INSERT INTO bsa_species (code, name_de, botanical_name) VALUES (${species}, 'Testmais', 'Zea testis')`.execute(owner)
+      await sql`INSERT INTO bsa_varieties (species_code, registration_number, name, approval_granted_on) VALUES
+        (${species}, 1, 'DKC 2972', '2017-02-16'),
+        (${species}, 2, 'Zeta', '2020-02-01')`.execute(owner)
+      await sql`INSERT INTO eu_species (code, botanical_name) VALUES (${euSpecies}, 'Zea testis')`.execute(owner)
+      await sql`INSERT INTO eu_varieties (species_code, name, countries, registered_on, marketable_until) VALUES
+        (${euSpecies}, 'DKC2972', '{DE,FR}', '2017-01-01', NULL),
+        (${euSpecies}, 'Bacardi', '{FR,IT}', '2016-12-21', NULL),
+        (${euSpecies}, 'Ouvea', '{}', NULL, '2099-06-30'),
+        (${euSpecies}, 'Gone', '{}', NULL, '2020-06-30')`.execute(owner)
+      const { id: cropId } = await sql<{ id: string }>`INSERT INTO crops (organization_id, code, name, category, bsa_species_code, eu_species_code)
+        VALUES (${org.id}, 'custom_eu_test', 'Test maize', 'maize', ${species}, ${euSpecies}) RETURNING id`
+        .execute(owner)
+        .then((r) => r.rows[0])
+
+      // EU-only varieties join the BSA list; a BSA name spelt differently in the EU is listed once, as BSA.
+      const registered = (await o.get(`/orgs/${org.id}/crops/${cropId}/registered-varieties`).expect(200)).body
+      expect(registered.map((v: { name: string; source: string; countries: string[]; marketableUntil: string | null }) => [v.name, v.source, v.countries, v.marketableUntil])).toEqual([
+        ['Bacardi', 'eu', ['FR', 'IT'], null],
+        ['DKC 2972', 'bsa', [], null],
+        ['Ouvea', 'eu', [], '2099-06-30'],
+        ['Zeta', 'bsa', [], null],
+      ])
+      const bacardi = registered.find((v: { name: string }) => v.name === 'Bacardi')
+      expect(bacardi).toMatchObject({ registrationNumber: null, approvedOn: '2016-12-21', speciesCode: euSpecies })
+
+      // A typed EU-only name is stored under its catalogue spelling and linked; a BSA name wins over its EU twin.
+      const picked = (await o.post(`/orgs/${org.id}/varieties`, { cropId, name: 'bacardi' }).expect(201)).body
+      expect(picked).toMatchObject({ name: 'Bacardi', registeredVarietyId: bacardi.id })
+      const dkc = (await o.post(`/orgs/${org.id}/varieties`, { cropId, name: 'dkc2972' }).expect(201)).body
+      expect(dkc).toMatchObject({ name: 'DKC 2972', registeredVarietyId: registered.find((v: { name: string }) => v.name === 'DKC 2972').id })
+      const listed = (await o.get(`/orgs/${org.id}/varieties?cropId=${cropId}`).expect(200)).body
+      expect(listed.map((v: { name: string; registeredVarietyId: string | null }) => [v.name, v.registeredVarietyId])).toEqual([
+        ['Bacardi', bacardi.id],
+        ['DKC 2972', dkc.registeredVarietyId],
+      ])
+    } finally {
+      await sql`DELETE FROM crops WHERE bsa_species_code = ${species}`.execute(owner)
+      await sql`DELETE FROM bsa_species WHERE code = ${species}`.execute(owner)
+      await sql`DELETE FROM eu_species WHERE code = ${euSpecies}`.execute(owner)
+      await owner.destroy()
+    }
+  })
 })

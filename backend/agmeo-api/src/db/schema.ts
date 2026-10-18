@@ -146,6 +146,7 @@ export interface Crops {
   default_harvest_md: string | null;
   default_sowing_md: string | null;
   eppo_code: string | null;
+  eu_species_code: string | null;
   id: Generated<string>;
   is_legume: Generated<boolean>;
   is_perennial: Generated<boolean>;
@@ -160,6 +161,7 @@ export interface CropVarieties {
   bsa_variety_id: string | null;
   created_at: Generated<Timestamp>;
   crop_id: string;
+  eu_variety_id: string | null;
   id: Generated<string>;
   name: string;
   organization_id: string;
@@ -224,6 +226,22 @@ export interface Equipment {
   registration: string | null;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
+}
+
+export interface EuSpecies {
+  botanical_name: string;
+  code: string;
+  synced_at: Generated<Timestamp>;
+}
+
+export interface EuVarieties {
+  countries: Generated<string[]>;
+  id: Generated<string>;
+  marketable_until: string | null;
+  name: string;
+  registered_on: string | null;
+  species_code: string;
+  synced_at: Generated<Timestamp>;
 }
 
 export interface FarmOverheads {
@@ -879,6 +897,8 @@ export interface DB {
   emission_entries: EmissionEntries;
   employees: Employees;
   equipment: Equipment;
+  eu_species: EuSpecies;
+  eu_varieties: EuVarieties;
   farm_overheads: FarmOverheads;
   farms: Farms;
   fertilizer_catalogue: FertilizerCatalogue;

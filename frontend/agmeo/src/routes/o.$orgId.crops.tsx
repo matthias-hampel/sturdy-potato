@@ -16,6 +16,7 @@ import {
   type RotationInput,
   type Season,
   type Variety,
+  varietyKey,
 } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
 import { ArrowRight, CalendarRange, ChevronDown, ChevronUp, ListChecks, MapPin, MoreHorizontal, Pencil, Plus, Repeat, Sprout, Trash2, X } from 'lucide-react'
@@ -378,25 +379,37 @@ function CycleFields({ value, onChange, crops, showArea }: { value: CycleForm; o
   const set = <K extends keyof CycleForm>(k: K, v: CycleForm[K]) => onChange({ ...value, [k]: v })
   const varieties = useOrgQuery<Variety[]>('/varieties', { cropId: value.cropId ?? undefined }, { enabled: !!value.cropId })
   const registered = useOrgQuery<RegisteredVariety[]>(value.cropId ? `/crops/${value.cropId}/registered-varieties` : null, undefined, { staleTime: 3_600_000 })
-  // The organization's own varieties first, then the rest of the Bundessortenamt register.
+  // The organization's own varieties first, then the rest of the Bundessortenamt register and the EU catalogue.
   const varietyOptions = useMemo(() => {
     const byRegisteredId = new Map((registered.data ?? []).map((r) => [r.id, r]))
-    const used = (varieties.data ?? []).map((v) => ({ key: `org:${v.id}`, name: v.name, registered: v.registeredVarietyId ? byRegisteredId.get(v.registeredVarietyId) : undefined, used: true }))
-    const usedNames = new Set(used.map((v) => v.name.toLowerCase()))
-    const rest = (registered.data ?? []).filter((r) => !usedNames.has(r.name.toLowerCase())).map((r) => ({ key: `bsa:${r.id}`, name: r.name, registered: r, used: false }))
+    const byKey = new Map((registered.data ?? []).map((r) => [varietyKey(r.name), r]))
+    const used = (varieties.data ?? []).map((v) => ({ key: `org:${v.id}`, name: v.name, registered: (v.registeredVarietyId && byRegisteredId.get(v.registeredVarietyId)) || byKey.get(varietyKey(v.name)), used: true }))
+    const usedNames = new Set(used.map((v) => varietyKey(v.name)))
+    const rest = (registered.data ?? []).filter((r) => !usedNames.has(varietyKey(r.name))).map((r) => ({ key: `${r.source}:${r.id}`, name: r.name, registered: r, used: false }))
     return [...used, ...rest]
   }, [varieties.data, registered.data])
+  // The EU catalogue lists thousands of maize varieties; the list shows the first matches only.
+  const shownVarieties = useMemo(() => {
+    const q = varietyKey(value.varietyName)
+    return (q ? varietyOptions.filter((o) => varietyKey(o.name).includes(q)) : varietyOptions).slice(0, 100)
+  }, [varietyOptions, value.varietyName])
   const describeVariety = (o: (typeof varietyOptions)[number]) => {
     const r = o.registered
-    const bsa = !r
+    const register = !r
       ? null
-      : r.marketableUntil
-        ? t('crops.form.varietyPhasingOut', { number: r.registrationNumber, date: fmt.date(r.marketableUntil) })
-        : r.conservationRegion
-          ? t('crops.form.varietyConservation', { number: r.registrationNumber, region: r.conservationRegion })
-          : t('crops.form.varietyApproved', { number: r.registrationNumber, date: fmt.date(r.approvedOn) })
-    return [o.used ? t('crops.form.varietyUsed') : null, bsa].filter(Boolean).join(' · ') || undefined
+      : r.source === 'eu'
+        ? r.marketableUntil
+          ? t('crops.form.varietyEuPhasingOut', { date: fmt.date(r.marketableUntil) })
+          : t('crops.form.varietyEu', { countries: r.countries.length > 5 ? `${r.countries.slice(0, 4).join(', ')} +${r.countries.length - 4}` : r.countries.join(', ') })
+        : r.marketableUntil
+          ? t('crops.form.varietyPhasingOut', { number: r.registrationNumber, date: fmt.date(r.marketableUntil) })
+          : r.conservationRegion
+            ? t('crops.form.varietyConservation', { number: r.registrationNumber, region: r.conservationRegion })
+            : t('crops.form.varietyApproved', { number: r.registrationNumber, date: fmt.date(r.approvedOn) })
+    return [o.used ? t('crops.form.varietyUsed') : null, register].filter(Boolean).join(' · ') || undefined
   }
+  const registeredCount = registered.data?.length ?? 0
+  const hasEu = registered.data?.some((r) => r.source === 'eu')
   return (
     <div className="grid sm:grid-cols-2 gap-4">
       <ComboBox label={t('crops.form.crop')} isRequired items={crops} value={value.cropId} onChange={(v) => onChange({ ...value, cropId: v ? String(v) : null, varietyName: '' })} placeholder={t('crops.form.searchCrops')}>
@@ -412,12 +425,13 @@ function CycleFields({ value, onChange, crops, showArea }: { value: CycleForm; o
       <ComboBox
         label={t('crops.form.variety')}
         allowsCustomValue
-        items={varietyOptions}
+        items={shownVarieties}
+        defaultFilter={() => true}
         inputValue={value.varietyName}
         onInputChange={(v) => set('varietyName', v)}
         isDisabled={!value.cropId}
         placeholder={t('crops.form.varietyPlaceholder')}
-        description={registered.data?.length ? t('crops.form.varietyRegisteredHint', { count: registered.data.length }) : undefined}
+        description={registeredCount ? t(hasEu ? 'crops.form.varietyRegisteredEuHint' : 'crops.form.varietyRegisteredHint', { count: registeredCount }) : undefined}
       >
         {(o) => (
           <Option id={o.key} textValue={o.name} description={describeVariety(o)}>
