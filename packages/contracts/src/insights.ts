@@ -75,7 +75,8 @@ export interface WeatherForecast {
 // Satellite monitoring
 // ---------------------------------------------------------------------------
 
-export const VEGETATION_INDICES = ['ndvi', 'ndre', 'ndmi', 'ndwi', 'evi', 'savi'] as const;
+/** Indices computed per field and acquisition (backend/agmeo-geo, agmeo_geo/sources.py INDICES). */
+export const VEGETATION_INDICES = ['ndvi', 'ndre', 'ndmi', 'evi', 'bsi', 'ndti'] as const;
 export type VegetationIndex = (typeof VEGETATION_INDICES)[number];
 
 /**
@@ -83,7 +84,7 @@ export type VegetationIndex = (typeof VEGETATION_INDICES)[number];
  * colour stop, at or above `max` the last. Single-hue sequential ramps. Mirrored by the
  * tile server in backend/agmeo-geo (agmeo_geo/colormaps.py); keep both in sync.
  */
-export const INDEX_SCALES: Record<'ndvi' | 'ndre' | 'ndmi', { label: string; description: string; min: number; max: number; stops: string[] }> = {
+export const INDEX_SCALES: Record<VegetationIndex, { label: string; description: string; min: number; max: number; stops: string[] }> = {
   ndvi: {
     label: 'NDVI',
     description: 'Greenness / vigour',
@@ -105,6 +106,27 @@ export const INDEX_SCALES: Record<'ndvi' | 'ndre' | 'ndmi', { label: string; des
     max: 0.5,
     stops: ['#e7f0f8', '#b5d0e8', '#76a9d3', '#3a78b2', '#164a7e'],
   },
+  evi: {
+    label: 'EVI',
+    description: 'Vigour, saturates less in dense canopies',
+    min: 0.1,
+    max: 0.8,
+    stops: ['#eef4e0', '#c3dfa5', '#86bd67', '#458f3c', '#1a5a1f'],
+  },
+  bsi: {
+    label: 'BSI',
+    description: 'Bare soil',
+    min: -0.3,
+    max: 0.3,
+    stops: ['#f5efe6', '#e2c9a6', '#c49a64', '#94683a', '#5c3d1e'],
+  },
+  ndti: {
+    label: 'NDTI',
+    description: 'Crop residue on bare soil',
+    min: 0,
+    max: 0.3,
+    stops: ['#f6f3e1', '#e6dba3', '#c8b25f', '#958033', '#5e5119'],
+  },
 }
 
 /**
@@ -118,7 +140,7 @@ export const RELATIVE_SCALE = {
 } as const
 
 /** Raster layers of an acquisition: an index, or true colour. */
-export const IMAGERY_LAYERS = ['ndvi', 'ndre', 'ndmi', 'rgb'] as const
+export const IMAGERY_LAYERS = [...VEGETATION_INDICES, 'rgb'] as const
 export type ImageryLayer = (typeof IMAGERY_LAYERS)[number]
 export type ImageryStretch = 'absolute' | 'relative'
 

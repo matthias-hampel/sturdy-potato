@@ -3,7 +3,9 @@
 Layout, one directory per downloaded product (catalogue UUID):
 
     <archive>/derived/products/<uuid>/ndvi-10m.tif       NDVI on the native 10 m grid
+    <archive>/derived/products/<uuid>/evi-10m.tif        EVI on the native 10 m grid
     <archive>/derived/products/<uuid>/indices-20m.tif    NDRE, NDMI on the 20 m grid
+    <archive>/derived/products/<uuid>/soil-20m.tif       BSI, NDTI on the 20 m grid
     <archive>/derived/products/<uuid>/manifest.json      written last; its presence means complete
 
 Products are processed on the full tile (no regional boundary mask), so parcel edges near the
@@ -27,18 +29,33 @@ MANIFEST_VERSION = 1
 ASSETS = [
     # (file name, indices, resolution in m)
     ("ndvi-10m.tif", ["NDVI"], 10),
+    ("evi-10m.tif", ["EVI"], 10),
     ("indices-20m.tif", ["NDRE", "NDMI"], 20),
+    ("soil-20m.tif", ["BSI", "NDTI"], 20),
 ]
+# Bumped whenever ASSETS changes. Part of the processing version, so older manifests are
+# re-derived (existing asset files are kept) and agmeo-geo recomputes their observations.
+ASSETS_VERSION = 2
+PROCESSING_VERSION = f"s2-indices-{VERSION}/assets-{ASSETS_VERSION}"
 
 
 def product_dir(root, product_id):
     return Path(root) / "derived" / "products" / product_id
 
 
+def current(directory):
+    """Whether the product has a manifest of the current processing version."""
+    try:
+        manifest = json.loads((directory / "manifest.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return manifest.get("processing_version") == PROCESSING_VERSION
+
+
 def pending(db, root, limit):
-    """Complete downloads without a manifest, newest acquisitions first."""
+    """Complete downloads without a current manifest, newest acquisitions first."""
     rows = db.execute("SELECT * FROM products WHERE status='complete' ORDER BY acquired DESC").fetchall()
-    return [row for row in rows if not (product_dir(root, row["id"]) / "manifest.json").exists()][:limit]
+    return [row for row in rows if not current(product_dir(root, row["id"]))][:limit]
 
 
 def footprint(row):
@@ -94,7 +111,7 @@ def derive_product(row, root, cloud_buffer=300):
         "acquired_at": row["acquired"],
         "footprint": area.__geo_interface__,
         "clear_fraction": round(clear, 4),
-        "processing_version": f"s2-indices-{VERSION}",
+        "processing_version": PROCESSING_VERSION,
         "cloud_buffer_m": cloud_buffer,
         "assets": assets,
         "created_at": datetime.now(UTC).isoformat(),

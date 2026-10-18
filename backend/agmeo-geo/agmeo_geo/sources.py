@@ -1,6 +1,6 @@
 """Readers that put one Sentinel-2 acquisition onto a field grid.
 
-Two sources produce the same result (a clear-sky mask and NDVI/NDRE/NDMI on the field's
+Two sources produce the same result (a clear-sky mask and the ``INDICES`` on the field's
 10 m grid):
 
 * ``EarthSearchScene``: an L2A item of Earth Search's ``sentinel-2-c1-l2a`` collection,
@@ -31,8 +31,16 @@ log = logging.getLogger("agmeo_geo.sources")
 SCL_VALID = [4, 5, 6]
 SCL_CLOUD = [3, 8, 9, 10]
 # Earth Search asset keys for the bands the indices need.
-BANDS = {"red": "B04", "nir": "B08", "rededge1": "B05", "nir08": "B8A", "swir16": "B11"}
-INDICES = ("ndvi", "ndre", "ndmi")
+BANDS = {
+    "blue": "B02",
+    "red": "B04",
+    "nir": "B08",
+    "rededge1": "B05",
+    "nir08": "B8A",
+    "swir16": "B11",
+    "swir22": "B12",
+}
+INDICES = ("ndvi", "ndre", "ndmi", "evi", "bsi", "ndti")
 
 # Remote COG access: no directory listings, merged range requests, HTTP/2, anonymous S3.
 GDAL_ENV = {
@@ -52,6 +60,21 @@ def _nd(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     with np.errstate(divide="ignore", invalid="ignore"):
         total = a + b
         return np.where(total > 0, (a - b) / total, np.nan)
+
+
+def index_layers(r: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    """The INDICES from BOA reflectance keyed like BANDS; formulas as in sentinel-archive."""
+    with np.errstate(divide="ignore", invalid="ignore"):
+        evi_denominator = r["nir"] + 6 * r["red"] - 7.5 * r["blue"] + 1
+        evi = np.where(np.abs(evi_denominator) > 1e-8, 2.5 * (r["nir"] - r["red"]) / evi_denominator, np.nan)
+    return {
+        "ndvi": _nd(r["nir"], r["red"]),
+        "ndre": _nd(r["nir08"], r["rededge1"]),
+        "ndmi": _nd(r["nir"], r["swir16"]),
+        "evi": evi,
+        "bsi": _nd(r["swir16"] + r["red"], r["nir"] + r["blue"]),
+        "ndti": _nd(r["swir16"], r["swir22"]),
+    }
 
 
 def _warp(dataset, grid: FieldGrid, resampling: Resampling) -> np.ndarray:
@@ -154,11 +177,7 @@ class EarthSearchScene:
 
     def indices(self, grid: FieldGrid, clear: np.ndarray) -> dict[str, np.ndarray]:
         r = {key: self._reflectance(key, grid) for key in BANDS}
-        layers = {
-            "ndvi": _nd(r["nir"], r["red"]),
-            "ndre": _nd(r["nir08"], r["rededge1"]),
-            "ndmi": _nd(r["nir"], r["swir16"]),
-        }
+        layers = index_layers(r)
         return {name: np.where(clear, layer, np.nan) for name, layer in layers.items()}
 
     def rgb(self, grid: FieldGrid) -> np.ndarray | None:

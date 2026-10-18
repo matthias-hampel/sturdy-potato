@@ -2,6 +2,8 @@
 
 A job per field boundary version (``field_imagery_jobs``) backfills every acquisition since
 ``Settings.history_from``; later runs of the same job only look for newer acquisitions.
+A job last finished with an older ``PROCESSING_VERSION`` is queued again and rescans its
+whole history, so a version bump backfills every field.
 Jobs are processed in batches, acquisition by acquisition: all queued fields covered by an
 acquisition are read from the same open datasets, so neighbouring fields share the fetched
 COG blocks. Per field, the cloud mask is read first and the bands only when enough of the
@@ -30,7 +32,8 @@ from .stac import search
 
 log = logging.getLogger("agmeo_geo.history")
 
-SCENE_VERSION = "es-c1/indices-1"
+# indices-2: EVI, BSI and NDTI added.
+SCENE_VERSION = "es-c1/indices-2"
 PROCESSING_VERSION = f"{SCENE_VERSION}/{OBS_VERSION}"
 # Late-arriving items: incremental runs look back this far before covered_until.
 LOOKBACK = timedelta(days=10)
@@ -44,6 +47,7 @@ class Job:
     date_from: date
     covered_until: date | None
     scenes_done: int
+    processing_version: str | None = None
     pending: int = 0
     failed_from: date | None = None
 
@@ -66,17 +70,18 @@ def ensure_jobs(conn: psycopg.Connection, settings: Settings, field_id: str | No
 
 
 def requeue(conn: psycopg.Connection, startup: bool = False) -> int:
-    """Queues finished jobs for newer acquisitions, failed ones for a retry, and (at startup)
-    jobs that were running when the worker stopped."""
+    """Queues finished jobs for newer acquisitions or an outdated processing version, failed
+    ones for a retry, and (at startup) jobs that were running when the worker stopped."""
     rows = conn.execute(
         """
         UPDATE field_imagery_jobs SET status = 'queued'
-        WHERE (status = 'finished' AND (covered_until IS NULL OR covered_until < current_date))
+        WHERE (status = 'finished' AND (covered_until IS NULL OR covered_until < current_date
+                                        OR processing_version IS DISTINCT FROM %(version)s))
            OR (status = 'failed' AND updated_at < now() - interval '1 hour')
            OR (status = 'running' AND %(startup)s)
         RETURNING id
         """,
-        {"startup": startup},
+        {"startup": startup, "version": PROCESSING_VERSION},
     ).fetchall()
     conn.commit()
     return len(rows)
@@ -86,7 +91,7 @@ def claim(conn: psycopg.Connection) -> list[Job]:
     rows = conn.execute(
         """
         SELECT j.id, j.field_id, j.organization_id, j.geometry_version_id, j.date_from, j.covered_until,
-               j.scenes_done, ST_AsGeoJSON(g.geometry) AS geometry
+               j.scenes_done, j.processing_version, ST_AsGeoJSON(g.geometry) AS geometry
         FROM field_imagery_jobs j
         JOIN field_current_geometry g ON g.id = j.geometry_version_id
         JOIN fields f ON f.id = j.field_id AND f.status = 'active'
@@ -115,6 +120,7 @@ def claim(conn: psycopg.Connection) -> list[Job]:
             date_from=r["date_from"],
             covered_until=r["covered_until"],
             scenes_done=r["scenes_done"],
+            processing_version=r["processing_version"],
         )
         for r in rows
     ]
@@ -164,7 +170,8 @@ def register(conn: psycopg.Connection, item: StacItem, collection: str) -> str:
         VALUES (%(id)s, %(platform)s, 'L2A', %(acquired)s, %(cloud)s,
                 ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(%(footprint)s), 4326)),
                 %(version)s, %(refs)s, %(tile)s, %(clear)s, 'earth-search')
-        ON CONFLICT (scene_id) DO UPDATE SET asset_refs = EXCLUDED.asset_refs
+        ON CONFLICT (scene_id) DO UPDATE SET
+          asset_refs = EXCLUDED.asset_refs, processing_version = EXCLUDED.processing_version
         RETURNING id
         """,
         {
@@ -197,7 +204,8 @@ def run_batch(settings: Settings, stop: threading.Event | None = None) -> int:
         plan: dict[str, tuple[StacItem, list[Job]]] = {}
 
         def find(job: Job):
-            start = max(job.date_from, job.covered_until - LOOKBACK) if job.covered_until else job.date_from
+            incremental = job.covered_until and job.processing_version == PROCESSING_VERSION
+            start = max(job.date_from, job.covered_until - LOOKBACK) if incremental else job.date_from
             if stop is not None and stop.is_set():
                 return None
             return search(
@@ -299,10 +307,11 @@ def run_batch(settings: Settings, stop: threading.Event | None = None) -> int:
             conn.execute(
                 """
                 UPDATE field_imagery_jobs SET status = 'finished', finished_at = now(), covered_until = %s,
-                  error = %s WHERE id = %s
+                  processing_version = %s, error = %s WHERE id = %s
                 """,
                 (
                     covered,
+                    PROCESSING_VERSION,
                     "Some acquisitions could not be read; retrying later" if job.failed_from else None,
                     job.id,
                 ),

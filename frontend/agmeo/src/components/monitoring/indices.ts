@@ -1,4 +1,4 @@
-import { INDEX_SCALES, RELATIVE_SCALE, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
+import { IMAGERY_LAYERS, INDEX_SCALES, RELATIVE_SCALE, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
 import { t } from '#/i18n'
 
 export type ShownIndex = keyof typeof INDEX_SCALES
@@ -19,6 +19,9 @@ export const INDEX_INFO: Record<ShownIndex, { readonly label: string; readonly d
   ndvi: info('ndvi', [0, 1]),
   ndre: info('ndre', [0, 0.6]),
   ndmi: info('ndmi', [-0.2, 0.6]),
+  evi: info('evi', [0, 1]),
+  bsi: info('bsi', [-0.5, 0.3]),
+  ndti: info('ndti', [-0.1, 0.5]),
 }
 
 /** Translated `INDEX_INFO` entry. */
@@ -44,7 +47,7 @@ export const gradient = (index: ShownIndex) => `linear-gradient(to right, ${INDE
 
 export const relativeGradient = `linear-gradient(to right, ${RELATIVE_SCALE.stops.join(', ')})`
 
-export const LAYERS: ImageryLayer[] = ['ndvi', 'ndre', 'ndmi', 'rgb']
+export const LAYERS: readonly ImageryLayer[] = IMAGERY_LAYERS
 export const layerLabel = (layer: ImageryLayer) => (layer === 'rgb' ? t('monitoring.layer.rgb') : layer.toUpperCase())
 
 /** Translated short description of an index's display scale (`INDEX_SCALES[index].description`). */

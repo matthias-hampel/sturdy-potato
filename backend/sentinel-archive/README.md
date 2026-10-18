@@ -189,9 +189,12 @@ diagnose plant stress.
 uv run sentinel-archive derive --limit 10
 ```
 
-For each downloaded product without derived output (newest first), `derive` writes
-`<archive>/derived/products/<uuid>/` with `ndvi-10m.tif` (NDVI, native 10 m),
-`indices-20m.tif` (NDRE, NDMI, 20 m) and, last, `manifest.json`. The manifest is the
+For each downloaded product without current derived output (newest first), `derive` writes
+`<archive>/derived/products/<uuid>/` with `ndvi-10m.tif` (NDVI, native 10 m), `evi-10m.tif`
+(EVI, native 10 m), `indices-20m.tif` (NDRE, NDMI, 20 m), `soil-20m.tif` (BSI, NDTI, 20 m)
+and, last, `manifest.json`. A manifest of an older processing version (`ASSETS_VERSION` in
+`derive.py`, bumped whenever the asset list changes) is re-derived; asset files that already
+exist are kept, so only new assets are computed. The manifest is the
 contract read by `backend/agmeo-geo`: product id and name, platform, tile, acquisition
 time, footprint, the share of the footprint left after masking (`clear_fraction`),
 processing version, cloud buffer, and the asset paths and bands. Products are processed

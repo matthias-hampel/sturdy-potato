@@ -80,7 +80,8 @@ def parser():
         help="Also mask pixels within this many metres of cloud/shadow (haze); 0 disables",
     )
     derive = commands.add_parser(
-        "derive", help="Compute per-scene index products (NDVI 10 m, NDRE/NDMI 20 m) with a manifest"
+        "derive",
+        help="Compute per-scene index products (NDVI/EVI 10 m, NDRE/NDMI/BSI/NDTI 20 m) with a manifest",
     )
     derive.add_argument("--limit", type=positive, default=10)
     derive.add_argument("--cloud-buffer", type=float, default=300)

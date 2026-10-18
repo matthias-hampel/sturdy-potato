@@ -358,12 +358,27 @@ def test_derive_writes_assets_and_manifest(tmp_path):
     assert len(rows) == 1
     manifest = derive.derive_product(rows[0], archive, cloud_buffer=0)
     directory = derive.product_dir(archive, rows[0]["id"])
-    assert set(manifest["assets"]) == {"ndvi", "ndre", "ndmi"}
+    assert set(manifest["assets"]) == {"ndvi", "evi", "ndre", "ndmi", "bsi", "ndti"}
+    assert manifest["assets"]["ndti"] == {"path": "soil-20m.tif", "band": 2, "resolution_m": 20}
     assert manifest["assets"]["ndvi"] == {"path": "ndvi-10m.tif", "band": 1, "resolution_m": 10}
     assert manifest["tile"] == "32UNC" and manifest["platform"] == "S2A"
     # One cloud pixel and one nodata block out of a fully covered footprint.
     assert 0.8 < manifest["clear_fraction"] < 1
     with rasterio.open(directory / "indices-20m.tif") as result:
         assert result.descriptions == ("NDRE", "NDMI")
+    with rasterio.open(directory / "soil-20m.tif") as result:
+        assert result.descriptions == ("BSI", "NDTI")
     assert json.loads((directory / "manifest.json").read_text())["product_id"] == rows[0]["id"]
+    assert derive.pending(db, archive, 10) == []
+
+    # A manifest of an earlier processing version is re-derived; existing asset files are kept.
+    stale = json.loads((directory / "manifest.json").read_text())
+    stale["processing_version"] = "s2-indices-2"
+    (directory / "manifest.json").write_text(json.dumps(stale))
+    (directory / "soil-20m.tif").unlink()
+    ndvi_mtime = (directory / "ndvi-10m.tif").stat().st_mtime_ns
+    assert len(derive.pending(db, archive, 10)) == 1
+    derive.derive_product(rows[0], archive, cloud_buffer=0)
+    assert (directory / "soil-20m.tif").exists()
+    assert (directory / "ndvi-10m.tif").stat().st_mtime_ns == ndvi_mtime
     assert derive.pending(db, archive, 10) == []

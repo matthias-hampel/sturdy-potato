@@ -1,4 +1,4 @@
-import type { CostEntry, CropCycle, Farm, Field, FieldGeometryVersion, ImageryLayer, ImageryStretch, Operation } from '@agmeo/contracts'
+import { IMAGERY_LAYERS, type CostEntry, type CropCycle, type Farm, type Field, type FieldGeometryVersion, type ImageryLayer, type ImageryStretch, type Operation } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Shapes, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -35,7 +35,7 @@ const TABS = ['overview', 'parts', 'crops', 'soil', 'operations', 'satellite', '
 export const Route = createFileRoute('/o/$orgId/fields/$fieldId')({
   validateSearch: z.object({
     tab: z.enum(TABS).optional(),
-    index: z.enum(['ndvi', 'ndre', 'ndmi', 'rgb']).optional(),
+    index: z.enum(IMAGERY_LAYERS).optional(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   }),
   component: FieldPage,

@@ -5,6 +5,9 @@ SCALES = {
     "ndvi": (0.2, 0.9, ["#eef4e0", "#c3dfa5", "#86bd67", "#458f3c", "#1a5a1f"]),
     "ndre": (0.1, 0.6, ["#eef4e0", "#c3dfa5", "#86bd67", "#458f3c", "#1a5a1f"]),
     "ndmi": (-0.2, 0.5, ["#e7f0f8", "#b5d0e8", "#76a9d3", "#3a78b2", "#164a7e"]),
+    "evi": (0.1, 0.8, ["#eef4e0", "#c3dfa5", "#86bd67", "#458f3c", "#1a5a1f"]),
+    "bsi": (-0.3, 0.3, ["#f5efe6", "#e2c9a6", "#c49a64", "#94683a", "#5c3d1e"]),
+    "ndti": (0.0, 0.3, ["#f6f3e1", "#e6dba3", "#c8b25f", "#958033", "#5e5119"]),
 }
 
 # Within-field contrast and productivity: below the field's typical value (brown), around it

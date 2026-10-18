@@ -10,7 +10,7 @@ sentinel-archive derive (local COGs) ──┤
                                        ▼
 agmeo-geo worker ◀── NATS agmeo.events.field.{created,geometry_updated}
    ├─ field_imagery_jobs: backfill since 2018 per field boundary, then new acquisitions
-   ├─ field_rasters: NDVI/NDRE/NDMI (+ true colour) on the field's own 10 m grid
+   ├─ field_rasters: NDVI/NDRE/NDMI/EVI/BSI/NDTI (+ true colour) on the field's own 10 m grid
    ├─ field_observations: field statistics per acquisition
    └─ productivity_analyses → zonings (3/5/7) → zoning_zones
 
@@ -55,6 +55,9 @@ role), `NATS_URL`, `SENTINEL_ARCHIVE` (default: the `archive` in
   around SCL 3/8/9/10 removed as haze.
 - After a run, `covered_until` is set; the scan re-queues finished jobs for newer
   acquisitions (looking back 10 days for late items). Unreadable acquisitions are retried.
+- A job records the processing version it finished with. After a version bump
+  (`SCENE_VERSION` in `history.py`) every job is queued again and rescans its whole history;
+  observations of the old version are replaced acquisition by acquisition.
 
 ## Field grid and statistics
 
@@ -62,8 +65,8 @@ role), `NATS_URL`, `SENTINEL_ARCHIVE` (default: the `archive` in
   aligned to multiples of 10 m, field bounds + 20 m. Field rasters are int16 × 10⁻⁴ GeoTIFFs.
 - Statistics use pixel centres inside the boundary shrunk by 10 m (small fields keep the
   full boundary). An observation is `valid` with ≥ 65 % clear pixels and ≥ 20 pixels,
-  otherwise `insufficient_coverage`. Processing versions `es-c1/indices-1/zonal-2` (Earth
-  Search) and `s2-indices-2/zonal-2` (archive).
+  otherwise `insufficient_coverage`. Processing versions `es-c1/indices-2/zonal-2` (Earth
+  Search) and `s2-indices-2/assets-2/zonal-2` (archive).
 
 ## Productivity zones
 

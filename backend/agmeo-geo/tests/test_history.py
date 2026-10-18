@@ -102,7 +102,7 @@ def test_parse_item_reads_scale_and_offset():
         },
         "assets": {
             key: {"href": f"https://x/{key}.tif", "raster:bands": [{"scale": 0.0001, "offset": -0.1}]}
-            for key in ("red", "nir", "rededge1", "nir08", "swir16", "scl", "visual")
+            for key in ("blue", "red", "nir", "rededge1", "nir08", "swir16", "swir22", "scl", "visual")
         },
     }
     parsed = parse_item(feature)

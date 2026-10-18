@@ -1,4 +1,4 @@
-import { FIELD_PART_USAGE_COLORS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
+import { FIELD_PART_USAGE_COLORS, IMAGERY_LAYERS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
 import type { FeatureCollection } from 'geojson'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, Download, Map as MapIcon, Minus, Plus, Upload } from 'lucide-react'
@@ -26,7 +26,7 @@ type Layer = 'crops' | 'imagery'
 export const Route = createFileRoute('/o/$orgId/fields/')({
   validateSearch: z.object({
     layer: z.enum(['crops', 'imagery']).optional().catch(undefined),
-    index: z.enum(['ndvi', 'ndre', 'ndmi', 'rgb']).optional(),
+    index: z.enum(IMAGERY_LAYERS).optional(),
   }),
   component: FieldsPage,
 })
