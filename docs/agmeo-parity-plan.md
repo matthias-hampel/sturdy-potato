@@ -276,9 +276,17 @@ Done:
   code overrides and 170 N, download with upload guide and export history); Agrarantrag and land-use codes
   moved to their own tab; code lists also serve the ENNI and ENDO-SH Fruchtart catalogues.
 
-Open in phase 1: machinery details (machine vs implement, SCI and irrigation data,
-purchase and depreciation), operator details, operation action catalogue (diesel and hours per ha),
-field-table column configuration, PSM record after EU 2023/564.
+- **Machinery and actions** (000036): machines and implements with the reference's categories, mount
+  types and statuses; masses, axle share and tyres (SCI-ready badge); purchase, depreciation, financing,
+  TÜV and insurance dates; irrigation data; default operator; archive; make/model lookup in the machinery
+  catalogue taken from the reference (3,049 machines, 10,376 implements). Operators gain role, staff
+  number and notes. Organization action catalogue with diesel and hours per hectare and default machine,
+  implement and operator; operations planned from an action take them over; an operation's diesel per
+  hectare drives its diesel emissions.
+- **Crop table columns**: column picker with quick views (overview, planning, application, all),
+  remembered per browser; new columns parcel number, field group, usage and land-use code.
+
+Open in phase 1: PSM record after EU 2023/564 (in progress on its own branch).
 
 Differences from the reference:
 - BESyD/ST: grazing is not modelled (IMPWEIDE stays empty); ST Phosphorgebiet is always false as in the
@@ -288,3 +296,9 @@ Differences from the reference:
   no "request a format" button for unsupported states; the Düngebericht PDF is the printable
   Düngedokumentation; one farm address serves as Ansprechpartner and Betriebsstätte; Boden-Klima-Raum and
   Naturraum get no preselected default; 170 N data are saved by their own editor.
+- Action catalogue: the reference's default actions come with KTBL diesel and hours per hectare from its
+  article database, which is not in the repository; here each organization builds its own catalogue.
+- Machinery: `equipment.kind` stays as a coarse group derived from the category (icons, older code); no
+  water sources, tyre history, telemetry or John Deere sync (integrations are out of scope).
+- Crop table: data columns of later phases (BBCH, GDD, weather windows, NDVI/LAI, rain) are not there yet;
+  field groups are a column with a filter rather than row grouping.
