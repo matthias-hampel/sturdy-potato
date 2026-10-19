@@ -537,7 +537,7 @@ export class NutrientsService {
   // ---------------------------------------------------------------------------
 
   /** Fertilizer lines treated on fields, with kg/ha nutrients per line (per treated hectare). */
-  private async fertilizationLines(trx: Trx, q: { fieldId?: string; cropCycleIds?: string[]; operationIds?: string[]; from?: string; to?: string; statuses: string[] }) {
+  async fertilizationLines(trx: Trx, q: { fieldId?: string; cropCycleIds?: string[]; operationIds?: string[]; from?: string; to?: string; statuses: string[] }) {
     const day = sql<string>`coalesce((o.performed_at AT TIME ZONE 'Europe/Berlin')::date, o.planned_on)`;
     let query = trx
       .selectFrom('operations as o')

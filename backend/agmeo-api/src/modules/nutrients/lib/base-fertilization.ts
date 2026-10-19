@@ -128,3 +128,17 @@ export function baseFertilizationNeed(
     row('mgo', analysis?.mgoMg100g != null ? mgClass(analysis.mgoMg100g, soil) : null, MG_FACTOR),
   ];
 }
+
+/** Whether the crop has a by-product (straw, leaves) whose removal can be chosen. */
+export const hasByProduct = (cropCode: string) => !!CROP_REMOVAL[cropCode]?.byProduct && CROP_REMOVAL[cropCode].ratio > 0;
+
+/**
+ * DüV §6 P2O5 balance over a window of harvest years (reference baseFertilization 6-year balance):
+ * supply and removal per hectare summed, the ratio in % and compliance (at most 120 %).
+ */
+export function p2o5Balance(years: { year: number; supply: number; removal: number | null }[]) {
+  const supply = r1(years.reduce((s, y) => s + y.supply, 0));
+  const removal = r1(years.reduce((s, y) => s + (y.removal ?? 0), 0));
+  const ratioPct = removal > 0 ? Math.round((supply / removal) * 100) : null;
+  return { supply, removal, ratioPct, compliant: ratioPct == null || ratioPct <= 120, yearsWithYield: years.filter((y) => y.removal != null && y.removal > 0).length };
+}

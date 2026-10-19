@@ -152,6 +152,7 @@ export interface CropCycles {
   film_or_fleece: Generated<boolean>;
   id: Generated<string>;
   land_use_code: string | null;
+  lime_requirement_dt_cao: Numeric | null;
   multiplication_generation: string | null;
   notes: string | null;
   organization_id: string;

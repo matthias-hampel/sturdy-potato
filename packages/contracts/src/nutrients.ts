@@ -183,3 +183,63 @@ export interface ApplyStrategyResult {
   canceled: number;
   skipped: { cropCycleId: string; reason: 'no_need' | 'no_farm' }[];
 }
+
+// ---------------------------------------------------------------------------
+// Base fertilization per crop (reference base-fertilization page)
+// ---------------------------------------------------------------------------
+
+export interface BaseNutrientRow {
+  nutrient: 'p2o5' | 'k2o' | 'mgo';
+  /** Soil content in mg/100 g of the latest basic analysis. */
+  soilMg100g: number | null;
+  contentClass: 'A' | 'B' | 'C' | 'D' | 'E' | null;
+  factor: number | null;
+  removal: number;
+  /** kg/ha; null without a soil value. */
+  need: number | null;
+  /** kg/ha of fertilizations done or running. */
+  delivered: number;
+  /** kg/ha of planned fertilizations. */
+  planned: number;
+  /** need − delivered (positive: still to apply). */
+  balance: number | null;
+}
+
+/** DüV §6 P2O5 balance of a field over six harvest years (supply of documented fertilization against removal). */
+export interface P2o5Balance {
+  fromYear: number;
+  toYear: number;
+  years: { year: number; supply: number; removal: number | null }[];
+  supply: number;
+  removal: number;
+  /** supply ÷ removal in %; null without removal. */
+  ratioPct: number | null;
+  /** At most 120 % of the removal. */
+  compliant: boolean;
+  yearsWithYield: number;
+}
+
+export interface CycleBaseFertilization {
+  cropCycleId: string;
+  fieldId: string;
+  soil: { sampledOn: string | null; ph: number | null; phMethod: 'cacl2' | 'h2o' | 'kcl' | null; humusPct: number | null; texture: string | null };
+  /** Documented yield, else the expected one (t/ha). */
+  yieldTHa: number | null;
+  yieldSource: 'harvest' | 'expected' | null;
+  strawRemoved: boolean;
+  hasStraw: boolean;
+  /** dt CaO/ha over three years, from pH, soil class and humus. */
+  limeComputedDtCaO: number | null;
+  limeOverrideDtCaO: number | null;
+  nutrients: BaseNutrientRow[];
+  /** kg CaO/ha of fertilizations done or running, and planned. */
+  caoDelivered: number;
+  caoPlanned: number;
+  p2o5Balance: P2o5Balance;
+}
+
+export const BaseFertilizationSettingsInput = z.object({
+  strawRemoved: z.boolean().optional(),
+  limeRequirementDtCaO: z.number().min(0).max(500).nullable().optional(),
+});
+export type BaseFertilizationSettingsInput = z.input<typeof BaseFertilizationSettingsInput>;

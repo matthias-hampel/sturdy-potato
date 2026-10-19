@@ -50,6 +50,8 @@ import { NutrientsController } from './modules/nutrients/nutrients.controller.js
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
 import { NitrogenController } from './modules/nutrients/nitrogen.controller.js';
 import { NitrogenService } from './modules/nutrients/nitrogen.service.js';
+import { BaseFertilizationController } from './modules/nutrients/base-fertilization.controller.js';
+import { BaseFertilizationService } from './modules/nutrients/base-fertilization.service.js';
 import { ExplainerService } from './modules/recommendations/explainer.service.js';
 import { RecommendationsController } from './modules/recommendations/recommendations.controller.js';
 import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
@@ -119,6 +121,7 @@ export const DOMAIN_SERVICES = [
   PsmRecordService,
   NutrientsService,
   NitrogenService,
+  BaseFertilizationService,
   RegulatoryService,
   EconomicsService,
   ProfitabilityService,
@@ -176,6 +179,7 @@ export const DOMAIN_SERVICES = [
     PsmRecordController,
     NutrientsController,
     NitrogenController,
+    BaseFertilizationController,
     RegulatoryController,
     EconomicsController,
     EconomicsInsightsController,

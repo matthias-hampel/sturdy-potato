@@ -1,5 +1,5 @@
 import { availableN, soilClassOf } from '@agmeo/contracts';
-import { baseFertilizationNeed, kClass, limeRequirement, mgClass, P2O5_TO_P, pClass, phClass } from './base-fertilization.js';
+import { baseFertilizationNeed, kClass, limeRequirement, mgClass, P2O5_TO_P, p2o5Balance, pClass, phClass } from './base-fertilization.js';
 import { closedPeriod, inClosedPeriod, restrictedByClosedPeriod } from './closed-periods.js';
 import { catchCropDeduction, nitrogenNeed, type NNeedInput } from './duev.js';
 
@@ -111,3 +111,15 @@ describe('closed periods and available N', () => {
     expect(availableN('can', 54, 27, false)).toBe(54);
   });
 });
+
+describe('DüV §6 P2O5 balance', () => {
+  it('relates six years of supply to removal', () => {
+    const years = [2022, 2023, 2024, 2025, 2026, 2027].map((year, i) => ({ year, supply: 60, removal: i === 5 ? null : 64 }))
+    expect(p2o5Balance(years)).toEqual({ supply: 360, removal: 320, ratioPct: 113, compliant: true, yearsWithYield: 5 })
+  })
+
+  it('flags more than 120 % and stays compliant without removal', () => {
+    expect(p2o5Balance([{ year: 2026, supply: 100, removal: 80 }])).toMatchObject({ ratioPct: 125, compliant: false })
+    expect(p2o5Balance([{ year: 2026, supply: 40, removal: null }])).toMatchObject({ ratioPct: null, compliant: true, yearsWithYield: 0 })
+  })
+})
