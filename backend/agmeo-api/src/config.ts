@@ -69,6 +69,11 @@ export const config = {
     /** Open-Meteo subscription key: customer endpoints and the ERA5 archive for season backfills. Without it the free API is used (development only). */
     apiKey: env('OPEN_METEO_API_KEY', ''),
   },
+  // Address search for farms. The public Photon instance allows fair use only; self-host it for more load.
+  geocoding: {
+    photonUrl: env('PHOTON_URL', 'https://photon.komoot.io'),
+    userAgent: env('GEOCODING_USER_AGENT', 'agmeo (https://agvolution.com)'),
+  },
   // Language model that phrases the reasons of field recommendations. Without a key the
   // recommendations still work; the UI then shows the reasons from the evidence codes.
   openai: {

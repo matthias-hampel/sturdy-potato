@@ -17,7 +17,7 @@ interface Props {
   className?: string
 }
 
-/** Click the map to place the farm location; the current zoom becomes the farm's default map zoom. */
+/** Click the map to place the farm location; the current zoom becomes the farm's default map zoom. A location set from outside moves the map there. */
 export function LocationPicker({ value, zoom, onChange, onZoomChange, className }: Props) {
   const { containerRef, map } = useMap({ basemap: 'map', center: value ? [value.lng, value.lat] : undefined, zoom: value ? (zoom ?? 13) : undefined })
   const marker = useRef<Marker | null>(null)
@@ -25,11 +25,14 @@ export function LocationPicker({ value, zoom, onChange, onZoomChange, className 
   onChangeRef.current = onChange
   const onZoomChangeRef = useRef(onZoomChange)
   onZoomChangeRef.current = onZoomChange
+  // The location the map shows; a value set from outside (a chosen address) moves the map there.
+  const shown = useRef(value ?? null)
 
   useEffect(() => {
     if (!map) return
     const click = (e: MapMouseEvent) => {
-      onChangeRef.current({ lat: round(e.lngLat.lat), lng: round(e.lngLat.lng) })
+      shown.current = { lat: round(e.lngLat.lat), lng: round(e.lngLat.lng) }
+      onChangeRef.current(shown.current)
       if (map.getZoom() < MIN_FARM_ZOOM) map.easeTo({ center: e.lngLat, zoom: FARM_ZOOM })
       else onZoomChangeRef.current?.(roundZoom(map.getZoom()))
     }
@@ -50,10 +53,16 @@ export function LocationPicker({ value, zoom, onChange, onZoomChange, className 
     if (!value) {
       marker.current?.remove()
       marker.current = null
+      shown.current = null
       return
     }
     if (!marker.current) marker.current = new Marker({ color: '#3d6b2f' }).setLngLat([value.lng, value.lat]).addTo(map)
     else marker.current.setLngLat([value.lng, value.lat])
+    if (shown.current?.lat !== value.lat || shown.current?.lng !== value.lng) {
+      shown.current = value
+      map.flyTo({ center: [value.lng, value.lat], zoom: Math.max(map.getZoom(), FARM_ZOOM) })
+      map.once('moveend', () => onZoomChangeRef.current?.(roundZoom(map.getZoom())))
+    }
   }, [map, value])
 
   return (

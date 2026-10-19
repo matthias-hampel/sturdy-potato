@@ -11,6 +11,7 @@ import {
   ChevronsUpDown,
   ClipboardList,
   CloudSun,
+  FileUp,
   FlaskConical,
   FolderOpen,
   Grid2x2,
@@ -85,6 +86,10 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/economics', label: 'nav.economics', icon: BarChart3, permission: 'finance.read' },
       { to: '/o/$orgId/compliance', label: 'nav.compliance', icon: ShieldCheck },
     ],
+  },
+  {
+    title: 'nav.section.import',
+    items: [{ to: '/o/$orgId/import', label: 'nav.dataImport', icon: FileUp, permission: 'field.write' }],
   },
 ]
 

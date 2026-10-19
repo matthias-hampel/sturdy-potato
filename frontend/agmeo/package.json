@@ -33,6 +33,7 @@
     "@turf/helpers": "7.4.0",
     "@turf/simplify": "7.4.0",
     "fflate": "^0.8.3",
+    "but-unzip": "0.1.10",
     "i18next": "^26.4.7",
     "lucide-react": "^1.58.0",
     "maplibre-gl": "^6.14.0",

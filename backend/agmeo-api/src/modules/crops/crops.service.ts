@@ -93,6 +93,7 @@ export class CropsService {
         defaultSowingMd: r.default_sowing_md,
         defaultHarvestMd: r.default_harvest_md,
         eppoCode: r.eppo_code,
+        landUseCode: r.land_use_code,
       }));
     });
   }

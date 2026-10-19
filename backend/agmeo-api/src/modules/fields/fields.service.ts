@@ -1,21 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  CreateFieldInput,
-  Field,
-  FieldGeometry,
-  FieldGeometryVersion,
-  FieldOverlap,
-  GeometryValidation,
-  ImportFieldsInput,
-  ImportFieldsResult,
-  Tenure,
-  UpdateFieldGeometryInput,
-  UpdateFieldInput,
+import {
+  can,
+  type CreateFieldInput,
+  type Field,
+  type FieldGeometry,
+  type FieldGeometryVersion,
+  type FieldOverlap,
+  type GeometryValidation,
+  type ImportFieldsInput,
+  type ImportFieldsResult,
+  type Tenure,
+  type UpdateFieldGeometryInput,
+  type UpdateFieldInput,
 } from '@agmeo/contracts';
 import type { FeatureCollection, MultiPolygon } from 'geojson';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
-import { badRequest, notFound } from '../../core/errors.js';
+import { badRequest, forbidden, notFound } from '../../core/errors.js';
 import { diff, record } from '../../core/events.js';
 import { iso, round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
@@ -323,9 +324,29 @@ export class FieldsService {
   }
 
   /** Imports valid features and reports invalid ones; overlaps are warnings, not errors. */
+  /**
+   * Creates one field per valid feature. Features with a crop also get a planned main crop in
+   * `seasonId`, keeping the source's land-use code where it differs from the crop's default.
+   */
   import(ctx: Ctx, input: Out<typeof ImportFieldsInput>): Promise<ImportFieldsResult> {
     return this.db.run(ctx, async (trx) => {
-      const result: ImportFieldsResult = { created: [], errors: [], overlaps: [] };
+      const cropIds = [...new Set(input.features.flatMap((f) => (f.cropId ? [f.cropId] : [])))];
+      const defaultCodes = new Map<string, string | null>();
+      if (cropIds.length) {
+        if (!can(ctx.role, 'crop.write')) throw forbidden();
+        if (!input.seasonId) throw badRequest('season_required', 'Choose a season for the imported crops');
+        const season = await trx.selectFrom('growing_seasons').select('id').where('id', '=', input.seasonId).executeTakeFirst();
+        if (!season) throw notFound('Season');
+        const crops = await trx.selectFrom('crops').select(['id', 'land_use_code']).where('id', 'in', cropIds).execute();
+        if (crops.length !== cropIds.length) throw notFound('Crop');
+        for (const c of crops) defaultCodes.set(c.id, c.land_use_code);
+      }
+      const sourceCodes = [...new Set(input.features.flatMap((f) => (f.cropId && f.landUseCode ? [f.landUseCode] : [])))];
+      const knownCodes = new Set(
+        sourceCodes.length ? (await trx.selectFrom('land_use_codes').select('code').where('code', 'in', sourceCodes).execute()).map((r) => r.code) : [],
+      );
+
+      const result: ImportFieldsResult = { created: [], cropsAssigned: 0, errors: [], overlaps: [] };
       for (const [index, feature] of input.features.entries()) {
         const check = await this.validateIn(trx, feature.geometry);
         if (!check.valid) {
@@ -335,6 +356,34 @@ export class FieldsService {
         if (check.overlaps.length) result.overlaps.push({ name: feature.name, overlaps: check.overlaps });
         const id = await this.insert(trx, ctx, { ...feature, farmId: input.farmId }, 'import');
         result.created.push({ id, name: feature.name, areaHa: check.areaHa! });
+        if (feature.cropId && input.seasonId) {
+          // Codes outside the catalogue are dropped; the crop's default code applies then.
+          const code = feature.landUseCode && knownCodes.has(feature.landUseCode) ? feature.landUseCode : null;
+          const cycle = await trx
+            .insertInto('crop_cycles')
+            .values({
+              organization_id: ctx.orgId,
+              field_id: id,
+              season_id: input.seasonId,
+              crop_id: feature.cropId,
+              status: 'planned',
+              role: 'main',
+              land_use_code: code && code !== defaultCodes.get(feature.cropId) ? code : null,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await record(trx, ctx, {
+            entityType: 'crop_cycle',
+            entityId: cycle.id,
+            action: 'created',
+            changes: { fieldId: id, cropId: feature.cropId, seasonId: input.seasonId, source: 'import' },
+            event: {
+              type: 'crop_cycle.created',
+              payload: { cropCycleId: cycle.id, fieldId: id, fieldPartId: null, cropId: feature.cropId, seasonId: input.seasonId },
+            },
+          });
+          result.cropsAssigned += 1;
+        }
       }
       return result;
     });

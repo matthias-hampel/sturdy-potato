@@ -27,6 +27,8 @@ export interface Crop {
   defaultSowingMd: string | null;
   defaultHarvestMd: string | null;
   eppoCode: string | null;
+  /** Default land-use code (Nutzungscode) of the subsidy application. */
+  landUseCode: string | null;
 }
 
 export const CreateCropInput = z.object({
