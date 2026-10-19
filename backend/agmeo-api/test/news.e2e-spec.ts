@@ -41,7 +41,7 @@ describe('news', () => {
     await post(`${base}/operations`, { farmId: farm.id, type: 'sowing', title: 'Säen', plannedOn: day(3), fields: [{ fieldId: field.id }] }).expect(201)
     await post(`${base}/operations`, { farmId: farm.id, type: 'other', title: 'Weit weg', plannedOn: day(40), fields: [{ fieldId: field.id }] }).expect(201)
 
-    const items = (await http().get(`/v1${base}/news`).set(auth).expect(200)).body as { id: string; category: string; headline: { key: string; params: Record<string, number> }; body: { key: string }[]; priority: number }[]
+    const items = (await http().get(`/v1${base}/news`).set(auth).expect(200)).body as { id: string; category: string; headline: { key: string; params: Record<string, number> }; body: { key: string }[]; priority: number; validFrom: string }[]
     const tasks = items.find((i) => i.category === 'tasks')!
     expect(tasks.headline).toEqual({ key: 'tasks.headline', params: { overdue: 1, dueToday: 0, next7: 1 } })
     expect(tasks.priority).toBe(9)

@@ -19,3 +19,4 @@ export * from './files.js';
 export * from './psmRecord.js';
 export * from './ktbl.js';
 export * from './radar.js';
+export * from './modelServices.js';

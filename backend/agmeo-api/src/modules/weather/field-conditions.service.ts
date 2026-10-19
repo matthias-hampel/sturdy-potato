@@ -5,12 +5,14 @@
  * irrigation and trafficability actions combine per field.
  */
 import { Injectable } from '@nestjs/common';
-import type { FieldConditions, FieldTrafficability, SoilTexture } from '@agmeo/contracts';
+import type { ConditionDay, DiseaseKey, FieldConditions, FieldDiseaseRisk, FieldTrafficability, SoilTexture } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
 import { badRequest, notFound } from '../../core/errors.js';
 import { Database, type Trx } from '../../db/database.js';
-import { computeFieldConditionBars, computeFieldWaterBalance, computePhenology } from '../../models/index.js';
+import { CROP_DISEASES, type DiseaseTimeseries } from '../../models/disease/diseaseRisk.js';
+import { computeDiseaseRisk, computeFieldConditionBars, computeFieldWaterBalance, computePhenology } from '../../models/index.js';
+import { IsipClient, isipCropOfCode } from '../model-services/disease.js';
 import { evaluateFieldsForMachine } from '../../models/trafficability/index.js';
 import { projectFieldTrafficability } from '../../models/trafficability/rows.js';
 import type { SlimWeatherTimeseries, WeatherDay, WeatherHourlyTimeseries } from '../../models/types.js';
@@ -54,6 +56,9 @@ const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) 
 
 @Injectable()
 export class FieldConditionsService {
+  /** Only asked whether ISIP is configured; the worker fetches the disease risk. */
+  private readonly isip = new IsipClient();
+
   constructor(private readonly db: Database) {}
 
   conditions(ctx: Ctx, fieldId: string): Promise<FieldConditions> {
@@ -107,6 +112,7 @@ export class FieldConditionsService {
         }
       }
 
+      const disease = await this.diseaseRisk(trx, c, bars.spraying.map((d) => d.date));
       const rz = water?.rootZone;
       return {
         fieldId,
@@ -118,7 +124,9 @@ export class FieldConditionsService {
           sowing: bars.sowing.map((d) => ({ date: d.date, value: d.value, reasons: toReasons(d.reasons) })),
           weatherRisk: bars.weatherRisk.map((d) => ({ date: d.date, value: d.value, reasons: toReasons(d.reasons) })),
           trafficability: bars.trafficability?.map((d) => ({ date: d.date, value: d.value, reasons: toReasons(d.reasons) })) ?? null,
+          disease: disease.bar,
         },
+        disease: disease.risk,
         sprayHours,
         phenology: phen
           ? { sowingDate: phen.sowingDate, gdd: phen.gdd, currentBbch: phen.currentBbch, bbchSource: phen.bbchSource, bbchByDate: phen.dailyBbch ? Object.fromEntries(phen.dailyBbch) : null }
@@ -138,6 +146,33 @@ export class FieldConditionsService {
           : null,
       };
     });
+  }
+
+  /**
+   * The ISIP disease risk the worker stored for the crop: the worst level per day on the bar's
+   * days (reasons: the diseases at risk), and per disease the last 14 days with data.
+   */
+  private async diseaseRisk(trx: Trx, c: Context, barDays: string[]): Promise<{ bar: ConditionDay[] | null; risk: FieldDiseaseRisk }> {
+    const isipCrop = isipCropOfCode(c.cycle?.cropCode);
+    const risk: FieldDiseaseRisk = { configured: this.isip.configured, supported: !!isipCrop, refreshedAt: null, diseases: [] };
+    if (!c.cycle || !isipCrop) return { bar: null, risk };
+    const [rows, state] = await Promise.all([
+      trx.selectFrom('disease_risk_days').select(['date', 'disease', 'level']).where('crop_cycle_id', '=', c.cycle.id).orderBy('date').execute(),
+      trx.selectFrom('disease_risk_state').select('refreshed_at').where('crop_cycle_id', '=', c.cycle.id).executeTakeFirst(),
+    ]);
+    risk.refreshedAt = state?.refreshed_at ? new Date(state.refreshed_at).toISOString() : null;
+    const series: DiseaseTimeseries = {};
+    for (const r of rows) (series[r.date] ??= {})[r.disease as DiseaseKey] = r.level as 0 | 1 | 2 | 3;
+    const worst = new Map((computeDiseaseRisk(series, c.cycle.cropCode) ?? []).map((d) => [d.date, d.value]));
+    const keys = CROP_DISEASES[isipCrop] as DiseaseKey[];
+    const bar = barDays.map((date) => ({
+      date,
+      value: worst.get(date) ?? null,
+      reasons: keys.filter((k) => (series[date]?.[k] ?? 0) > 0).map((k) => ({ key: `reason.disease.${k}`, value: series[date]![k]!, dimension: null })),
+    }));
+    const recent = Object.keys(series).slice(-14);
+    risk.diseases = recent.length ? keys.map((key) => ({ key, days: recent.map((date) => ({ date, value: series[date]?.[key] ?? 0 })) })) : [];
+    return { bar, risk };
   }
 
   /** Soil compaction index of a machine on the field, today and for the next seven days. */

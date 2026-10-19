@@ -1,6 +1,7 @@
 import type { MultiPolygon } from 'geojson';
 import { z } from 'zod';
 import type { LatLng } from './common.js';
+import type { FieldDiseaseRisk } from './modelServices.js';
 import type { OperationStatus, OperationType } from './operations.js';
 import type { Task } from './tasks.js';
 
@@ -420,7 +421,12 @@ export interface FieldConditions {
   cropCycle: { id: string; cropName: string; sowingDate: string | null; sowingSource: 'booked' | 'planned' | null } | null;
   /** The soil class the water balance uses; its texture fractions are class mid-points. */
   soil: { texture: string | null; textureSource: 'soil_class' | null };
-  bars: { spraying: ConditionDay[]; sowing: ConditionDay[]; weatherRisk: ConditionDay[]; trafficability: ConditionDay[] | null };
+  /**
+   * `disease`: the worst ISIP disease risk of the crop per day (reasons: the diseases at risk);
+   * null when ISIP does not model the crop.
+   */
+  bars: { spraying: ConditionDay[]; sowing: ConditionDay[]; weatherRisk: ConditionDay[]; trafficability: ConditionDay[] | null; disease: ConditionDay[] | null };
+  disease: FieldDiseaseRisk;
   /** Spray level per hour for the next 48 hours. */
   sprayHours: { time: string; level: ConditionLevel; reasons: ConditionReason[] }[];
   phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; bbchByDate: Record<string, number> | null } | null;

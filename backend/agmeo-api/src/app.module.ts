@@ -62,6 +62,8 @@ import { WeatherController } from './modules/weather/weather.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
 import { NewsController } from './modules/news/news.controller.js';
+import { ModelServicesController } from './modules/model-services/model-services.controller.js';
+import { ModelServicesService } from './modules/model-services/model-services.service.js';
 import { NewsService } from './modules/news/news.service.js';
 
 export const DOMAIN_SERVICES = [
@@ -96,6 +98,7 @@ export const DOMAIN_SERVICES = [
   BoardService,
   CommentsService,
   RadarService,
+  ModelServicesService,
 ];
 
 /**
@@ -134,6 +137,7 @@ export const DOMAIN_SERVICES = [
     BoardController,
     CommentsController,
     RadarController,
+    ModelServicesController,
   ],
   providers: [
     TokenService,
