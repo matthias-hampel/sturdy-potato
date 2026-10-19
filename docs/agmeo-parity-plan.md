@@ -52,7 +52,7 @@ rework:
 | Lease management + analytics | `LeaseManagementTable.tsx`, `LeaseAnalytics.tsx` | missing | Parcel intersection, lease amount/share, per-field lease |
 | Crop rotations page | `fields/[year]/crop-rotations` | partial | Backend exists (`planning`), no UI |
 | Field groups / cultivation groups | `fieldGroups`, `cultivation-groups` | missing | Entity and UI |
-| Org map layers | `_components/mapLayers/*`, `maps/*` | partial | Vector tiles, economic/KPI choropleths, soil, yield, trafficability, radar, stations, background rasters |
+| Org map layers | `_components/mapLayers/*`, `maps/*` | partial (thematic layers done) | Background rasters (other branch), stations, live locations, terrain rasters (TWI, slope) |
 | Live locations, tracks, time travel; saved locations | `live-locations`, `saved-locations` | missing | Whole feature (mobile) |
 | Satellite annotations, field documents, field overview PDF | `SatelliteAnnotation*`, `FieldDocuments.tsx` | missing | Whole feature |
 | B2B Maps (~120 layers, raster analysis, access admin) | `src/app/maps`, `lib/b2b-maps` | missing | Separate product |
@@ -94,8 +94,8 @@ rework:
 | Irrigation | `irrigation/[year]`, `irrigation/water-balances` | partial | FAO-56 water balance, irrigator coverage, external event API |
 | N fertilization (DüV) | `nitrogen/[year]` | partial | agmeo N model (supply, loss, leaching), split strategies, apply strategy |
 | Base fertilization | `base-fertilization/[year]` | partial | Multi-year P2O5 balance, delivered/balance columns |
-| Emission recommendations | `recommendations/[year]` | missing | Whole feature |
-| Voice drafts | `voice-drafts`, `cron/voice-transcription` | missing | Whole feature |
+| Emission recommendations | `recommendations/[year]` | done (leftovers) | — |
+| Voice drafts | `voice-drafts`, `cron/voice-transcription` | done (leftovers) | Needs `VOICE_STT_URL`; mobile capture app out of scope |
 
 ### 3.5 Regulatory
 
@@ -116,7 +116,7 @@ rework:
 | Calculation parameters | `personalize/parameters` | missing | Editable emission factors |
 | Machinery | `machinery` | partial | Machine vs. implement, catalogue lookup, SCI data, irrigation fields, purchase price, JD sync |
 | Operators | `operators` | present | Staff number, role, notes |
-| Variety browser | `app/varieties` | partial | BSL traits and 1–9 resistance ratings |
+| Variety browser | `app/varieties` | done (leftovers) | BSL data is the reference's 2026-02 snapshot |
 | Files | `files/[year]` | missing | Whole module (F3) |
 
 ### 3.7 Economics, carbon, overview
@@ -128,7 +128,7 @@ rework:
 | Benchmarks | `economic-analysis/[year]/benchmark` | missing | Whole feature |
 | Market prices (EU portal cron, compare modal) | `cron/market-prices`, `MarketPricesModal.tsx` | missing | Whole feature |
 | Overview (cultivation-group table, scope 2) | `overview/[year]` | missing | Whole feature |
-| CO2 analysis | `analysis/[year]`, `lib/co2calculator` | done (phase 4, carbon) | Report text/PDF summary; projects are the user's own organizations |
+| CO2 analysis | `analysis/[year]`, `lib/co2calculator` | done (phase 4, carbon; report in leftovers) | Projects are the user's own organizations |
 | RothC carbon tab | `[cultivationId]/carbon` | done (phase 4, carbon) | Needs `THUENEN_API_KEY` |
 | Yield research | `yield-research/[year]` | missing | Whole feature (internal) |
 | News feed + staff announcements | `news/[year]`, `lib/news`, `src/app/team/news` | missing | Whole feature |
@@ -363,12 +363,13 @@ Differences from the reference:
   incorporation time, not by application technique, as in the reference. N efficiency defaults to the DüV
   minimum when the product has none.
 - HVO and biodiesel are recognised by the fuel product's name. No per-product N production factor
-  ("carbon light" fertilizers) and no blue urea categories.
+  ("carbon light" fertilizers); the green-technology urea categories are used only by the savings
+  measures.
 - Rotation CO2e per entry has no diesel (templates carry no machine data yet); RothC years use the crops'
   default sowing and harvest months, the entry's expected yield (else the DüV reference yield) and leave
   residues on the field.
 - "Projects" are not stored: the comparison picks among the organizations the user belongs to.
-- No PDF report with summary text and notes (the reference's third view).
+- The report (third view) is printed through the browser instead of the reference's LaTeX template.
 
 ### Phase 3 — soil, yield and satellite (2026-10-19)
 
@@ -431,4 +432,51 @@ Open:
   reference database; no ESM writeback receiver; ESM runs are started by hand only.
 - DMC: offsets per variety instead of per KWS sales region; no pre-computing job; FAO maturity entered
   in the app.
+
+### Leftovers (2026-10-19)
+
+- **Emission recommendations** (no migration): on `/carbon`, tab "Einsparpotential". Measures priced with
+  the BEK calculator per crop cycle, as the reference's sanity checker does: organic fertilizer
+  incorporated after 4 or 8 h → within the hour, urea with inhibitor → green-technology production
+  (UREA_W_INHIBITOR_BLUE, liquid by volume), straw taken off → left on the field. Scenario chart (0, 10,
+  20, 30 % and maximum, largest measures first, the last one partly), per crop and total; measure list
+  with operation links; crop-cycle table. `GET /carbon/recommendations?harvestYear=`.
+- **CO2 report** (000127 `carbon_report_notes`): tab "Bericht" with the generated summary (editable,
+  reset to generated) and notes per harvest year; "Bericht als PDF" prints introduction, summary, crop
+  table, per-crop management data (mineral and organic N, share incorporated within the hour, last
+  year's N, plant protection, grain:straw ratio), emissions by operation, footprint, year comparison,
+  scope 2, savings measures and notes. `GET /carbon/report`, `PUT /carbon/report/notes`.
+- **Voice drafts** (000125 `voice_drafts`): page "Sprachnotizen". Recording in the browser
+  (MediaRecorder) → object storage → job `voice.transcribe` → speech-to-text over an OpenAI-compatible
+  endpoint (`VOICE_STT_URL`, `VOICE_STT_API_KEY`, `VOICE_STT_MODEL`; off when unset, the page says "not
+  configured") → draft. Typed dictations need no service. The reference's OperationDraft contract (16
+  keys, validator ported with its tests) is filled by a rule-based German parser that matches the
+  organization's field and product names (inflected forms, product by first word or compound end);
+  the draft resolves to field, product, rate in the product's unit, operation type and day. Review:
+  correct the transcript (re-parse), "Maßnahme anlegen" opens the operation form prefilled (product,
+  rate, day, BBCH, weather, notes) and confirms the draft with the new operation; observations/notes
+  are accepted; reject; retry failed recordings.
+- **Variety browser** (000126 `bsl_varieties`): the reference's Beschreibende Sortenliste (2,231
+  entries, 20k properties) ships as `backend/agmeo-api/data/bsl/varieties.json.gz`
+  (`scripts/export-bsl-data.py`) and is loaded by `pnpm sync:bsl` (agmeo_refdata), with repeated entries
+  merged and links to the BSA register by Kennnummer or name. Page "Sorten": species or crop, search,
+  table with maturity, lodging, winter kill, yield, TKM, 1–9 disease ratings and approval; all properties
+  per variety. The reference's trait and resistance reductions are ported with their tests;
+  `GET /variety-catalogue/resistance` answers its mobile lookup by name or crop cycle.
+- **Map thematic layers** (no migration): on the map a third layer "Themen": DB I per ha (finance
+  permission), yield relative to the crop, CO2e and N per ha, soil zones by parameter with VDLUFA class,
+  trafficability of a machine for today to +7 days; legend, list values, popup lines.
+  `GET /map/kpis`, `/map/soil`, `/map/trafficability`. The radar was already on the map.
+
+Differences from the reference:
+- Voice: the reference extracts with an LLM (Claude Haiku over OpenRouter); here a rule-based parser does
+  it, so it works and is tested without any service; units add m³/ha and dt (converted to t/ha). The
+  reference's web app has no review page (its mobile app does), and its confirm records only the decision.
+- Recommendations: only products typed "urea with inhibitor" get the green-technology measure (the
+  reference lists three SKW products); incorporation is recommended for the 4 h and 8 h classes.
+- Varieties: one row per variety and BSL use group; no admin import summary page; the list is not
+  refreshed from the Bundessortenamt (the reference has no updater either).
+- Map: per-field choropleths over the field outlines (no vector tiles); soil shows zones of the active
+  zonation only (no field fallback from samples without zonation); trafficability is computed per field
+  on request (at most 400 fields).
 
