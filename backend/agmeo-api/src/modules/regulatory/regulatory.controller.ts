@@ -83,9 +83,9 @@ export class RegulatoryController {
 
   @Get('regulatory/code-lists')
   codeLists(@Query('format') format: string, @Query('state') state?: string) {
-    if (format !== 'besyd' && format !== 'st') throw badRequest('unknown_format', 'Unknown export format');
+    if (!(FEDERAL_EXPORT_FORMATS as readonly string[]).includes(format)) throw badRequest('unknown_format', 'Unknown export format');
     if (state && !(FEDERAL_STATES as readonly string[]).includes(state)) throw badRequest('unknown_state', 'Unknown federal state');
-    return this.regulatory.codeLists(format, state as FederalState | undefined);
+    return this.regulatory.codeLists(format as FederalExportFormat, state as FederalState | undefined);
   }
 
   @Get('exports/:format.zip')

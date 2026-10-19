@@ -153,6 +153,13 @@ describe('webBESyD and Sachsen-Anhalt exports', () => {
     const lists = (await u.get(`${base}/regulatory/code-lists?format=besyd&state=BB`).expect(200)).body
     expect(lists.bodenklimaraum.every((b: { states: string[] }) => b.states.includes('BB'))).toBe(true)
     expect(lists.crops.find((c: { code: string }) => c.code === '0102')).toBeTruthy()
+    // ENNI and ENDO-SH: their own Fruchtart catalogues for the crop code overrides.
+    const enni = (await u.get(`${base}/regulatory/code-lists?format=enni`).expect(200)).body
+    expect(enni.crops.find((c: { code: string }) => c.code === 'WGetreide001')).toBeTruthy()
+    const endo = (await u.get(`${base}/regulatory/code-lists?format=endo`).expect(200)).body
+    expect(endo.crops.length).toBeGreaterThan(0)
+    expect(endo.bodenklimaraum).toEqual([])
+    await u.get(`${base}/regulatory/code-lists?format=agrarantrag`).expect(400)
   })
 
   it('exports the Sachsen-Anhalt Mitteilung with DBE from the saved fertilizer need', async () => {

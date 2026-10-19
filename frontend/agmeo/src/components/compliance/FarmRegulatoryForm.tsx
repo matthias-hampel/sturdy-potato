@@ -50,15 +50,16 @@ function toForm(d: FarmRegulatory): Form {
   }
 }
 
-function toInput(f: Form): FarmRegulatoryInput {
+/** The form as a PUT body; the crop code overrides set in the report wizard are kept. */
+function toInput(f: Form, d: FarmRegulatory): FarmRegulatoryInput {
   const blank = (v: string) => v.trim() || null
   return {
     holdingNumber: blank(f.holdingNumber),
     federalState: f.federalState,
     fertilizerYearStart: f.fertilizerYearStart,
     organicCertified: f.organicCertified,
-    enni: { soilClimateArea: f.soilClimateArea, nitrateZoneFlag: f.nitrateZoneFlag },
-    endo: { naturalRegion: f.naturalRegion },
+    enni: { ...d.enni, soilClimateArea: f.soilClimateArea, nitrateZoneFlag: f.nitrateZoneFlag },
+    endo: { ...d.endo, naturalRegion: f.naturalRegion },
     contact: Object.fromEntries(CONTACT_KEYS.map((k) => [k, blank(f.contact[k])])),
     otherFertilizersApplied: f.otherFertilizersApplied,
     compostApplied: f.compostApplied,
@@ -91,7 +92,7 @@ function FarmRegulatoryForm({ data }: { data: FarmRegulatory }) {
   const showEndo = form.federalState == null || form.federalState === 'SH'
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!holdingInvalid) save.mutate(toInput(form))
+    if (!holdingInvalid) save.mutate(toInput(form, data))
   }
 
   return (

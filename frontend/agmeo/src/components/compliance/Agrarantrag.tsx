@@ -1,14 +1,5 @@
-import {
-  AGRARANTRAG_PRESETS,
-  type AgrarantragPreset,
-  type CropCycle,
-  type ExportPreflight,
-  FEDERAL_STATE_NAMES,
-  type FarmRegulatory,
-  type LandUseCode,
-  type PreflightIssue,
-} from '@agmeo/contracts'
-import { CheckCircle2, Download, FileCode2, Map as MapIcon, RefreshCw, Sprout } from 'lucide-react'
+import { AGRARANTRAG_PRESETS, type AgrarantragPreset, type CropCycle, FEDERAL_STATE_NAMES, type FarmRegulatory, type LandUseCode } from '@agmeo/contracts'
+import { FileCode2, Map as MapIcon, Sprout } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CropTag } from '#/components/labels'
@@ -18,125 +9,19 @@ import { useOrg, useSeason } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button } from '#/ui/Button'
 import { ComboBox, Option, Select } from '#/ui/Field'
-import { Badge, Card, EmptyState, ErrorNotice, Loading } from '#/ui/Layout'
+import { Card, EmptyState, ErrorNotice, Loading } from '#/ui/Layout'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { toast } from '#/ui/Toast'
-import { PreflightSeverityBadge, preflightText } from './shared'
 
-const SEVERITIES: PreflightIssue['severity'][] = ['blocking', 'warning', 'info']
-
-/** Authority exports of a farm: ENNI and ENDO (with their preflight) and the Agrarantrag shapefile. */
-export function ExportsTab({ farmId, year }: { farmId: string; year: number }) {
+/** Subsidy application (Agrarantrag): the field boundaries as a Shapefile for the state portal, and the land-use codes. */
+export function AgrarantragTab({ farmId }: { farmId: string }) {
   const { seasonId: workingSeasonId } = useSeason()
   const [seasonId, setSeasonId] = useState<string | undefined>(workingSeasonId)
   const season = seasonId ?? workingSeasonId
   return (
     <div className="space-y-6">
-      <div className="grid xl:grid-cols-2 gap-6 items-start">
-        <XmlExportCard format="enni" farmId={farmId} year={year} />
-        <XmlExportCard format="endo" farmId={farmId} year={year} />
-      </div>
       <AgrarantragCard farmId={farmId} seasonId={season} onSeasonChange={setSeasonId} />
       {season && <LandUseCodes farmId={farmId} seasonId={season} />}
-    </div>
-  )
-}
-
-function XmlExportCard({ format, farmId, year }: { format: 'enni' | 'endo'; farmId: string; year: number }) {
-  const { t } = useTranslation()
-  const { orgId } = useOrg()
-  const preflight = useOrgQuery<ExportPreflight>('/regulatory/preflight', { format, farmId, year })
-  const [downloading, setDownloading] = useState(false)
-  const p = preflight.data
-  const blocking = p?.issues.filter((i) => i.severity === 'blocking').length ?? 0
-
-  const download = async () => {
-    if (!p) return
-    setDownloading(true)
-    try {
-      await api.download(`/orgs/${orgId}/exports/${format}.xml`, { farmId, year }, p.fileName)
-    } catch (e) {
-      toast.error(t('regulatory.exports.failed'), errorMessage(e))
-      // The records may have changed since the check; show the current findings.
-      void preflight.refetch()
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  return (
-    <Card
-      title={t(`regulatory.exports.${format}.title`)}
-      description={t(`regulatory.exports.${format}.description`, { year })}
-      actions={
-        <Button size="icon-sm" variant="ghost" onPress={() => preflight.refetch()} isDisabled={preflight.isFetching} aria-label={t('regulatory.exports.recheck')}>
-          <RefreshCw className={preflight.isFetching ? 'animate-spin' : undefined} />
-        </Button>
-      }
-    >
-      {preflight.isLoading ? (
-        <Loading />
-      ) : preflight.error ? (
-        <ErrorNotice error={preflight.error} />
-      ) : p ? (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              {p.ready ? (
-                <Badge tone="success">
-                  <CheckCircle2 className="size-3" aria-hidden />
-                  {t('regulatory.exports.ready')}
-                </Badge>
-              ) : (
-                <Badge tone="danger">{t('regulatory.exports.blocked', { count: blocking })}</Badge>
-              )}
-              <div className="text-xs text-muted font-mono mt-1.5 truncate" title={p.fileName}>
-                {p.fileName}
-              </div>
-            </div>
-            <Button variant="primary" onPress={download} isPending={downloading} isDisabled={!p.ready}>
-              {!downloading && <Download />} {t('common.download')}
-            </Button>
-          </div>
-          <PreflightIssues issues={p.issues} />
-        </div>
-      ) : null}
-    </Card>
-  )
-}
-
-/** Findings of the check before export (Prüfung vor dem Export), grouped by severity. */
-function PreflightIssues({ issues }: { issues: PreflightIssue[] }) {
-  const { t } = useTranslation()
-  if (issues.length === 0) return <p className="text-sm text-muted">{t('regulatory.exports.noIssues')}</p>
-  return (
-    <div className="space-y-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">{t('regulatory.exports.preflight')}</h3>
-      {SEVERITIES.map((severity) => {
-        const group = issues.filter((i) => i.severity === severity)
-        if (!group.length) return null
-        return (
-          <section key={severity} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <PreflightSeverityBadge severity={severity} />
-              <span className="text-xs text-muted">{t(`regulatory.exports.severityHint.${severity}`, { count: group.length })}</span>
-            </div>
-            <ul className="space-y-1.5 text-sm">
-              {group.map((issue, n) => (
-                <li key={`${issue.code}:${n}`} className="flex gap-2">
-                  <span className="text-muted shrink-0" aria-hidden>
-                    •
-                  </span>
-                  <span className="min-w-0">
-                    {issue.fieldName && <span className="font-medium">{issue.fieldName}: </span>}
-                    {preflightText(issue)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )
-      })}
     </div>
   )
 }
