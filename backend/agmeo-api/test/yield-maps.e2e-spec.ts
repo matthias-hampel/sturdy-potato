@@ -244,6 +244,10 @@ describe('yield maps', () => {
     expect(history[0]).toMatchObject({ harvestYear: 2026, cropCycleId: cycle.id })
     expect(history[0].mapMeanTHa).toBeCloseTo(current.stats.mean, 1)
 
+    // Without satellite imagery of the field the estimate says so instead of failing.
+    const estimate = (await u.post(`${base}/yield-maps/crop-cycles/${cycle.id}/estimate`, { meanYieldTHa: 8 }).expect(201)).body
+    expect(estimate).toEqual({ ok: false, reason: 'no_scene', scenes: [] })
+
     // Excluding the only source retires the raster.
     await u.patch(`${base}/yield-maps/sources/${source.id}`, { includedInMerge: false }).expect(200)
     await build()

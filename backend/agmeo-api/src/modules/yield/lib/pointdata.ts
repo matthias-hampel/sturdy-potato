@@ -47,7 +47,7 @@ export function extractGeojsonYieldPoints(raw: string, attribute: string): Geojs
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    throw new GridError(`Invalid ${POINTDATA_GEOJSON_MEMBER}: ${error instanceof Error ? error.message : error}`, 400);
+    throw new GridError(`Invalid ${POINTDATA_GEOJSON_MEMBER}: ${error instanceof Error ? error.message : String(error)}`, 400);
   }
   if (parsed.type !== "FeatureCollection" || !Array.isArray(parsed.features)) {
     throw new GridError(`${POINTDATA_GEOJSON_MEMBER} is not a GeoJSON FeatureCollection`, 400);

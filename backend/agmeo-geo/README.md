@@ -14,7 +14,8 @@ agmeo-geo worker ◀── NATS agmeo.events.field.{created,geometry_updated}
    ├─ field_observations: field statistics per acquisition
    └─ productivity_analyses → zonings (3/5/7) → zoning_zones
 
-agmeo-geo serve  ─▶ /imagery/<date>/<layer>/<z>/<x>/<y>.png, /productivity/<analysis>/...  (internal, :3002)
+agmeo-geo serve  ─▶ /imagery/<date>/<layer>/<z>/<x>/<y>.png, /productivity/<analysis>/...,
+                    /rasters/<id>/values (index layer as numbers, for the API's yield estimate)  (internal, :3002)
 agmeo API        ─▶ /v1/orgs/:orgId/monitoring/imagery/..., /fields/:id/productivity/...  (auth, proxies)
 ```
 

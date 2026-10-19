@@ -86,7 +86,7 @@ describe("AGRO-MAP .aft yield import", () => {
     );
     const extract = extractAftYieldPoints(seasons);
     expect(extract.times).toHaveLength(3);
-    const years = [...new Set(extract.times.map((t) => new Date(t).getUTCFullYear()))].sort();
+    const years = [...new Set(extract.times.map((t) => new Date(t).getUTCFullYear()))].sort((a, b) => a - b);
     expect(years).toEqual([2010, 2011]);
   });
 

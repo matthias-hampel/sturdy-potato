@@ -10,7 +10,7 @@ const POINTS = [
 
 describe("point-data yield artefact", () => {
   it("round-trips points through the zip artefact and the shared parser", async () => {
-    const zip = await buildYieldPointsGeojsonZip(POINTS, {
+    const zip = buildYieldPointsGeojsonZip(POINTS, {
       attribute: "CLAAS Point Data (Lexion)",
       basis: "wet",
       provenance: { claasActivityId: "a-1", equipmentId: "e-1", equipmentName: "Lexion" },
@@ -32,7 +32,7 @@ describe("point-data yield artefact", () => {
   it("carries the harvest timeline and footprint through the artefact", async () => {
     // Without `t` the track filters (lag, pass trim, overlap) skip themselves —
     // the artefact must not silently lose the sequence the API delivered.
-    const zip = await buildYieldPointsGeojsonZip(POINTS, { attribute: "x", basis: "wet", provenance: {} });
+    const zip = buildYieldPointsGeojsonZip(POINTS, { attribute: "x", basis: "wet", provenance: {} });
     const parsed = await parseYieldPoints(zip);
     expect(parsed.points[0].t).toBe(T0);
     expect(parsed.points[1].t).toBe(T0 + 1000);
@@ -42,7 +42,7 @@ describe("point-data yield artefact", () => {
   });
 
   it("keeps the dry basis of the source through the artefact", async () => {
-    const zip = await buildYieldPointsGeojsonZip(POINTS, {
+    const zip = buildYieldPointsGeojsonZip(POINTS, {
       attribute: "CLAAS Point Data (Jaguar)",
       basis: "dry",
       provenance: {},
@@ -53,7 +53,7 @@ describe("point-data yield artefact", () => {
   });
 
   it("rejects an artefact without positive yield values", async () => {
-    const zip = await buildYieldPointsGeojsonZip([{ lon: 9.1, lat: 51.2, value: 0 }], {
+    const zip = buildYieldPointsGeojsonZip([{ lon: 9.1, lat: 51.2, value: 0 }], {
       attribute: "x",
       basis: "wet",
       provenance: {},

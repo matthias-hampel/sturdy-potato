@@ -446,10 +446,10 @@ function parseFlowChannels(features: Iterable<ShapeRecord>, cols: FlowColumns): 
 }
 
 /** Timestamps arrive as ISO strings, "2026-08-02 12:10:49" or epoch numbers. */
-function readTime(raw: unknown): number | undefined {
+function readTime(raw: string | number | null | undefined): number | undefined {
   if (raw === undefined || raw === null || raw === '') return undefined;
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : undefined;
-  const parsed = Date.parse(String(raw));
+  const parsed = Date.parse(raw);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
