@@ -245,8 +245,11 @@ function TechnologyRow({ crop, templates, pending, onChange }: { crop: CropRow; 
             step={0.1}
             formatOptions={{ maximumFractionDigits: 2 }}
             value={value}
-            onChange={setValue}
-            onBlur={() => !Number.isNaN(value) && value !== crop.expectedYieldTHa && onChange({ expectedYieldTHa: value })}
+            // React Aria commits the number on blur or Enter; save the committed value.
+            onChange={(v) => {
+              setValue(v)
+              if (!Number.isNaN(v) && v !== crop.expectedYieldTHa) onChange({ expectedYieldTHa: v })
+            }}
           />
         )}
       </div>
@@ -312,9 +315,9 @@ function PriceRow({ row, currency, onSave }: { row: ProductPriceRow; currency: s
         minValue={0}
         formatOptions={{ maximumFractionDigits: 4 }}
         value={value}
-        onChange={setValue}
-        onBlur={() => {
-          const next = Number.isNaN(value) ? null : value
+        onChange={(v) => {
+          setValue(v)
+          const next = Number.isNaN(v) ? null : v
           if (next !== (row.source === 'manual' ? row.price : null)) onSave(next)
         }}
       />

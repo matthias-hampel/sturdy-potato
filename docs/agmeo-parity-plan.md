@@ -174,15 +174,15 @@ standalone host and EU residency, assistant API, knowledge base with embeddings 
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
 | Sign-in, sign-up, SSO, provider sign-up | Clerk, `auth/*` | partial (dev only) | F1 |
-| Members, invitations | `settings/MembersPage.tsx` | partial | Invitation e-mail, farm-restricted members |
+| Members, invitations | `settings/MembersPage.tsx` | done (platform) | Members limited to farms, enforced by row policies |
 | API keys | `settings/ApiKeysPage.tsx` | missing | F8 |
-| Onboarding | `app/onboarding/*`, `api/onboarding/farm` | partial | Crop-rotation step with prices and technologies, partner onboarding API, invite step |
-| Settings tabs | `settings/_components/*Page.tsx` | partial | Logo, units, notifications, communication, data processing, export, reports, soil, partnerships, connections, subscription |
+| Onboarding | `app/onboarding/*`, `api/onboarding/farm` | done (platform) | Partner bulk-onboarding API (`api/onboarding/farm`, out of scope; the import contract covers it); standard technologies per crop |
+| Settings tabs | `settings/_components/*Page.tsx` | done (platform) | Out of scope: communication (co2nserve/Rentenbank), partnerships, connections, subscription, API keys, chat |
 | Billing | `checkout`, `coupon`, `lib/subscription`, `webhooks/zoho` | missing | F10 |
 | Admin dashboard, API stats, staff team pages (clone org, manage orgs, news, partners, KTBL) | `src/app/admin-dashboard`, `src/app/team` | missing | Staff role and all pages |
 | Languages | `src/i18n/common` (11) | partial | 9 locales, detection, switcher (F9) |
-| Help page, PWA manifest | `app/help`, `public/site.webmanifest` | missing | Both |
-| E-mail digests (rain, storage) | `cron/rain-digest`, `cron/storage-digest` | missing | F2 + F4 |
+| Help page, PWA manifest | `app/help`, `public/site.webmanifest` | done (platform) | Coupon, PSM and variety links, cookie settings |
+| E-mail digests (rain, storage) | `cron/rain-digest`, `cron/storage-digest` | done (platform) | Field list sorted by rain (no rain column) |
 
 ## 4. Where the rewrite is ahead
 
@@ -432,3 +432,36 @@ Open:
 - DMC: offsets per variety instead of per KWS sales region; no pre-computing job; FAO maturity entered
   in the app.
 
+
+### Platform (2026-10-19, `feat/parity-platform`)
+
+- **Members limited to farms** (000120): `memberships.restricted_to_farms` and `membership_farms`;
+  restrictive row policies on farms and every farm- or field-owned table (`app.allowed_farm_ids()`,
+  `app.allowed_field_ids()`), so a limited member's queries and writes stay within their farms. Owners are
+  never limited; a limited manager can only hand out farms they see. Team page: farms column and editor,
+  farm choice when inviting.
+- **Onboarding**: organization → farm → crop setup (rotations, a template and expected yield per crop,
+  prices of the template inputs and fuel) → fields → invite several colleagues; the open step is stored on
+  the organization (000121), the start page resumes it, the overview shows a banner, every step skips.
+- **Settings tabs**: organization with logo (000121; shown in the organization switcher, on the print
+  views and the soil PDF sheets), region (country, NUTS 2), notifications (organization switch for the
+  rain digest, personal switches), export (ZIP of every tenant table as CSV or JSON plus field boundaries
+  as GeoJSON and Shapefile, through the row policies), soil (zonation lock enforced in the API, history
+  share links), data processing (built from the running configuration; `DATA_PROCESSING_*` name the
+  operator's hosting, database and mail).
+- **Digests** (000122): `notifications.rain-digest` every quarter hour with the reference's timing in the
+  organization's local morning, rain from the stored hourly weather, fields limited to each member's
+  farms; `notifications.storage-digest` on Mondays to owners and managers above 80 % of the allowance and
+  an operations overview (`STORAGE_DIGEST_RECIPIENTS`). German/English templates, HMAC unsubscribe links
+  (`EMAIL_UNSUBSCRIBE_SECRET`) with RFC 8058 one-click and `/unsubscribe/:token`.
+- **Help page** and **web app manifest** with icons rendered from the favicon.
+
+Differences from the reference:
+- Farms are organizations in the reference; "farm-restricted members" here limit a member to some farms
+  of one organization (the reference's nearest equivalent is the partner console).
+- No standard technologies per crop and no technology survey: the template step offers the
+  organization's own templates and links to the templates page.
+- The labour rate is not part of the onboarding prices (it is set per employee and per season).
+- The rain digest links to the field list (it has no rain column to sort by); the storage digest has no
+  bucket scan (usage comes from the files table).
+- The partner bulk-onboarding API (`api/onboarding/farm`) is not ported (partner/public API, out of scope).
