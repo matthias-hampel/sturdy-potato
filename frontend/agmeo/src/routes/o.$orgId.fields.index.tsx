@@ -1,14 +1,15 @@
-import { FIELD_PART_USAGE_COLORS, IMAGERY_LAYERS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
+import { FIELD_PART_USAGE_COLORS, IMAGERY_LAYERS, MAP_THEMES, SOIL_PARAMETERS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
 import type { FeatureCollection } from 'geojson'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, Download, Info, Landmark, Map as MapIcon, Minus, Plus, Settings2, Upload } from 'lucide-react'
-import { type Ref, useCallback, useMemo, useRef, useState } from 'react'
+import { type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { CropTag } from '#/components/labels'
 import { FieldMap } from '#/components/map/FieldMap'
 import { FieldShape } from '#/components/map/FieldShape'
 import { RadarPanel, RadarToggle, useRadar } from '#/components/map/Radar'
+import { ThemeControls, type ThemeState, useThematicLayer } from '#/components/map/ThematicLayers'
 import { farmView } from '#/components/map/useMap'
 import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
 import { INDEX_INFO, indexColor, NO_DATA_COLOR, type ShownIndex } from '#/components/monitoring/indices'
@@ -23,12 +24,15 @@ import { Badge, Card, DescriptionList, EmptyState, ErrorNotice, Loading, PageHea
 import { Tooltip } from '#/ui/Overlay'
 import { cx } from '#/ui/utils'
 
-type Layer = 'crops' | 'imagery'
+type Layer = 'crops' | 'imagery' | 'themes'
 
 export const Route = createFileRoute('/o/$orgId/fields/')({
   validateSearch: z.object({
-    layer: z.enum(['crops', 'imagery']).optional().catch(undefined),
+    layer: z.enum(['crops', 'imagery', 'themes']).optional().catch(undefined),
     index: z.enum(IMAGERY_LAYERS).optional(),
+    /** Thematic layer (margin, yield, CO2e, N, soil, trafficability) and its soil parameter. */
+    theme: z.enum(MAP_THEMES).optional().catch(undefined),
+    soil: z.enum(SOIL_PARAMETERS).optional().catch(undefined),
   }),
   component: FieldsPage,
 })
@@ -57,10 +61,17 @@ function FieldsPage() {
   const allFields = useOrgQuery<Field[]>('/fields')
   const parts = useOrgQuery<FieldPart[]>('/field-parts', { seasonId, farmId: farmId === ALL ? undefined : farmId }, { enabled: layer === 'crops' })
   // Keeps the previous index's values while another loads, so the map's framing (fitIds) doesn't jump.
-  const monitoring = useOrgQuery<FieldMonitoringSummary[]>('/monitoring/fields', { index }, { enabled: layer !== 'crops', keepPrevious: true })
+  const monitoring = useOrgQuery<FieldMonitoringSummary[]>('/monitoring/fields', { index }, { enabled: layer === 'imagery', keepPrevious: true })
   const [stretch, setStretch] = useState<ImageryStretch>('absolute')
   const radar = useRadar()
   const satellite = useSatelliteLayer({ enabled: layer === 'imagery', layer: imageryLayer, stretch, fields: allFields.data ?? [] })
+  const [themeLocal, setThemeLocal] = useState<Pick<ThemeState, 'equipmentId' | 'day'>>({ equipmentId: null, day: 0 })
+  const themeState: ThemeState = { theme: search.theme ?? (can('finance.read') ? 'margin' : 'yield'), soilParameter: search.soil ?? 'ph', ...themeLocal }
+  const setTheme = (patch: Partial<ThemeState>) => {
+    if (patch.theme || patch.soilParameter) navigate({ search: (prev) => ({ ...prev, theme: patch.theme ?? prev.theme, soil: patch.soilParameter ?? prev.soil }), replace: true })
+    if (patch.equipmentId !== undefined || patch.day !== undefined) setThemeLocal((prev) => ({ ...prev, ...(patch.equipmentId !== undefined ? { equipmentId: patch.equipmentId } : {}), ...(patch.day !== undefined ? { day: patch.day } : {}) }))
+  }
+  const thematic = useThematicLayer(layer === 'themes', themeState, seasonId ?? null)
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -99,7 +110,7 @@ function FieldsPage() {
   const latest = useMemo(() => new Map((monitoring.data ?? []).map((m) => [m.fieldId, m])), [monitoring.data])
   // Satellite layers frame the fields that have observations (farms can be far apart).
   const fitIds = useMemo(() => {
-    if (layer === 'crops') return undefined
+    if (layer !== 'imagery') return undefined
     const monitored = visible.filter((f) => (latest.get(f.id)?.validObservations ?? 0) > 0).map((f) => f.id)
     return monitored.length ? monitored : undefined
   }, [layer, visible, latest])
@@ -168,7 +179,7 @@ function FieldsPage() {
                 </Select>
               )}
             </div>
-            {layer !== 'crops' && (
+            {layer === 'imagery' && (
               <div className="px-4 py-1.5 flex items-center justify-end gap-1 border-b border-line text-xs text-muted">
                 {t('fields.listValue.heading', { index: INDEX_INFO[index].label })}
                 <Tooltip content={t('fields.listValue.tooltip', { index: INDEX_INFO[index].label, description: INDEX_INFO[index].description })}>
@@ -195,7 +206,7 @@ function FieldsPage() {
                     >
                       <FieldShape
                         geometry={f.geometry}
-                        fill={layer === 'crops' ? (f.currentCrop?.color ?? '#9aa392') : indexColor(index, value)}
+                        fill={layer === 'crops' ? (f.currentCrop?.color ?? '#9aa392') : layer === 'themes' ? (thematic.colorBy(f) ?? '#9aa392') : indexColor(index, value)}
                         parts={fieldParts?.map((p) => ({ geometry: p.geometry, color: partColor(p) }))}
                         className="size-8 text-fg"
                       />
@@ -206,6 +217,8 @@ function FieldsPage() {
                       <span className="text-sm tabular text-fg-2 whitespace-nowrap text-right">
                         {layer === 'crops' ? (
                           fmt.ha(f.areaHa, 1)
+                        ) : layer === 'themes' ? (
+                          <span className="text-xs">{thematic.valueOf(f.id) ?? <span className="text-muted">—</span>}</span>
                         ) : value != null ? (
                           <>
                             <span className="font-medium text-fg">
@@ -234,8 +247,15 @@ function FieldsPage() {
                 items={[
                   { id: 'crops', label: t('fields.layer.crops') },
                   { id: 'imagery', label: t('fields.layer.imagery') },
+                  { id: 'themes', label: t('fields.layer.themes') },
                 ]}
               />
+              {layer === 'themes' && (
+                <>
+                  <ThemeControls value={themeState} onChange={setTheme} />
+                  {thematic.notice && <span className="text-sm text-muted">{thematic.notice}</span>}
+                </>
+              )}
               {layer === 'imagery' && (
                 <>
                   <LayerPicker value={imageryLayer} onChange={setIndex} />
@@ -251,10 +271,10 @@ function FieldsPage() {
               fields={visible}
               selectedId={selected}
               onSelect={setSelected}
-              colorBy={layer === 'crops' ? cropColorBy : imageryColorBy}
-              fillOpacity={layer === 'imagery' ? 0.55 : 0.32}
-              overlay={partOverlay}
-              overlayOpacity={0.45}
+              colorBy={layer === 'crops' ? cropColorBy : layer === 'themes' ? thematic.colorBy : imageryColorBy}
+              fillOpacity={layer === 'imagery' ? 0.55 : layer === 'themes' ? 0.7 : 0.32}
+              overlay={layer === 'themes' ? thematic.overlay : partOverlay}
+              overlayOpacity={layer === 'themes' ? 0.75 : 0.45}
               raster={satellite.raster}
               image={radar.image}
               fitIds={fitIds}
@@ -264,8 +284,19 @@ function FieldsPage() {
             >
               {radar.enabled && <RadarPanel radar={radar} className="absolute top-14 left-3" />}
               {layer === 'imagery' && !selectedField && <IndexLegend index={imageryLayer} stretch={stretch} uncovered={uncovered} />}
+              {layer === 'themes' && !selectedField && thematic.legend}
               {selectedField && (
-                <FieldPopup ref={popupRef} field={selectedField} parts={layer === 'crops' ? partsByField.get(selectedField.id) : undefined} summary={latest.get(selectedField.id)} index={index} showIndex={layer !== 'crops'} missing={missing} orgId={orgId} />
+                <FieldPopup
+                  ref={popupRef}
+                  field={selectedField}
+                  parts={layer === 'crops' ? partsByField.get(selectedField.id) : undefined}
+                  summary={latest.get(selectedField.id)}
+                  index={index}
+                  showIndex={layer === 'imagery'}
+                  theme={layer === 'themes' ? { label: t(`mapThemes.theme.${themeState.theme}`), value: thematic.valueOf(selectedField.id), details: thematic.details(selectedField.id) } : undefined}
+                  missing={missing}
+                  orgId={orgId}
+                />
               )}
             </FieldMap>
             {layer === 'imagery' && satellite.dates.length > 0 && <AcquisitionTimeline dates={satellite.dates} date={satellite.date} onDate={satellite.setDate} />}
@@ -289,7 +320,10 @@ function FieldPopup({
   showIndex,
   missing,
   orgId,
+  theme,
 }: {
+  /** The thematic layer's value of the field, and further lines (soil zones). */
+  theme?: { label: string; value: string | null; details: { label: string; value: ReactNode }[] }
   ref: Ref<HTMLDivElement>
   field: Field
   parts?: FieldPart[]
@@ -359,10 +393,12 @@ function FieldPopup({
                     ),
                   },
                 ]
-              : [
-                  { label: t('fields.identifier'), value: field.identifier },
-                  { label: t('fields.popup.soil'), value: field.soilType },
-                ]),
+              : theme
+                ? [{ label: theme.label, value: theme.value ?? <span className="text-muted">{t('mapThemes.noData')}</span> }, ...theme.details]
+                : [
+                    { label: t('fields.identifier'), value: field.identifier },
+                    { label: t('fields.popup.soil'), value: field.soilType },
+                  ]),
           ]}
         />
       </div>

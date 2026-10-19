@@ -33,6 +33,8 @@ import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
 import { Route as OOrgIdTasksRouteImport } from './routes/o.$orgId.tasks'
 import { Route as OOrgIdTeamRouteImport } from './routes/o.$orgId.team'
 import { Route as OOrgIdTemplatesRouteImport } from './routes/o.$orgId.templates'
+import { Route as OOrgIdVarietiesRouteImport } from './routes/o.$orgId.varieties'
+import { Route as OOrgIdVoiceRouteImport } from './routes/o.$orgId.voice'
 import { Route as OOrgIdVraMapsRouteImport } from './routes/o.$orgId.vra-maps'
 import { Route as OOrgIdWeatherRouteImport } from './routes/o.$orgId.weather'
 import { Route as ShareSoilTokenRouteImport } from './routes/share.soil.$token'
@@ -174,6 +176,16 @@ const OOrgIdTemplatesRoute = OOrgIdTemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdVarietiesRoute = OOrgIdVarietiesRouteImport.update({
+  id: '/varieties',
+  path: '/varieties',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdVoiceRoute = OOrgIdVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdVraMapsRoute = OOrgIdVraMapsRouteImport.update({
   id: '/vra-maps',
   path: '/vra-maps',
@@ -302,6 +314,8 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
+  '/o/$orgId/varieties': typeof OOrgIdVarietiesRoute
+  '/o/$orgId/voice': typeof OOrgIdVoiceRoute
   '/o/$orgId/vra-maps': typeof OOrgIdVraMapsRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/share/soil/$token': typeof ShareSoilTokenRoute
@@ -347,6 +361,8 @@ export interface FileRoutesByTo {
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
+  '/o/$orgId/varieties': typeof OOrgIdVarietiesRoute
+  '/o/$orgId/voice': typeof OOrgIdVoiceRoute
   '/o/$orgId/vra-maps': typeof OOrgIdVraMapsRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/share/soil/$token': typeof ShareSoilTokenRoute
@@ -394,6 +410,8 @@ export interface FileRoutesById {
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
+  '/o/$orgId/varieties': typeof OOrgIdVarietiesRoute
+  '/o/$orgId/voice': typeof OOrgIdVoiceRoute
   '/o/$orgId/vra-maps': typeof OOrgIdVraMapsRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/share/soil/$token': typeof ShareSoilTokenRoute
@@ -442,6 +460,8 @@ export interface FileRouteTypes {
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
+    | '/o/$orgId/varieties'
+    | '/o/$orgId/voice'
     | '/o/$orgId/vra-maps'
     | '/o/$orgId/weather'
     | '/share/soil/$token'
@@ -487,6 +507,8 @@ export interface FileRouteTypes {
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
+    | '/o/$orgId/varieties'
+    | '/o/$orgId/voice'
     | '/o/$orgId/vra-maps'
     | '/o/$orgId/weather'
     | '/share/soil/$token'
@@ -533,6 +555,8 @@ export interface FileRouteTypes {
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
+    | '/o/$orgId/varieties'
+    | '/o/$orgId/voice'
     | '/o/$orgId/vra-maps'
     | '/o/$orgId/weather'
     | '/share/soil/$token'
@@ -736,6 +760,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdTemplatesRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/varieties': {
+      id: '/o/$orgId/varieties'
+      path: '/varieties'
+      fullPath: '/o/$orgId/varieties'
+      preLoaderRoute: typeof OOrgIdVarietiesRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/voice': {
+      id: '/o/$orgId/voice'
+      path: '/voice'
+      fullPath: '/o/$orgId/voice'
+      preLoaderRoute: typeof OOrgIdVoiceRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/vra-maps': {
       id: '/o/$orgId/vra-maps'
       path: '/vra-maps'
@@ -897,6 +935,8 @@ interface OOrgIdRouteChildren {
   OOrgIdTasksRoute: typeof OOrgIdTasksRoute
   OOrgIdTeamRoute: typeof OOrgIdTeamRoute
   OOrgIdTemplatesRoute: typeof OOrgIdTemplatesRoute
+  OOrgIdVarietiesRoute: typeof OOrgIdVarietiesRoute
+  OOrgIdVoiceRoute: typeof OOrgIdVoiceRoute
   OOrgIdVraMapsRoute: typeof OOrgIdVraMapsRoute
   OOrgIdWeatherRoute: typeof OOrgIdWeatherRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
@@ -937,6 +977,8 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdTasksRoute: OOrgIdTasksRoute,
   OOrgIdTeamRoute: OOrgIdTeamRoute,
   OOrgIdTemplatesRoute: OOrgIdTemplatesRoute,
+  OOrgIdVarietiesRoute: OOrgIdVarietiesRoute,
+  OOrgIdVoiceRoute: OOrgIdVoiceRoute,
   OOrgIdVraMapsRoute: OOrgIdVraMapsRoute,
   OOrgIdWeatherRoute: OOrgIdWeatherRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,

@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { AnalysisDashboard } from '#/components/carbon/AnalysisDashboard'
 import { AnalysisTable } from '#/components/carbon/AnalysisTable'
 import { FarmComparison } from '#/components/carbon/FarmComparison'
+import { ReportView } from '#/components/carbon/ReportView'
+import { Savings } from '#/components/carbon/Savings'
 import { Scope2Button } from '#/components/carbon/Scope2Dialog'
 import { withoutCredits } from '#/components/carbon/shared'
 import { api } from '#/lib/api'
@@ -17,7 +19,7 @@ import { Link, SegmentedControl } from '#/ui/Button'
 import { Option, Select, Switch } from '#/ui/Field'
 import { ErrorNotice, Loading, Notice, PageHeader, Stat, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 
-const TABS = ['dashboard', 'table', 'comparison'] as const
+const TABS = ['dashboard', 'table', 'savings', 'report', 'comparison'] as const
 type CarbonTab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/carbon')({
@@ -32,7 +34,8 @@ export const Route = createFileRoute('/o/$orgId/carbon')({
 /**
  * Greenhouse-gas balance of the farm after the BEK method (agmeo `analysis/[year]`): yearly
  * comparison with the regional reference, by operation type and emission source, farm overview,
- * table with Excel export, scope 2 and the comparison of the user's farms.
+ * table with Excel export, savings potential (agmeo `recommendations/[year]`), the printable
+ * report with summary and notes, scope 2 and the comparison of the user's farms.
  */
 function CarbonPage() {
   const { t } = useTranslation()
@@ -91,6 +94,8 @@ function CarbonPage() {
             <TabList aria-label={t('carbon.title')}>
               <Tab id="dashboard">{t('carbon.tabs.dashboard')}</Tab>
               <Tab id="table">{t('carbon.tabs.table')}</Tab>
+              <Tab id="savings">{t('carbon.tabs.savings')}</Tab>
+              <Tab id="report">{t('carbon.tabs.report')}</Tab>
               <Tab id="comparison">{t('carbon.tabs.comparison')}</Tab>
             </TabList>
             <TabPanel id="dashboard">
@@ -98,6 +103,12 @@ function CarbonPage() {
             </TabPanel>
             <TabPanel id="table">
               <AnalysisTable rows={rows} level={level} evaluation={evaluation} years={years.length ? years : [harvestYear]} />
+            </TabPanel>
+            <TabPanel id="savings">
+              <Savings harvestYear={harvestYear} />
+            </TabPanel>
+            <TabPanel id="report">
+              <ReportView harvestYear={harvestYear} />
             </TabPanel>
             <TabPanel id="comparison">
               <FarmComparison evaluation={evaluation} noCredits={noCredits} />

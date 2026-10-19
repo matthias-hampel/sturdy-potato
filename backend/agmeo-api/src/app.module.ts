@@ -9,6 +9,13 @@ import { CadastralService } from './modules/cadastral/cadastral.service.js';
 import { CadastralClient, WfsHttp } from './modules/cadastral/wfs/client.js';
 import { CarbonController } from './modules/carbon/carbon.controller.js';
 import { CarbonService } from './modules/carbon/carbon.service.js';
+import { CarbonReportService } from './modules/carbon/report.service.js';
+import { MapLayersController } from './modules/map-layers/map-layers.controller.js';
+import { MapLayersService } from './modules/map-layers/map-layers.service.js';
+import { VarietiesController } from './modules/varieties/varieties.controller.js';
+import { VarietiesService } from './modules/varieties/varieties.service.js';
+import { VoiceController } from './modules/voice/voice.controller.js';
+import { VoiceService } from './modules/voice/voice.service.js';
 import { ComplianceController } from './modules/compliance/compliance.controller.js';
 import { ComplianceService } from './modules/compliance/compliance.service.js';
 import { CropsController } from './modules/crops/crops.controller.js';
@@ -142,6 +149,10 @@ export const DOMAIN_SERVICES = [
   CommentsService,
   RadarService,
   CarbonService,
+  CarbonReportService,
+  VoiceService,
+  VarietiesService,
+  MapLayersService,
   YieldService,
   AnnotationsService,
   FieldDocumentsService,
@@ -197,6 +208,9 @@ export const DOMAIN_SERVICES = [
     CommentsController,
     RadarController,
     CarbonController,
+    VoiceController,
+    VarietiesController,
+    MapLayersController,
     YieldController,
     AnnotationsController,
     FieldDocumentsController,

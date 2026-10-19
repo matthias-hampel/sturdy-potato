@@ -55,6 +55,8 @@ export interface CarbonProduct {
   humusCKgPerT?: number | null;
   nEffectivenessPct?: number | null;
   dryMatterPct?: number | null;
+  /** Mineral fertilizer category of the calculator in place of the one of the fertilizer type (what-if measures). */
+  bekCategory?: string;
 }
 
 export interface CarbonInputLine {
@@ -248,7 +250,9 @@ export function operationEmissionsPerHa(
         }
       } else {
         const category =
-          (p.fertilizerType && MINERAL_CATEGORY[p.fertilizerType]) || 'others';
+          p.bekCategory ??
+          ((p.fertilizerType && MINERAL_CATEGORY[p.fertilizerType]) ||
+            'others');
         const n = nutrients.n ?? 0;
         const input = emptyInput(modelCrop);
         input.fieldMineralFertilizerData[0]['1'] = {

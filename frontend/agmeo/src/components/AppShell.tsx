@@ -2,6 +2,7 @@ import { LOCALES, type CurrentUser, type Locale } from '@agmeo/contracts'
 import { Link as RouterLink, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   BarChart3,
+  BookOpen,
   Boxes,
   Coins,
   Building2,
@@ -19,6 +20,7 @@ import {
   Languages,
   LayoutDashboard,
   Leaf,
+  Mic,
   Newspaper,
   ListChecks,
   LogOut,
@@ -76,6 +78,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/templates', label: 'nav.templates', icon: ListChecks },
       { to: '/o/$orgId/rotations', label: 'nav.rotations', icon: Repeat },
       { to: '/o/$orgId/operations', label: 'nav.operations', icon: ClipboardList },
+      { to: '/o/$orgId/voice', label: 'nav.voice', icon: Mic },
       { to: '/o/$orgId/tasks', label: 'nav.tasks', icon: CalendarCheck2 },
     ],
   },
@@ -85,6 +88,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/inventory', label: 'nav.inventory', icon: Boxes },
       { to: '/o/$orgId/prices', label: 'nav.prices', icon: Coins },
       { to: '/o/$orgId/machinery', label: 'nav.machinery', icon: Tractor },
+      { to: '/o/$orgId/varieties', label: 'nav.varieties', icon: BookOpen },
       { to: '/o/$orgId/team', label: 'nav.team', icon: Users },
       { to: '/o/$orgId/files', label: 'nav.files', icon: FolderOpen },
     ],

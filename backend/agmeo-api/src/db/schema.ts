@@ -81,6 +81,38 @@ export interface CadastralParcels {
   updated_at: Generated<Timestamp>;
 }
 
+export interface BslVarieties {
+  breeder: string | null;
+  breeder_number: string | null;
+  bsa_variety_id: string | null;
+  bsl_id: number;
+  bsl_species: string;
+  bsl_subspecies: string;
+  hybrid: Generated<boolean>;
+  id: Generated<string>;
+  is_new: Generated<boolean>;
+  kenn_nummer: string | null;
+  name: string;
+  note: string | null;
+  properties: Generated<Json>;
+  quality: Generated<Json>;
+  registered_since: number | null;
+  registration_number: number | null;
+  species_code: string | null;
+  status: string | null;
+  synced_at: Generated<Timestamp>;
+  usage: string | null;
+}
+
+export interface CarbonReportNotes {
+  harvest_year: number;
+  notes: Generated<string>;
+  organization_id: string;
+  summary: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface CarbonSettings {
   nuts2_code: string | null;
   organization_id: string;
@@ -1449,6 +1481,29 @@ export interface Users {
   updated_at: Generated<Timestamp>;
 }
 
+export interface VoiceDrafts {
+  audio_bytes: number | null;
+  audio_key: string | null;
+  audio_mime: string | null;
+  confidence: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  draft: Json | null;
+  duration_sec: number | null;
+  error: string | null;
+  id: Generated<string>;
+  missing: Generated<Json>;
+  operation_id: string | null;
+  organization_id: string;
+  resolved: Json | null;
+  resolved_at: Timestamp | null;
+  resolved_by: string | null;
+  source: string;
+  status: Generated<string>;
+  transcript: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface VraMapInputs {
   column_name: string;
   crop_id: string | null;
@@ -1690,6 +1745,8 @@ export interface DB {
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
   cadastral_parcels: CadastralParcels;
+  bsl_varieties: BslVarieties;
+  carbon_report_notes: CarbonReportNotes;
   carbon_settings: CarbonSettings;
   comments: Comments;
   cost_entries: CostEntries;
@@ -1784,6 +1841,7 @@ export interface DB {
   template_steps: TemplateSteps;
   user_notification_settings: UserNotificationSettings;
   users: Users;
+  voice_drafts: VoiceDrafts;
   vra_map_inputs: VraMapInputs;
   vra_maps: VraMaps;
   weather_cells: WeatherCells;

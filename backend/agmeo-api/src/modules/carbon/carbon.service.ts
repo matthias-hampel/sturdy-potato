@@ -47,6 +47,7 @@ import { bekSource, CO2E_FACTOR_SET } from './co2e.js';
 import { carbonCrop, dryMatterContent, hasModelData } from './crops.js';
 import {
   type CarbonInputLine,
+  type CycleCarbonInput,
   cycleEmissionsPerHa,
   operationEmissionsPerHa,
   scale,
@@ -77,7 +78,7 @@ const FALLBACK_SOIL: CarbonSoilValues = {
 /** Humus → soil organic carbon (van Bemmelen factor). */
 const HUMUS_PER_SOC = 1.724;
 
-interface CycleRow {
+export interface CycleRow {
   id: string;
   field_id: string;
   field_name: string;
@@ -97,11 +98,46 @@ interface CycleRow {
   harvested_t: number | null;
   harvested_area: number | null;
   harvest_done: boolean;
+  harvested_on: string | null;
 }
 
 const add = (target: BekEmissions, source: BekSource, kg: number) => {
   if (kg) target[source] = (target[source] ?? 0) + kg;
 };
+
+/**
+ * What the calculator books on a crop cycle: the crop's humus effect and last year's organic N once
+ * the crop is established (sown); residues once it is harvested, with the harvested yield (else
+ * the expected one). Null before the crop is established or without area.
+ */
+export function cycleInput(
+  c: CycleRow,
+  organicN: Map<string, number>,
+): (CycleCarbonInput & { cropCode: string; harvested: boolean }) | null {
+  const harvested =
+    (c.harvested_t ?? 0) > 0 ||
+    c.harvest_done ||
+    c.status === 'harvested' ||
+    c.status === 'closed';
+  const established = harvested || c.status === 'active';
+  if (!established || !c.area_ha) return null;
+  const yieldTHa = !harvested
+    ? null
+    : c.harvested_t && c.harvested_area
+      ? c.harvested_t / c.harvested_area
+      : c.expected_yield_t_ha;
+  return {
+    cropCode: c.crop_code,
+    harvested,
+    crop: carbonCrop(c.crop_code),
+    yieldTHa,
+    strawRemoved: c.straw_removed,
+    nLastYearKgHa:
+      c.role === 'main'
+        ? (organicN.get(`${c.field_id}:${c.harvest_year - 1}`) ?? 0)
+        : 0,
+  };
+}
 
 /** The economics and analysis view of what a crop cycle emits, apart from the ledger. */
 export interface CycleCarbon {
@@ -116,14 +152,14 @@ export class CarbonService {
   // Crop-cycle terms (humus, residues, last year's organic N)
   // ---------------------------------------------------------------------------
 
-  private async cycles(trx: Trx, seasonIds: string[]): Promise<CycleRow[]> {
+  async cycles(trx: Trx, seasonIds: string[]): Promise<CycleRow[]> {
     if (!seasonIds.length) return [];
     const { rows } = await sql<CycleRow>`
       SELECT cc.id, cc.field_id, concat_ws(' · ', f.name, fp.name) AS field_name, cc.season_id, s.harvest_year, cc.status, cc.role,
              cc.straw_removed, cc.expected_yield_t_ha, cc.crop_id, c.code AS crop_code, coalesce(c.name_de, c.name) AS crop_name,
              coalesce((SELECT occ.color FROM org_crop_colors occ WHERE occ.crop_id = c.id), c.color) AS crop_color,
              cc.template_id, t.name AS template_name,
-             coalesce(cc.area_ha, fp.area_ha, g.area_ha, 0) AS area_ha, h.qty AS harvested_t, h.area AS harvested_area,
+             coalesce(cc.area_ha, fp.area_ha, g.area_ha, 0) AS area_ha, h.qty AS harvested_t, h.area AS harvested_area, h.harvested_on,
              EXISTS (SELECT 1 FROM operation_fields ofl JOIN operations o ON o.id = ofl.operation_id
                      WHERE ofl.crop_cycle_id = cc.id AND o.type = 'harvest' AND o.status = 'completed') AS harvest_done
       FROM crop_cycles cc
@@ -133,13 +169,13 @@ export class CarbonService {
       LEFT JOIN field_parts fp ON fp.id = cc.field_part_id
       LEFT JOIN field_current_geometry g ON g.field_id = cc.field_id
       LEFT JOIN cultivation_templates t ON t.id = cc.template_id
-      LEFT JOIN LATERAL (SELECT sum(quantity_t) AS qty, sum(harvested_area_ha) AS area FROM harvests WHERE crop_cycle_id = cc.id) h ON true
+      LEFT JOIN LATERAL (SELECT sum(quantity_t) AS qty, sum(harvested_area_ha) AS area, max(harvest_date)::text AS harvested_on FROM harvests WHERE crop_cycle_id = cc.id) h ON true
       WHERE cc.season_id IN (${sql.join(seasonIds)})`.execute(trx);
     return rows;
   }
 
   /** Total organic N applied per hectare on each field in each harvest year (completed operations). */
-  private async organicNByFieldYear(trx: Trx): Promise<Map<string, number>> {
+  async organicNByFieldYear(trx: Trx): Promise<Map<string, number>> {
     const { rows } = await sql<{
       field_id: string;
       harvest_year: number | null;
@@ -194,30 +230,9 @@ export class CarbonService {
     if (!rows.length) return out;
     const organicN = await this.organicNByFieldYear(trx);
     for (const c of rows) {
-      const harvested =
-        (c.harvested_t ?? 0) > 0 ||
-        c.harvest_done ||
-        c.status === 'harvested' ||
-        c.status === 'closed';
-      const established = harvested || c.status === 'active';
-      if (!established || !c.area_ha) continue;
-      const yieldTHa = !harvested
-        ? null
-        : c.harvested_t && c.harvested_area
-          ? c.harvested_t / c.harvested_area
-          : c.expected_yield_t_ha;
-      const perHa = cycleEmissionsPerHa(
-        {
-          crop: carbonCrop(c.crop_code),
-          yieldTHa,
-          strawRemoved: c.straw_removed,
-          nLastYearKgHa:
-            c.role === 'main'
-              ? (organicN.get(`${c.field_id}:${c.harvest_year - 1}`) ?? 0)
-              : 0,
-        },
-        c.harvest_year,
-      ).byId;
+      const input = cycleInput(c, organicN);
+      if (!input) continue;
+      const perHa = cycleEmissionsPerHa(input, c.harvest_year).byId;
       out.set(c.id, { byId: scale(perHa, c.area_ha) });
     }
     return out;
@@ -237,7 +252,7 @@ export class CarbonService {
     );
   }
 
-  private async analysisIn(
+  async analysisIn(
     trx: Trx,
     orgId: string,
     level: CarbonLevel,

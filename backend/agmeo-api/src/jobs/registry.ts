@@ -10,6 +10,7 @@ import { YIELD_SWEEP, yieldJobHandlers } from '../modules/yield/yield-builder.js
 import { DISEASE_CROP, DISEASE_SCAN, diseaseCropHandler, diseaseScanHandler, IsipClient } from '../modules/model-services/disease.js';
 import { ESM_RUN, esmRunHandler } from '../modules/model-services/esm.js';
 import { RAIN_DIGEST, rainDigestHandler, STORAGE_DIGEST, storageDigestHandler } from '../modules/notifications/digest.jobs.js';
+import { VOICE_TRANSCRIBE, voiceTranscribeHandler } from '../modules/voice/voice.service.js';
 import { createStorageDriver } from '../storage/object-storage.js';
 import type { JobHandler } from './runner.js';
 import type { Schedule } from './scheduler.js';
@@ -35,6 +36,8 @@ export function jobHandlers(db: Kysely<DB>): Record<string, JobHandler> {
     [DISEASE_CROP]: diseaseCropHandler(db, isip),
     [RAIN_DIGEST]: rainDigestHandler(db),
     [STORAGE_DIGEST]: storageDigestHandler(db),
+    // Voice drafts: speech-to-text of a recording, then the draft operation.
+    [VOICE_TRANSCRIBE]: voiceTranscribeHandler(db, storage),
     // Objects of files deleted from the trash; deleting a missing object is not an error.
     [PURGE_OBJECTS]: async (job) => {
       for (const key of (job.payload.keys as string[] | undefined) ?? []) await storage.delete(key);
