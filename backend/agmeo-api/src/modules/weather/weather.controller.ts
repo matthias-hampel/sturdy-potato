@@ -1,6 +1,7 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { type Ctx, OrgCtx } from '../../auth/context.js';
 import { badRequest } from '../../core/errors.js';
+import { FieldConditionsService } from './field-conditions.service.js';
 import { WeatherService } from './weather.service.js';
 
 const isoDay = (v?: string) => {
@@ -11,7 +12,10 @@ const isoDay = (v?: string) => {
 
 @Controller('orgs/:orgId')
 export class WeatherController {
-  constructor(private readonly weather: WeatherService) {}
+  constructor(
+    private readonly weather: WeatherService,
+    private readonly conditions: FieldConditionsService,
+  ) {}
 
   @Get('farms/:farmId/weather')
   forecast(@OrgCtx() ctx: Ctx, @Param('farmId', ParseUUIDPipe) farmId: string) {
@@ -26,5 +30,27 @@ export class WeatherController {
   @Get('fields/:fieldId/forecast')
   fieldForecast(@OrgCtx() ctx: Ctx, @Param('fieldId', ParseUUIDPipe) fieldId: string) {
     return this.weather.fieldForecast(ctx, fieldId);
+  }
+
+  @Get('fields/:fieldId/conditions')
+  fieldConditions(@OrgCtx() ctx: Ctx, @Param('fieldId', ParseUUIDPipe) fieldId: string) {
+    return this.conditions.conditions(ctx, fieldId);
+  }
+
+  @Get('fields/:fieldId/trafficability')
+  trafficability(
+    @OrgCtx() ctx: Ctx,
+    @Param('fieldId', ParseUUIDPipe) fieldId: string,
+    @Query('equipmentId', ParseUUIDPipe) equipmentId: string,
+    @Query('frontKpa') frontKpa?: string,
+    @Query('rearKpa') rearKpa?: string,
+  ) {
+    const kpa = (v?: string) => {
+      if (v == null || v === '') return undefined;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 40 || n > 400) throw badRequest('invalid_pressure', 'Tyre pressure must be 40–400 kPa');
+      return n;
+    };
+    return this.conditions.trafficability(ctx, fieldId, { equipmentId, frontKpa: kpa(frontKpa), rearKpa: kpa(rearKpa) });
   }
 }

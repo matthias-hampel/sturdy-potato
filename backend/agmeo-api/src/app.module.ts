@@ -65,6 +65,7 @@ import { TeamController } from './modules/team/team.controller.js';
 import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
+import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
 
 export const DOMAIN_SERVICES = [
   IdentityService,
@@ -88,6 +89,7 @@ export const DOMAIN_SERVICES = [
   ProfitabilityService,
   ComplianceService,
   WeatherService,
+  FieldConditionsService,
   MonitoringService,
   ProductivityService,
   VraService,
