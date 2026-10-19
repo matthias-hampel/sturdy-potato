@@ -1,6 +1,6 @@
 # agmeo parity plan
 
-Status: gap analysis and decisions (2026-10-18). Phase 0 built on `feat/parity-phase0` (see §7); phases 1–5 open. Reference: `AGVOLUTION/agmeo`, branch `development` at `489bfe464`
+Status: all phases of §6 built (2026-10-19, see §7); out-of-scope areas per the decisions in §5. Reference: `AGVOLUTION/agmeo`, branch `development` at `489bfe464`
 (Next.js + drizzle, ~540k lines of TypeScript, 116 pages, 160 tables, 28 cron jobs, 11 locales).
 Target: this repository (57 tables, 27 routes). Goal: the same user-visible functionality.
 
@@ -11,13 +11,13 @@ Paths without a prefix are in the reference under `src/app/app/[orgId]/` or `src
 
 | Area | Status | In short |
 |---|---|---|
-| Operations, DüV, ENNI/ENDO, plant-protection checks, inventory, templates | mostly present | Often stricter than the reference (lifecycle, audit, part fields). Missing: models, BESyD/ST, task board, cultivation groups |
-| Fields, boundaries, satellite, productivity zones, VRA | partial | Own Sentinel-2 pipeline is ahead. Missing: soil suite, yield maps, cadastre/lease, merge/split/archive, map layers, B2B Maps |
-| Economics, carbon, overview | partial | DfL/DB I/DB II and plan vs. actual present. Missing: RothC, CO2 analysis depth, benchmarks, multi-year, news feed, partner console |
-| Weather and agronomic models | minimal | Farm-level live forecast only. No stored weather, no spray/sowing/risk bars, trafficability, BBCH, disease, water balance, microclimate, radar |
-| Integrations and imports | missing | No John Deere, CLAAS, AGCO, NEXT Farming, Raindancer, FarmNet, climavi; no import contract, no AI import |
-| agmeo Chat, knowledge base | missing | Nothing |
-| Platform | minimal | Dev-only sign-in, de/en with no switch. No billing, files, e-mail, scheduler, API keys, public API, staff/admin tools |
+| Operations, DüV, ENNI/ENDO, plant-protection checks, inventory, templates | present | Often stricter than the reference (lifecycle, audit, part fields); models, BESyD/ST, task board, crop depth pages built (§7) |
+| Fields, boundaries, satellite, productivity zones, VRA | present | Soil suite, yield maps, cadastre and leases, field manager, application maps built (§7). Out of scope: B2B Maps |
+| Economics, carbon, overview | present | Multi-year, benchmarks, market prices, news feed, BEK CO2 analysis, RothC, report built (§7). Out of scope: partner console, co2nserve overview |
+| Weather and agronomic models | present | Stored weather, condition bars, trafficability, BBCH with calibration, ISIP disease, water balance, radar (§7). Out of scope: microclimate, climavi |
+| Integrations and imports | out of scope | Provider integrations excluded (decision §5); data import page for application data, shapefiles and ISO-XML exists |
+| agmeo Chat, knowledge base | out of scope | Excluded (decision §5) |
+| Platform | present (in scope) | Keycloak, files, mail, jobs, 11 languages, farm-restricted members, onboarding, settings, digests (§7). Out of scope: billing, API keys, public API, staff/admin tools |
 
 ## 2. Cross-cutting foundations
 
@@ -47,15 +47,15 @@ rework:
 | Secondary crop, plan next year | `AddSecondaryCropDialog.tsx`, `PlanNextYear.tsx` | done (feat/parity-fieldtable) | — (row and bulk action "Nebenkultur hinzufügen", "In <Jahr> übernehmen", banner on an empty season) |
 | Boundary import | `_components/ImportFieldDialog/*` | done | Data import page; rotation pick/create and location check added (000105 branch). No state picker needed (columns and land-use codes are detected); no open-water check |
 | Cadastral parcel selection (state WFS) | `SelectFieldsTab.tsx`, `lib/cadastral` | done | German states only (no AT/PL/… countries); IACS boundary tiles of `SelectFieldsTab` not ported (no GYI data) |
-| Edit boundary | `edit-boundary/*` | partial | Cut holes, simplify slider, snapping, reason; restore an earlier version |
-| Fields manager | `fields-manager/[year]/*` | partial | Merge, split, renumber, archive/restore, multi-field editor |
+| Edit boundary | `edit-boundary/*` | present | — (cut holes, simplify, reason, restore, planned changes) |
+| Fields manager | `fields-manager/[year]/*` | present | — (merge, renumber, archive/restore; split via boundary cut) |
 | Lease management + analytics | `LeaseManagementTable.tsx`, `LeaseAnalytics.tsx` | done | Inline cell editing (dialog instead), parcel hover popup on the field map |
-| Crop rotations page | `fields/[year]/crop-rotations` | partial | Backend exists (`planning`), no UI |
-| Field groups / cultivation groups | `fieldGroups`, `cultivation-groups` | missing | Entity and UI |
+| Crop rotations page | `fields/[year]/crop-rotations` | present | — |
+| Field groups / cultivation groups | `fieldGroups`, `cultivation-groups` | present | — (field groups; crop + template assignment) |
 | Org map layers | `_components/mapLayers/*`, `maps/*` | partial (thematic layers done) | Background rasters (other branch), stations, live locations, terrain rasters (TWI, slope) |
-| Live locations, tracks, time travel; saved locations | `live-locations`, `saved-locations` | missing | Whole feature (mobile) |
-| Satellite annotations, field documents, field overview PDF | `SatelliteAnnotation*`, `FieldDocuments.tsx` | missing | Whole feature |
-| B2B Maps (~120 layers, raster analysis, access admin) | `src/app/maps`, `lib/b2b-maps` | missing | Separate product |
+| Live locations, tracks, time travel; saved locations | `live-locations`, `saved-locations` | out of scope | Mobile app |
+| Satellite annotations, field documents, field overview PDF | `SatelliteAnnotation*`, `FieldDocuments.tsx` | present | — (overview PDF via browser printing) |
+| B2B Maps (~120 layers, raster analysis, access admin) | `src/app/maps`, `lib/b2b-maps` | out of scope | Separate product |
 
 ### 3.2 Soil
 
@@ -74,10 +74,10 @@ rework:
 | Satellite history and tiles | `satellite`, `cron/satellite-crawler` | present (redesigned) | LAI, SAVI; per-scene stats dialog, image export |
 | Productivity zones | application-map base zonation | present | — |
 | Yield-map import (ISO-XML/AFT/GeoJSON, cleaning, rasterise) + yield analytics | `cron/yield-map-import`, `lib/analytics/yieldMap*` | present | Provider-fed sources (John Deere, CLAAS, AGCO, NEXT Farming); yield zones as a base in the VRA editor |
-| Application maps per cultivation | `applicationMapsPage/*` | partial | Base zonations from soil map, yield map, upload or single scene; brush editor; JD/CLAAS/AGCO push; batch export |
-| Bulk application maps | `application-maps/[year]` | missing | Whole feature |
-| Zone optimisation with ESM N model | `optimization/page.tsx` | partial | N-balance simulation, N-supply graph |
-| Maize dry-matter monitoring | `maize-dmc/[year]`, `cron/dmc-harvest-detection` | missing | Whole module |
+| Application maps per cultivation | `applicationMapsPage/*` | present | JD/CLAAS/AGCO push (integrations); terminal-specific conversion |
+| Bulk application maps | `application-maps/[year]` | present | — |
+| Zone optimisation with ESM N model | `optimization/page.tsx` | present | Needs `ESM_SERVER_URL`; ESM timeseries 404 for this app's ids until the ESM drops its id check |
+| Maize dry-matter monitoring | `maize-dmc/[year]`, `cron/dmc-harvest-detection` | present | Needs `MAIZE_DMC_API_URL`; variety offsets instead of KWS regions |
 
 ### 3.4 Operations and crop production
 
@@ -86,8 +86,8 @@ rework:
 | Operations | `transactions`, `operations` | present | Action catalogue (diesel l/ha, kWh/ha, h/ha), custom actions, CO2/diesel per row |
 | Operations overview map | `operations/[year]` | present | — (operations map with field-group filter; template and straw on crop assignment) |
 | Templates | `operations/_components/template-builder` | partial | Public system templates, AI proposal, per-step costs (builder, copies and other organizations' templates ported) |
-| Tasks | `tasks/_board`, `tasks/[id]/comments` | partial | Kanban, tasks on operations, comments, filters, bulk done, delta sync |
-| Crop calendar | `crop-calendar` | partial | Inline edit, crop colours, distribution bar |
+| Tasks | `tasks/_board`, `tasks/[id]/comments` | present | — |
+| Crop calendar | `crop-calendar` | present | — |
 | Seeding, tillage tabs | `seeding/[year]`, `tillage/[year]` | present | — |
 | Plant protection | `protection/[year]` | partial | Inline dose min/max and water checks, Wirkbereich (type) column |
 | Harvest | `harvest/[year]` | partial | — (yield-map upload, batch satellite yield estimate and coverage KPIs ported) |
@@ -102,63 +102,63 @@ rework:
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
 | ENNI, ENDO, N170, DüV report | `export/enni`, `export/endo` | present | Export history archived as files |
-| BESyD (BB/SN/ST/TH), Sachsen-Anhalt LLG | `export/besyd`, `export/st` | missing | Both formats |
-| Fertilizer-report wizard | `economic-analysis/[year]/fertilizer-reports` | partial | Region detection, deadlines, readiness step, crop mappings, portal links |
-| Plant-protection record EU 2023/564 | `protection-reports` | partial | Wizard, history; CSV format equivalence unverified |
+| BESyD (BB/SN/ST/TH), Sachsen-Anhalt LLG | `export/besyd`, `export/st` | present | — (grazing not modelled) |
+| Fertilizer-report wizard | `economic-analysis/[year]/fertilizer-reports` | present | — |
+| Plant-protection record EU 2023/564 | `protection-reports` | present | CSV format equivalence unverified against an authority |
 
 ### 3.6 Resources
 
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
-| Warehouse | `personalize/products` (Inventory*) | partial | Lot, expiry, supplier, invoice no., harvest/fuel as sources, stocktake, export |
-| Product master data | `personalize/products/master-data` | partial | Product CO2e, humus effect, N effectiveness, datasheets, sharing |
-| Prices per year | `prices/[year]` | partial | Article price per year (rewrite: one unit cost) |
-| Calculation parameters | `personalize/parameters` | missing | Editable emission factors |
-| Machinery | `machinery` | partial | Machine vs. implement, catalogue lookup, SCI data, irrigation fields, purchase price, JD sync |
+| Warehouse | `personalize/products` (Inventory*) | present | — |
+| Product master data | `personalize/products/master-data` | present | Product sharing across organizations |
+| Prices per year | `prices/[year]` | present | — |
+| Calculation parameters | `personalize/parameters` | present | Read-only, with citations |
+| Machinery | `machinery` | present | JD sync (integration) |
 | Operators | `operators` | present | Staff number, role, notes |
 | Variety browser | `app/varieties` | done (leftovers) | BSL data is the reference's 2026-02 snapshot |
-| Files | `files/[year]` | missing | Whole module (F3) |
+| Files | `files/[year]` | present | — |
 
 ### 3.7 Economics, carbon, overview
 
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
-| Profitability per field | `economic-analysis/[year]` | partial | Aggregation by group, multi-year, ranking, detail dialog, coverage stats, diesel/hours, map choropleth |
-| Farm economics settings | `FarmEconomicsDialog.tsx` | partial | Accident insurance, rights, salary/h, young farmers, agri-environment, per-field lease, default article prices |
-| Benchmarks | `economic-analysis/[year]/benchmark` | missing | Whole feature |
-| Market prices (EU portal cron, compare modal) | `cron/market-prices`, `MarketPricesModal.tsx` | missing | Whole feature |
-| Overview (cultivation-group table, scope 2) | `overview/[year]` | missing | Whole feature |
+| Profitability per field | `economic-analysis/[year]` | present | — |
+| Farm economics settings | `FarmEconomicsDialog.tsx` | present | — |
+| Benchmarks | `economic-analysis/[year]/benchmark` | present | — |
+| Market prices (EU portal cron, compare modal) | `cron/market-prices`, `MarketPricesModal.tsx` | present | The EU feed was suspended when built; the job tolerates it |
+| Overview (cultivation-group table, scope 2) | `overview/[year]` | out of scope | co2nserve page; scope 2 is in the CO2 analysis |
 | CO2 analysis | `analysis/[year]`, `lib/co2calculator` | done (phase 4, carbon; report in leftovers) | Projects are the user's own organizations |
 | RothC carbon tab | `[cultivationId]/carbon` | done (phase 4, carbon) | Needs `THUENEN_API_KEY` |
-| Yield research | `yield-research/[year]` | missing | Whole feature (internal) |
-| News feed + staff announcements | `news/[year]`, `lib/news`, `src/app/team/news` | missing | Whole feature |
-| Predictions API (yield, DMC, BBCH, GDD, LAI, nFK, grassland) | `predictions/*` | missing | Whole feature |
-| Partner console + partner analysis | `src/app/partner/[slug]` | missing | Whole feature |
+| Yield research | `yield-research/[year]` | out of scope | Internal |
+| News feed + staff announcements | `news/[year]`, `lib/news`, `src/app/team/news` | partial | Staff announcements (staff tools out of scope) |
+| Predictions API (yield, DMC, BBCH, GDD, LAI, nFK, grassland) | `predictions/*` | partial | Shown in the app (DMC, grassland, BBCH/GDD, LAI, water balance); the public predictions API is out of scope |
+| Partner console + partner analysis | `src/app/partner/[slug]` | out of scope | Excluded (decision §5) |
 
 ### 3.8 Weather, models, devices
 
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
-| Weather | `cron/weather-crawler`, `fields/[id]/weather` | partial | Stored per cultivation (F5), field-level 48 h with hourly spray score |
-| Condition bars (spray with Delta T, sowing, risk, trafficability; 4 levels, crop/BBCH aware) | `lib/weather/conditions.ts` | partial | Rewrite has yes/no spray windows only |
-| Trafficability (FAO-56 → pF → precompression → tyre stress) | `lib/trafficability` | missing | Whole model |
-| Microclimate API (10 m layers) | `api/microclimate`, `lib/microclimate` | missing | Whole feature |
-| DWD RADOLAN radar | `api/radar`, `cron/radar-refresh` | missing | Whole feature |
-| climavi stations (list, detail charts, compare, frost) | `stations`, `oauth/climavi`, `cron/climavi-validate` | missing | Whole feature |
+| Weather | `cron/weather-crawler`, `fields/[id]/weather` | present | — |
+| Condition bars (spray with Delta T, sowing, risk, trafficability; 4 levels, crop/BBCH aware) | `lib/weather/conditions.ts` | present | — |
+| Trafficability (FAO-56 → pF → precompression → tyre stress) | `lib/trafficability` | present | — |
+| Microclimate API (10 m layers) | `api/microclimate`, `lib/microclimate` | out of scope | Excluded |
+| DWD RADOLAN radar | `api/radar`, `cron/radar-refresh` | present | — |
+| climavi stations (list, detail charts, compare, frost) | `stations`, `oauth/climavi`, `cron/climavi-validate` | out of scope | Integration |
 
 ### 3.9 Integrations and imports
 
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
-| Connections page, OAuth, refresh | `settings/ConnectionsPage.tsx`, `oauth/*`, `cron/oauth-refresh` | missing | F6 |
-| John Deere (wizard, nightly sync, telemetry, write-back) | `lib/johndeere`, `actions/johndeere` | missing | Whole integration |
-| CLAAS connect | `lib/claas`, `cron/claas-sync` | missing | Whole integration |
-| AGCO FarmENGAGE | `lib/agco`, `cron/agco-sync` | missing | Whole integration |
-| NEXT Farming cloud + Pro backup | `lib/nextfarming` | missing | Whole integration |
-| Raindancer, FarmNet | `lib/raindancer`, `farmnet.ts` | missing | Whole integration |
-| Import contract | `import/{jobs,schema,snapshot}` | missing | F7 |
-| AI import requests | `ai-import`, `staff/import-requests` | missing | Whole feature |
-| Public API, Pöttinger docs, webhooks, ESM write-back | `docs/api`, `api/public`, `webhooks`, `esm` | missing | F8 |
+| Connections page, OAuth, refresh | `settings/ConnectionsPage.tsx`, `oauth/*`, `cron/oauth-refresh` | out of scope | Excluded (decision §5) |
+| John Deere (wizard, nightly sync, telemetry, write-back) | `lib/johndeere`, `actions/johndeere` | out of scope | Excluded (decision §5) |
+| CLAAS connect | `lib/claas`, `cron/claas-sync` | out of scope | Excluded (decision §5) |
+| AGCO FarmENGAGE | `lib/agco`, `cron/agco-sync` | out of scope | Excluded (decision §5) |
+| NEXT Farming cloud + Pro backup | `lib/nextfarming` | out of scope | Excluded (decision §5) |
+| Raindancer, FarmNet | `lib/raindancer`, `farmnet.ts` | out of scope | Excluded (decision §5) |
+| Import contract | `import/{jobs,schema,snapshot}` | out of scope | Excluded (decision §5) |
+| AI import requests | `ai-import`, `staff/import-requests` | out of scope | Excluded (decision §5) |
+| Public API, Pöttinger docs, webhooks, ESM write-back | `docs/api`, `api/public`, `webhooks`, `esm` | out of scope | Excluded (decision §5) |
 
 ### 3.10 agmeo Chat and knowledge base
 
@@ -175,12 +175,12 @@ standalone host and EU residency, assistant API, knowledge base with embeddings 
 |---|---|---|---|
 | Sign-in, sign-up, SSO, provider sign-up | Clerk, `auth/*` | partial (dev only) | F1 |
 | Members, invitations | `settings/MembersPage.tsx` | done (platform) | Members limited to farms, enforced by row policies |
-| API keys | `settings/ApiKeysPage.tsx` | missing | F8 |
+| API keys | `settings/ApiKeysPage.tsx` | out of scope | Excluded (decision §5) |
 | Onboarding | `app/onboarding/*`, `api/onboarding/farm` | done (platform) | Partner bulk-onboarding API (`api/onboarding/farm`, out of scope; the import contract covers it); standard technologies per crop |
 | Settings tabs | `settings/_components/*Page.tsx` | done (platform) | Out of scope: communication (co2nserve/Rentenbank), partnerships, connections, subscription, API keys, chat |
-| Billing | `checkout`, `coupon`, `lib/subscription`, `webhooks/zoho` | missing | F10 |
-| Admin dashboard, API stats, staff team pages (clone org, manage orgs, news, partners, KTBL) | `src/app/admin-dashboard`, `src/app/team` | missing | Staff role and all pages |
-| Languages | `src/i18n/common` (11) | partial | 9 locales, detection, switcher (F9) |
+| Billing | `checkout`, `coupon`, `lib/subscription`, `webhooks/zoho` | out of scope | Excluded (decision §5) |
+| Admin dashboard, API stats, staff team pages (clone org, manage orgs, news, partners, KTBL) | `src/app/admin-dashboard`, `src/app/team` | out of scope | Excluded (decision §5) |
+| Languages | `src/i18n/common` (11) | present | — (11 languages; mails and server PDFs German or English) |
 | Help page, PWA manifest | `app/help`, `public/site.webmanifest` | done (platform) | Coupon, PSM and variety links, cookie settings |
 | E-mail digests (rain, storage) | `cron/rain-digest`, `cron/storage-digest` | done (platform) | Field list sorted by rain (no rain column) |
 
