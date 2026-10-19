@@ -28,6 +28,7 @@ import { diff, record } from '../../core/events.js';
 import { iso, today } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
+import { ktblAction } from '../ktbl/catalogue.js';
 
 const yearStart = () => `${today().slice(0, 4)}-01-01`;
 
@@ -426,6 +427,7 @@ export class TeamService {
       employeeId: r.employee_id,
       employeeName: r.employee_name,
       notes: r.notes,
+      ktblFqn: r.ktbl_fqn,
       archivedAt: iso(r.archived_at),
       usageCount: Number(r.usage_count ?? 0),
     }));
@@ -441,6 +443,10 @@ export class TeamService {
     if (input.implementId && cls.get(input.implementId) !== 'implement') throw badRequest('invalid_implement', 'Choose an implement for the implement');
   }
 
+  private checkKtbl(input: Out<typeof OperationActionInput>) {
+    if (input.ktblFqn && !ktblAction(input.ktblFqn)) throw badRequest('invalid_ktbl_action', 'Unknown KTBL action');
+  }
+
   private actionValues(input: Out<typeof OperationActionInput>) {
     return {
       name: input.name,
@@ -451,11 +457,13 @@ export class TeamService {
       implement_id: input.implementId ?? null,
       employee_id: input.employeeId ?? null,
       notes: input.notes ?? null,
+      ktbl_fqn: input.ktblFqn ?? null,
     };
   }
 
   createAction(ctx: Ctx, input: Out<typeof OperationActionInput>): Promise<OperationAction> {
     return this.db.run(ctx, async (trx) => {
+      this.checkKtbl(input);
       await this.checkActionRefs(trx, input);
       const { id } = await trx
         .insertInto('operation_actions')
@@ -472,6 +480,7 @@ export class TeamService {
     return this.db.run(ctx, async (trx) => {
       const before = await trx.selectFrom('operation_actions').selectAll().where('id', '=', id).executeTakeFirst();
       if (!before) throw notFound('Action');
+      this.checkKtbl(input);
       await this.checkActionRefs(trx, input);
       const values = this.actionValues(input);
       const archived_at = input.archived === undefined ? before.archived_at : input.archived ? (before.archived_at ?? new Date()) : null;

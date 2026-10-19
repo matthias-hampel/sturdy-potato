@@ -28,6 +28,8 @@ import { IdentityController } from './modules/identity/identity.controller.js';
 import { IdentityService } from './modules/identity/identity.service.js';
 import { InventoryController } from './modules/inventory/inventory.controller.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
+import { KtblController } from './modules/ktbl/ktbl.controller.js';
+import { KtblService } from './modules/ktbl/ktbl.service.js';
 import { MonitoringController } from './modules/monitoring/monitoring.controller.js';
 import { MonitoringService } from './modules/monitoring/monitoring.service.js';
 import { ProductivityController } from './modules/productivity/productivity.controller.js';
@@ -67,6 +69,7 @@ export const DOMAIN_SERVICES = [
   CropsService,
   InventoryService,
   TeamService,
+  KtblService,
   OperationsService,
   TasksService,
   PlanningService,
@@ -102,6 +105,7 @@ export const DOMAIN_SERVICES = [
     CropsController,
     InventoryController,
     TeamController,
+    KtblController,
     OperationsController,
     TasksController,
     PlanningController,
