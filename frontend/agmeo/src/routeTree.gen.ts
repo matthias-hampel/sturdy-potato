@@ -16,6 +16,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as OOrgIdRouteImport } from './routes/o.$orgId'
 import { Route as OOrgIdIndexRouteImport } from './routes/o.$orgId.index'
 import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
+import { Route as OOrgIdCarbonRouteImport } from './routes/o.$orgId.carbon'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
 import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
@@ -75,6 +76,11 @@ const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
 const OOrgIdCalendarRoute = OOrgIdCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdCarbonRoute = OOrgIdCarbonRouteImport.update({
+  id: '/carbon',
+  path: '/carbon',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdEconomicsRoute = OOrgIdEconomicsRouteImport.update({
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
+  '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
+  '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
@@ -281,6 +289,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
+  '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
+    | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/auth/callback'
     | '/o/$orgId/calendar'
+    | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
+    | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
@@ -469,6 +481,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/o/$orgId/calendar'
       preLoaderRoute: typeof OOrgIdCalendarRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/carbon': {
+      id: '/o/$orgId/carbon'
+      path: '/carbon'
+      fullPath: '/o/$orgId/carbon'
+      preLoaderRoute: typeof OOrgIdCarbonRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/economics': {
@@ -651,6 +670,7 @@ declare module '@tanstack/react-router' {
 
 interface OOrgIdRouteChildren {
   OOrgIdCalendarRoute: typeof OOrgIdCalendarRoute
+  OOrgIdCarbonRoute: typeof OOrgIdCarbonRoute
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
   OOrgIdFilesRoute: typeof OOrgIdFilesRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
@@ -681,6 +701,7 @@ interface OOrgIdRouteChildren {
 
 const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdCalendarRoute: OOrgIdCalendarRoute,
+  OOrgIdCarbonRoute: OOrgIdCarbonRoute,
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
   OOrgIdFilesRoute: OOrgIdFilesRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
@@ -722,13 +743,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -356,3 +356,298 @@ export function BarList({
     </ul>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Stacked column chart: positive parts stack upwards, negative ones (credits) downwards
+// ---------------------------------------------------------------------------
+
+export interface StackedDatum {
+  key: string
+  label: string
+  /** One value per series; null or 0 draws nothing. */
+  values: (number | null)[]
+  /** A reference value drawn as a short horizontal mark over the column (e.g. a regional benchmark). */
+  reference?: number | null
+  /** Small text above the column (e.g. the area). */
+  annotation?: string
+}
+
+export function StackedColumnChart({
+  data,
+  series,
+  format,
+  height = 260,
+  ariaLabel,
+  referenceLabel,
+  className,
+}: {
+  data: StackedDatum[]
+  series: Series[]
+  format: (v: number) => string
+  height?: number
+  ariaLabel: string
+  referenceLabel?: string
+  className?: string
+}) {
+  const [ref, width] = useWidth<HTMLDivElement>()
+  const [hover, setHover] = useState<number | null>(null)
+  const pad = { top: 16, right: 8, bottom: 28, left: 64 }
+  const sums = data.map((d) => {
+    let pos = 0
+    let neg = 0
+    for (const v of d.values) if (v) v > 0 ? (pos += v) : (neg += v)
+    return { pos, neg }
+  })
+  const ticks = niceTicks(Math.min(0, ...sums.map((s) => s.neg)), Math.max(0, ...sums.map((s) => s.pos), ...data.map((d) => d.reference ?? 0)))
+  const lo = ticks[0]
+  const hi = ticks[ticks.length - 1]
+  const innerW = Math.max(0, width - pad.left - pad.right)
+  const innerH = height - pad.top - pad.bottom
+  const y = (v: number) => pad.top + innerH - ((v - lo) / (hi - lo || 1)) * innerH
+  const band = data.length ? innerW / data.length : 0
+  const barW = Math.max(3, Math.min(band * 0.6, 40))
+  const labelEvery = Math.ceil(data.length / Math.max(1, Math.floor(innerW / 72)))
+  const legend = referenceLabel && data.some((d) => d.reference != null) ? [...series, { name: referenceLabel, color: 'var(--color-fg-2)' }] : series
+
+  return (
+    <div className={cx('space-y-2', className)}>
+      <Legend series={legend} />
+      <div ref={ref} className="relative" style={{ height }}>
+        {width > 0 && (
+          <svg width={width} height={height} role="img" aria-label={ariaLabel} onMouseLeave={() => setHover(null)}>
+            {ticks.map((t) => (
+              <g key={t}>
+                <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke="var(--color-grid)" strokeWidth={t === 0 ? 1.5 : 1} />
+                <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted text-[11px] tabular">
+                  {format(t)}
+                </text>
+              </g>
+            ))}
+            {data.map((d, i) => {
+              const x = pad.left + band * i + (band - barW) / 2
+              let pos = 0
+              let neg = 0
+              return (
+                <g key={d.key}>
+                  {hover === i && <rect x={pad.left + band * i} y={pad.top} width={band} height={innerH} fill="var(--color-surface-2)" opacity={0.7} />}
+                  {d.values.map((v, s) => {
+                    if (!v) return null
+                    const from = v > 0 ? pos : neg
+                    const to = from + v
+                    if (v > 0) pos = to
+                    else neg = to
+                    const top = y(Math.max(from, to))
+                    const h = Math.max(1, Math.abs(y(from) - y(to)))
+                    return <rect key={s} x={x} y={top} width={barW} height={h} fill={series[s].color} stroke="var(--color-surface)" strokeWidth={0.5} />
+                  })}
+                  {d.reference != null && <line x1={x - 4} x2={x + barW + 4} y1={y(d.reference)} y2={y(d.reference)} stroke="var(--color-fg-2)" strokeWidth={2.5} />}
+                  {d.annotation && (
+                    <text x={x + barW / 2} y={y(sums[i].pos) - 4} textAnchor="middle" className="fill-muted text-[10px] tabular">
+                      {d.annotation}
+                    </text>
+                  )}
+                  {i % labelEvery === 0 && (
+                    <text x={pad.left + band * i + band / 2} y={height - 8} textAnchor="middle" className="fill-muted text-[11px]">
+                      {truncate(d.label, Math.floor((band * labelEvery) / 6.5))}
+                    </text>
+                  )}
+                  <rect x={pad.left + band * i} y={pad.top} width={band} height={innerH} fill="transparent" onMouseEnter={() => setHover(i)} />
+                </g>
+              )
+            })}
+          </svg>
+        )}
+        {hover != null && data[hover] && (
+          <Tooltip x={pad.left + band * hover + band / 2} y={y(sums[hover].pos)} width={width}>
+            <div className="font-medium text-fg mb-0.5">{data[hover].label}</div>
+            {series.map((s, i) =>
+              data[hover].values[i] ? (
+                <div key={s.name} className="flex items-center gap-1.5 text-fg-2">
+                  <span className="size-2 rounded-sm" style={{ background: s.color }} aria-hidden />
+                  <span>{s.name}</span>
+                  <span className="ml-auto pl-3 font-medium text-fg tabular">{format(data[hover].values[i]!)}</span>
+                </div>
+              ) : null,
+            )}
+            <div className="flex gap-1.5 border-t border-line mt-1 pt-1 text-fg-2">
+              <span>Σ</span>
+              <span className="ml-auto pl-3 font-medium text-fg tabular">{format(sums[hover].pos + sums[hover].neg)}</span>
+            </div>
+            {data[hover].reference != null && referenceLabel && (
+              <div className="flex gap-1.5 text-fg-2">
+                <span>{referenceLabel}</span>
+                <span className="ml-auto pl-3 font-medium text-fg tabular">{format(data[hover].reference!)}</span>
+              </div>
+            )}
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Donut: shares of a whole (non-negative values only)
+// ---------------------------------------------------------------------------
+
+export function DonutChart({
+  items,
+  format,
+  size = 180,
+  centerLabel,
+  ariaLabel,
+}: {
+  items: { key: string; label: string; value: number; color: string }[]
+  format: (v: number) => string
+  size?: number
+  centerLabel?: string
+  ariaLabel: string
+}) {
+  const [hover, setHover] = useState<number | null>(null)
+  const parts = items.filter((i) => i.value > 0)
+  const total = parts.reduce((s, i) => s + i.value, 0)
+  const r = size / 2
+  const inner = r * 0.62
+  let angle = -Math.PI / 2
+  const arc = (a0: number, a1: number) => {
+    const large = a1 - a0 > Math.PI ? 1 : 0
+    const p = (rad: number, a: number) => `${r + rad * Math.cos(a)},${r + rad * Math.sin(a)}`
+    return `M${p(r, a0)} A${r},${r} 0 ${large} 1 ${p(r, a1)} L${p(inner, a1)} A${inner},${inner} 0 ${large} 0 ${p(inner, a0)} Z`
+  }
+  const shown = hover != null ? parts[hover] : null
+  return (
+    <svg width={size} height={size} role="img" aria-label={ariaLabel} onMouseLeave={() => setHover(null)}>
+      {total > 0 &&
+        parts.map((p, i) => {
+          const a0 = angle
+          const a1 = angle + (p.value / total) * Math.PI * 2 - (parts.length > 1 ? 0.004 : 0)
+          angle += (p.value / total) * Math.PI * 2
+          return parts.length === 1 ? (
+            <g key={p.key} onMouseEnter={() => setHover(i)}>
+              <circle cx={r} cy={r} r={(r + inner) / 2} fill="none" stroke={p.color} strokeWidth={r - inner} />
+            </g>
+          ) : (
+            <path key={p.key} d={arc(a0, a1)} fill={p.color} opacity={hover == null || hover === i ? 1 : 0.5} onMouseEnter={() => setHover(i)} />
+          )
+        })}
+      <text x={r} y={r - 6} textAnchor="middle" className="fill-muted text-[11px]">
+        {shown ? truncate(shown.label, 18) : centerLabel}
+      </text>
+      <text x={r} y={r + 12} textAnchor="middle" className="fill-fg text-[13px] font-medium tabular">
+        {format(shown ? shown.value : total)}
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Line chart with uncertainty bands over a numeric x axis (e.g. months of a simulation)
+// ---------------------------------------------------------------------------
+
+export interface BandSeries extends Series {
+  points: { x: number; y: number; lower?: number; upper?: number }[]
+}
+
+export function BandLineChart({
+  series,
+  format,
+  formatX,
+  height = 280,
+  ariaLabel,
+}: {
+  series: BandSeries[]
+  format: (v: number) => string
+  formatX: (x: number) => string
+  height?: number
+  ariaLabel: string
+}) {
+  const [ref, width] = useWidth<HTMLDivElement>()
+  const [hover, setHover] = useState<number | null>(null)
+  const pad = { top: 14, right: 12, bottom: 28, left: 56 }
+  const pts = series.flatMap((s) => s.points)
+  const xs = pts.map((p) => p.x)
+  const x0 = Math.min(...xs)
+  const x1 = Math.max(...xs, x0 + 1)
+  const ticks = niceTicks(Math.min(...pts.map((p) => p.lower ?? p.y)), Math.max(...pts.map((p) => p.upper ?? p.y)))
+  const lo = ticks[0]
+  const hi = ticks[ticks.length - 1]
+  const innerW = Math.max(0, width - pad.left - pad.right)
+  const innerH = height - pad.top - pad.bottom
+  const x = (v: number) => pad.left + ((v - x0) / (x1 - x0)) * innerW
+  const y = (v: number) => pad.top + innerH - ((v - lo) / (hi - lo || 1)) * innerH
+  const xTicks = niceTicks(x0, x1, 6).filter((t) => t >= x0 && t <= x1)
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const first = series[0]?.points ?? []
+    let best = -1
+    let bestD = Infinity
+    first.forEach((p, i) => {
+      const d = Math.abs(x(p.x) - mx)
+      if (d < bestD) {
+        bestD = d
+        best = i
+      }
+    })
+    setHover(best >= 0 ? best : null)
+  }
+  return (
+    <div className="space-y-2">
+      <Legend series={series} />
+      <div ref={ref} className="relative" style={{ height }}>
+        {width > 0 && pts.length > 0 && (
+          <svg width={width} height={height} role="img" aria-label={ariaLabel} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+            {ticks.map((t) => (
+              <g key={t}>
+                <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke="var(--color-grid)" />
+                <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted text-[11px] tabular">
+                  {format(t)}
+                </text>
+              </g>
+            ))}
+            {xTicks.map((t) => (
+              <text key={t} x={x(t)} y={height - 8} textAnchor="middle" className="fill-muted text-[11px]">
+                {formatX(t)}
+              </text>
+            ))}
+            {series.map((s) => {
+              const band = s.points.filter((p) => p.lower != null && p.upper != null)
+              const area = band.length
+                ? `M${band.map((p) => `${x(p.x)},${y(p.upper!)}`).join(' L')} L${[...band].reverse().map((p) => `${x(p.x)},${y(p.lower!)}`).join(' L')} Z`
+                : ''
+              const line = s.points.map((p, i) => `${i ? 'L' : 'M'}${x(p.x)},${y(p.y)}`).join(' ')
+              return (
+                <g key={s.name}>
+                  {area && <path d={area} fill={s.color} opacity={0.15} />}
+                  <path d={line} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" />
+                </g>
+              )
+            })}
+            {hover != null && series[0]?.points[hover] && <line x1={x(series[0].points[hover].x)} x2={x(series[0].points[hover].x)} y1={pad.top} y2={pad.top + innerH} stroke="var(--color-muted)" />}
+          </svg>
+        )}
+        {hover != null && series[0]?.points[hover] && (
+          <Tooltip x={x(series[0].points[hover].x)} y={pad.top + 20} width={width}>
+            <div className="text-muted">{formatX(series[0].points[hover].x)}</div>
+            {series.map((s) => {
+              const p = s.points[hover]
+              if (!p) return null
+              return (
+                <div key={s.name} className="flex items-center gap-1.5 text-fg-2">
+                  <span className="size-2 rounded-sm" style={{ background: s.color }} aria-hidden />
+                  {series.length > 1 && <span>{s.name}</span>}
+                  <span className="ml-auto pl-3 font-medium text-fg tabular">{format(p.y)}</span>
+                  {p.lower != null && p.upper != null && (
+                    <span className="text-muted tabular">
+                      ({format(p.lower)} – {format(p.upper)})
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  )
+}

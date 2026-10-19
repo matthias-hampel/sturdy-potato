@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { Button as AriaButton, Form } from 'react-aria-components'
+import { CarbonFieldTab } from '#/components/carbon/CarbonFieldTab'
 import { FieldPartsTab } from '#/components/fields/FieldParts'
 import { SoilTab } from '#/components/fields/SoilTab'
 import { FieldDetailsForm, detailsPayload, type FieldDetails } from '#/components/fields/FieldDetailsForm'
@@ -30,7 +31,7 @@ import { Badge, Card, DescriptionList, ErrorNotice, Loading, Notice, PageHeader,
 import { ConfirmButton, Menu, MenuItem, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
-const TABS = ['overview', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'boundary', 'costs', 'activity'] as const
+const TABS = ['overview', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'boundary', 'costs', 'carbon', 'activity'] as const
 
 export const Route = createFileRoute('/o/$orgId/fields/$fieldId')({
   validateSearch: z.object({
@@ -121,6 +122,7 @@ function FieldPage() {
           <Tab id="zones">{t('fieldPage.tabs.zones')}</Tab>
           <Tab id="boundary">{t('fieldPage.tabs.boundary')}</Tab>
           {can('finance.read') && <Tab id="costs">{t('fieldPage.tabs.costs')}</Tab>}
+          <Tab id="carbon">{t('fieldPage.tabs.carbon')}</Tab>
           <Tab id="activity">{t('fieldPage.tabs.activity')}</Tab>
         </TabList>
         <TabPanel id="overview">
@@ -179,6 +181,9 @@ function FieldPage() {
         </TabPanel>
         <TabPanel id="soil">
           <SoilTab field={f} />
+        </TabPanel>
+        <TabPanel id="carbon">
+          <CarbonFieldTab fieldId={f.id} fieldName={f.name} />
         </TabPanel>
         <TabPanel id="operations">
           <Card
