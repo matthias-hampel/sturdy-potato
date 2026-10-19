@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { CultivationInfo } from '#/components/cultivation/CultivationInfo'
+import { SaveAsTemplateButton } from '#/components/templates/SaveAsTemplateButton'
 import { SavedMapsAction } from '#/components/vra/SavedMapsAction'
 import { CultivationOperations } from '#/components/cultivation/CultivationOperations'
 import { GrasslandPrediction } from '#/components/cultivation/GrasslandPrediction'
@@ -118,6 +119,7 @@ function CultivationPage() {
               <ExternalLink /> {t('cultivation.fieldRecord')}
             </Link>
             <SavedMapsAction fieldId={f.id} maps={maps.data ?? []} />
+            {can('crop.write') && <SaveAsTemplateButton cycle={cycle} />}
             {can('crop.write') && (
               <Button onPress={() => setEditOpen(true)}>
                 <Pencil /> {t('cultivation.editCrop')}
