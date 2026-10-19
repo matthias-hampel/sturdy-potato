@@ -1,8 +1,8 @@
 /**
  * DüV Anlage 3 — Mindestwerte für die Ausnutzung des Stickstoffs aus
  * organischen Düngemitteln im Jahr des Aufbringens (in % des Gesamt-N),
- * as amended 01.02.2025. Feeds the Dube2.5 `verfuegbar-N` of the fertilizer
- * catalogue and the Anlage 5 Jahressumme.
+ * as amended 01.02.2025. Feeds BESyD IMPORG.MINDESTWIRKSAMKEIT and the
+ * Dube2.5 `verfuegbar-N` of the fertilizer catalogue.
  */
 
 import type { OrganicGroup } from './fertilizerGroup.js';

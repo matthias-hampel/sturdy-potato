@@ -1,6 +1,7 @@
 import { buildEndoFromExportData } from './endo/builder.js';
 import { buildEnniFromExportData } from './enni/builder.js';
 import {
+  runBesydPreflightRules,
   runEndoPreflightRules,
   runEnniPreflightRules,
 } from './shared/preflight/index.js';
@@ -27,6 +28,11 @@ const completeEnni = {
 const completeEndo = {
   betriebsnummer: '276010000000001',
   naturraum: 'Geest' as const,
+};
+const completeBesyd = {
+  betriebsnummer: '120000000001',
+  berechnungsgrundlage: 'DV' as const,
+  bodenklimaraum: '107',
 };
 
 const readyData = () =>
@@ -112,10 +118,19 @@ describe('Preflight — metadata', () => {
     expect(codes(endo, 'blocking')).toContain('betriebsnummer_format');
     expect(endo.isValid).toBe(false);
   });
+
+  test('BESyD Betriebsnummer must be 12 digits with an eastern Land prefix', () => {
+    const result = runBesydPreflightRules(readyData(), {
+      ...completeBesyd,
+      betriebsnummer: '276030000000001',
+    });
+    expect(codes(result, 'blocking')).toContain('betriebsnummer_format');
+    expect(result.missingFields.map((f) => f.key)).toContain('betriebsnummer');
+  });
 });
 
 describe('Preflight — field data', () => {
-  test('Vorfrucht missing: blocking for ENDO (Pflichtfeld), warning for ENNI', () => {
+  test('Vorfrucht missing: blocking for ENDO and BESyD (Pflichtfeld), warning for ENNI', () => {
     const data = makeExportData();
     expect(
       codes(runEndoPreflightRules(data, completeEndo), 'blocking'),
@@ -123,15 +138,21 @@ describe('Preflight — field data', () => {
     expect(
       codes(runEnniPreflightRules(data, completeEnni), 'warning'),
     ).toContain('vorfrucht_missing');
+    expect(
+      codes(runBesydPreflightRules(data, completeBesyd), 'blocking'),
+    ).toContain('vorfrucht_missing');
   });
 
-  test('an export without any field blocks; crop-less fields are filed by ENNI/ENDO', () => {
+  test('an export without any field blocks; crop-less fields are filed by ENNI/ENDO and skipped by BESyD', () => {
     const noFields = makeExportData({ fields: [] });
     expect(
       codes(runEnniPreflightRules(noFields, completeEnni), 'blocking'),
     ).toContain('export_empty');
     expect(
       codes(runEndoPreflightRules(noFields, completeEndo), 'blocking'),
+    ).toContain('export_empty');
+    expect(
+      codes(runBesydPreflightRules(noFields, completeBesyd), 'blocking'),
     ).toContain('export_empty');
 
     const cropless = makeExportData({
@@ -140,6 +161,16 @@ describe('Preflight — field data', () => {
     const enni = runEnniPreflightRules(cropless, completeEnni);
     expect(codes(enni)).not.toContain('export_empty');
     expect(codes(enni, 'info')).toContain('field_without_cultivation');
+    expect(codes(enni)).not.toContain('field_without_cultivation_skipped');
+    const besyd = runBesydPreflightRules(cropless, completeBesyd);
+    expect(codes(besyd)).not.toContain('export_empty');
+    expect(codes(besyd)).not.toContain('field_without_cultivation');
+    expect(
+      besyd.issues.find((i) => i.code === 'field_without_cultivation_skipped'),
+    ).toMatchObject({
+      severity: 'info',
+      params: { format: 'webBESyD' },
+    });
   });
 
   test("a crop code override outside the dialect's Stammdaten blocks", () => {
@@ -188,8 +219,11 @@ describe('Preflight — field data', () => {
     expect(issue?.params).toMatchObject({ fertilizer: 'X', unit: 'pieces_ha' });
   });
 
-  test('FLIK missing warns for ENNI and ENDO', () => {
+  test('FLIK missing blocks BESyD and warns for ENNI and ENDO', () => {
     const data = makeExportData({ fields: [makeField({ flik: null })] });
+    expect(
+      codes(runBesydPreflightRules(data, completeBesyd), 'blocking'),
+    ).toContain('flik_missing');
     expect(
       codes(runEnniPreflightRules(data, completeEnni), 'warning'),
     ).toContain('flik_missing');
@@ -262,12 +296,21 @@ describe('Preflight — field data', () => {
     ).toContain('multiple_hauptfrucht');
   });
 
-  test('Bundesland mismatch blocks the XML dialects', () => {
+  test('Bundesland mismatch blocks the XML dialects and warns for BESyD', () => {
     const result = runEndoPreflightRules(
       makeExportData({ federalState: 'NI' }),
       completeEndo,
     );
     expect(codes(result, 'blocking')).toContain('bundesland_mismatch');
+    expect(
+      codes(
+        runBesydPreflightRules(
+          makeExportData({ federalState: 'NI' }),
+          completeBesyd,
+        ),
+        'warning',
+      ),
+    ).toContain('bundesland_mismatch');
     expect(
       codes(
         runEnniPreflightRules(
@@ -354,6 +397,10 @@ describe('Preflight — field data', () => {
     expect(codes(runEnniPreflightRules(data, completeEnni))).not.toContain(
       'multiple_hauptfrucht',
     );
+    // BESyD books the applications on the Hauptfrucht and needs no code for the next crop
+    expect(
+      runBesydPreflightRules(data, completeBesyd).missingCropMappings,
+    ).toEqual([]);
   });
 });
 

@@ -1,9 +1,9 @@
 /**
- * Fertilizer grouping shared by the ENNI and ENDO formats.
+ * Fertilizer grouping shared by all three formats.
  *
  * Mineral products are grouped by the nutrients they carry (N / NP / NPK …);
  * organic ones by the animal / substrate the article name encodes. Each format
- * maps the neutral group to its own code list (Dube2.5 enums).
+ * maps the neutral group to its own code list (Dube2.5 enums, BESyD Tabelle 15).
  */
 
 import type { ExportFertilization } from '../types.js';
@@ -47,6 +47,21 @@ export const MINERAL_GROUP_TO_DUBE: Record<MineralGroup, string> = {
   S: 'Stickstoffdünger',
   Kalk: 'Kalkdünger',
   NMg: 'NMG-Dünger',
+};
+
+/** BESyD Tabelle 15 mineral group codes */
+export const MINERAL_GROUP_TO_BESYD: Record<MineralGroup, string> = {
+  N: '110',
+  NP: '120',
+  NK: '130',
+  NPK: '140',
+  P: '150',
+  PK: '160',
+  K: '170',
+  Mg: '180',
+  S: '181',
+  Kalk: '190',
+  NMg: '110',
 };
 
 export type OrganicGroup =
@@ -117,3 +132,22 @@ export function organicGroup(articleFqn: string): OrganicGroup {
   }
   return 'Sonstiger organischer Dünger';
 }
+
+/** BESyD Tabelle 15 organic fertilizer codes for the neutral groups. */
+export const ORGANIC_GROUP_TO_BESYD: Record<OrganicGroup, string> = {
+  Rindergülle: '241',
+  Schweinegülle: '242',
+  Rindermist: '211',
+  Schweinemist: '212',
+  Pferdemist: '215',
+  Hähnchenmist: '21c',
+  Putenmist: '21d',
+  'Legehennen - HTK': '274',
+  Schafmist: '213',
+  Gärrest: '487',
+  Kompost: '482',
+  Rinderjauche: '221',
+  Schweinejauche: '222',
+  Klärschlamm: '481',
+  'Sonstiger organischer Dünger': '998',
+};

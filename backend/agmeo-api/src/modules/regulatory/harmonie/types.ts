@@ -1,15 +1,18 @@
 /**
- * Shared types for the export modules (ENNI Niedersachsen, ENDO Schleswig-Holstein).
+ * Shared types for the export modules (ENNI Niedersachsen, ENDO Schleswig-Holstein,
+ * webBESyD Brandenburg / Sachsen / Sachsen-Anhalt / Thüringen, Sachsen-Anhalt
+ * Mitteilungspflicht).
  *
  * Ported from agmeo `src/lib/federalExport/harmonie-export/types.ts`. `ExportData`
- * and its member types are kept identical to agmeo (only the crop type and the
- * removed BESyD / ST formats differ) so the DB adapter can be written against
- * the agmeo contract.
+ * and its member types are kept identical to agmeo (only the crop type differs)
+ * so the DB adapter can be written against the agmeo contract.
  */
 
+import type { BesydOrgMetadata } from './besyd/types.js';
 import type { EndoOrgMetadata } from './endo/types.js';
 import type { EnniOrgMetadata } from './enni/types.js';
 import type { N170Betriebsdaten } from './shared/n170Types.js';
+import type { StOrgMetadata } from './st/types.js';
 
 /**
  * agmeo crop key (co2calculator `SupportedCrops`, e.g. `winterWheat`,
@@ -25,7 +28,7 @@ export type NaehrstofftraegerartType =
 /** Dube2.5 `einheit-naehrstofftraeger` — the physical unit a fertilizer is documented in. */
 export type CarrierUnit = 'kg / cbm' | 'kg / t' | 'kg / dt' | 'kg / hl';
 
-export type FederalExportFormat = 'enni' | 'endo';
+export type FederalExportFormat = 'enni' | 'endo' | 'besyd' | 'st';
 
 export type DuengejahrbeginnType =
   | 'JANUAR'
@@ -171,6 +174,9 @@ export type PreflightResult = {
 export type IntegrationsMetadata = {
   enni?: EnniOrgMetadata;
   endo?: EndoOrgMetadata;
+  besyd?: BesydOrgMetadata;
+  /** Sachsen-Anhalt Mitteilungspflicht (LLG). */
+  st?: StOrgMetadata;
   /** Organic-N (170 N) farm data per Düngejahr — shared by ENNI and ENDO. */
   n170?: Record<string, N170Betriebsdaten>;
 };

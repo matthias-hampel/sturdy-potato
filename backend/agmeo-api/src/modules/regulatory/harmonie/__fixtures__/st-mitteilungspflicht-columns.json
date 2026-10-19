@@ -1,0 +1,730 @@
+{
+  "Anl5": [
+    {
+      "name": "Betriebsname",
+      "format": "Text",
+      "description": "eindeutige Bezeichnung des Betriebes"
+    },
+    {
+      "name": "EU_Nummer",
+      "format": "12-stellig",
+      "description": "eindeutige 12-stellige EU-Betriebsnummer"
+    },
+    {
+      "name": "SitzPLZ",
+      "format": "Text",
+      "description": "Postleitzahl des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrt",
+      "format": "Text",
+      "description": "Ort des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrtsTeil",
+      "format": "Text",
+      "description": "Ortsteil des Betriebssitzes"
+    },
+    {
+      "name": "KreisNr",
+      "format": "Zahl",
+      "description": "Landkreis-Nummer des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Kreis",
+      "format": "Text",
+      "description": "Landkreis des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Exportquelle",
+      "format": "Text",
+      "description": "Bezeichnung des exportierenden (liefernden Programmes)"
+    },
+    {
+      "name": "Duengejahr",
+      "format": "JJJJ",
+      "description": "Kalenderjahr des betrieblichen Nährstoffeinsatzes"
+    },
+    {
+      "name": "Ackerland",
+      "format": "ha LF",
+      "description": "Summe aller durch den Betrieb bewirtschafteten ha Ackerland"
+    },
+    {
+      "name": "Gruenland",
+      "format": "ha LF",
+      "description": "Summe aller durch den Betrieb bewirtschafteten ha Grünland"
+    },
+    {
+      "name": "Betriebsgroesse",
+      "format": "ha LF",
+      "description": "Größe des Betriebes in ha LF"
+    },
+    {
+      "name": "Flaeche170kg",
+      "format": "ha Obergrenze nach DüV",
+      "description": "Summe der Flächen zur Berechnung der 170 kg N/ha"
+    },
+    {
+      "name": "Bewirtschaftung",
+      "format": "k/o",
+      "description": "Art der Bewirtschaftung; k=konventionell, o= ökologisch"
+    },
+    {
+      "name": "NBedarf",
+      "format": "kg N",
+      "description": "gesamtbetrieblicher Stickstoffdüngebedarf im Kalenderjahr"
+    },
+    {
+      "name": "P2O5Bedarf",
+      "format": "kg P2O5",
+      "description": "gesamtbetrieblicher P2O5-Düngebedarf im Kalenderjahr"
+    },
+    {
+      "name": "NMinDung",
+      "format": "kg N",
+      "description": "Summe N Aufbringung durch mineralische Düngemittel"
+    },
+    {
+      "name": "NTierDung",
+      "format": "kg N Herkunft",
+      "description": "Summe N Aufbringung durch Wirtschaftsdünger tierischer"
+    },
+    {
+      "name": "NVerfTierDung",
+      "format": "kg Nverf Wirtschaftsdüngern tierischer Herkunft",
+      "description": "davon: Summe N Aufbringung verfügbaren Stickstoffs aus"
+    },
+    {
+      "name": "NWeide",
+      "format": "kg N",
+      "description": "Summe N Aufbringung durch Weidehaltung"
+    },
+    {
+      "name": "NSonstDung",
+      "format": "kg N",
+      "description": "Summe N Aufbringung durch sonstige organische Düngemittel"
+    },
+    {
+      "name": "NVerfSonstDung",
+      "format": "kg Nverf sonstigen organischen Düngemitteln",
+      "description": "davon: Summe N Aufbringung verfügbaren Stickstoffs aus"
+    },
+    {
+      "name": "NBodenHilf",
+      "format": "kg N",
+      "description": "Summe N Aufbringung durch Bodenhilfsstoffe"
+    },
+    {
+      "name": "NKulturSubstrat",
+      "format": "kg N",
+      "description": "Summe N Aufbringung durch Kultursubstrate"
+    },
+    {
+      "name": "NPflanzenHilf",
+      "format": "kg N",
+      "description": "Summe N Aufbringung durch Pflanzenhilfsmittel"
+    },
+    {
+      "name": "NAbfall",
+      "format": "kg N 2 oder 3 KrWG)",
+      "description": "Summe N Aufbringung durch Abfälle zur Beseitigung (§ 28 Abs."
+    },
+    {
+      "name": "NLegum",
+      "format": "kg N Leguminosen",
+      "description": "Summe N Aufbringung durch Stickstoffbindung von"
+    },
+    {
+      "name": "NSumme",
+      "format": "kg N",
+      "description": "Summe N Aufbringung für den Gesamtbetrieb"
+    },
+    {
+      "name": "NSumme_ha",
+      "format": "kg N/ha",
+      "description": "Summe N Aufbringung je ha LF nach § 6 (4) DüV"
+    },
+    {
+      "name": "NSummeVerf",
+      "format": "kg Nverf Gesamtbetrieb",
+      "description": "Summe N Aufbringung verfügbaren Stickstoffs für den"
+    },
+    {
+      "name": "P2O5MinDung",
+      "format": "kg P2O5",
+      "description": "Summe P2O5 Aufbringung durch mineralische Düngemittel"
+    },
+    {
+      "name": "P2O5TierDung",
+      "format": "kg P2O5 Herkunft",
+      "description": "Summe P2O5 Aufbringung durch Wirtschaftsdünger tierischer"
+    },
+    {
+      "name": "P2O5Weide",
+      "format": "kg P2O5",
+      "description": "Summe P2O5 Aufbringung durch Weidehaltung"
+    },
+    {
+      "name": "P2O5SonstDung",
+      "format": "kg P2O5 Düngemittel",
+      "description": "Summe P2O5 Aufbringung durch sonstige organische"
+    },
+    {
+      "name": "P2O5BodenHilf",
+      "format": "kg P2O5",
+      "description": "Summe P2O5 Aufbringung durch Bodenhilfsstoffe"
+    },
+    {
+      "name": "P2O5KulturSubstrat",
+      "format": "kg P2O5",
+      "description": "Summe P2O5 Aufbringung durch Kultursubstrate"
+    },
+    {
+      "name": "P2O5PflanzenHilf",
+      "format": "kg P2O5",
+      "description": "Summe P2O5 Aufbringung durch Pflanzenhilfsmittel"
+    },
+    {
+      "name": "P2O5Abfall",
+      "format": "kg P2O5 Abs. 2 oder 3 KrWG)",
+      "description": "Summe P2O5 Aufbringung durch Abfälle zur Beseitigung (§ 28"
+    },
+    {
+      "name": "P2O5Summe",
+      "format": "kg P2O5",
+      "description": "Summe P2O5 Aufbringung für den Gesamtbetrieb"
+    }
+  ],
+  "Ertraege": [
+    {
+      "name": "Betriebsname",
+      "format": "Text",
+      "description": "eindeutige Bezeichnung des Betriebes"
+    },
+    {
+      "name": "EU_Nummer",
+      "format": "12-stellig",
+      "description": "eindeutige 12-stellige EU-Betriebsnummer"
+    },
+    {
+      "name": "SitzPLZ",
+      "format": "Zahl",
+      "description": "Postleitzahl des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrt",
+      "format": "Text",
+      "description": "Ort des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrtsTeil",
+      "format": "Text",
+      "description": "Ortsteil des Betriebssitzes"
+    },
+    {
+      "name": "KreisNr",
+      "format": "Zahl",
+      "description": "Landkreis-Nummer des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Kreis",
+      "format": "Text",
+      "description": "Landkreis des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Exportquelle",
+      "format": "Text",
+      "description": "Bezeichnung des exportierenden (liefernden Programmes)"
+    },
+    {
+      "name": "Duengejahr",
+      "format": "JJJJ",
+      "description": "Kalenderjahr der zugrunde liegenden Düngebedarfsermittlung"
+    },
+    {
+      "name": "Bewirtschaftung",
+      "format": "k/o",
+      "description": "Art der Bewirtschaftung; k=konventionell, o= ökologisch"
+    },
+    {
+      "name": "HF",
+      "format": "Text",
+      "description": "Bezeichnung der Kultur (lt. Anlage 1)"
+    },
+    {
+      "name": "HF_Nr",
+      "format": "Zahl",
+      "description": "Code-Nummer der Kultur (lt. Anlage 1)"
+    },
+    {
+      "name": "ErtragFM_Betrieb",
+      "format": "dt/ha FM Düngebedarfsermittlung für Ackerkulturen und Gemüse",
+      "description": "Betriebliches Ertragsniveau der Hauptfrucht lt. N-"
+    },
+    {
+      "name": "ErtragTM_Betrieb_GL",
+      "format": "dt/ha TM Düngebedarfsermittlung für Grünland/mehrschnittiges Feldfutter",
+      "description": "Betriebliches Ertragsniveau der Hauptfrucht lt. N-"
+    },
+    {
+      "name": "ErtragFM_Betrieb_NG",
+      "format": "dt/ha FM Gebiet lt. Düngebedarfsermittlung für Ackerkulturen und Gemüse",
+      "description": "Betriebliches Ertragsniveau 2015-2019 auf Flächen im Nitrat-"
+    },
+    {
+      "name": "ErtragTM_GL_NG",
+      "format": "dt/ha TM Gebiet lt. Düngebedarfsermittlung für Grünland/ mehrschnittiges Feldfutter",
+      "description": "Betriebliches Ertragsniveau 2015-2019 auf Flächen im Nitrat-"
+    },
+    {
+      "name": "AndererErtrag",
+      "format": "ja/nein betriebliche Mittel zur Düngebedarfsermittlung für diese Kultur?",
+      "description": "Verwendung von anderen Erträgen als das angegebene"
+    },
+    {
+      "name": "Tats_Ertrag",
+      "format": "dt/ha FM liefernden Kalenderjahr (nur für Hauptkulturen, sofern vorhanden)",
+      "description": "Tatsächlicher durchschnittlicher Ernte-Ertrag der Kultur im zu"
+    }
+  ],
+  "DBE": [
+    {
+      "name": "Betriebsname",
+      "format": "Text",
+      "description": "eindeutige Bezeichnung des Betriebes"
+    },
+    {
+      "name": "EU_Nummer",
+      "format": "12-stellig",
+      "description": "eindeutige 12-stellige EU-Betriebsnummer"
+    },
+    {
+      "name": "SitzPLZ",
+      "format": "Zahl",
+      "description": "Postleitzahl des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrt",
+      "format": "Text",
+      "description": "Ort des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrtsTeil",
+      "format": "Text",
+      "description": "Ortsteil des Betriebssitzes"
+    },
+    {
+      "name": "KreisNr",
+      "format": "Zahl",
+      "description": "Landkreis-Nummer des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Kreis",
+      "format": "Text",
+      "description": "Landkreis des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Exportquelle",
+      "format": "Text",
+      "description": "Bezeichnung des exportierenden (liefernden Programmes)"
+    },
+    {
+      "name": "Duengejahr",
+      "format": "JJJJ",
+      "description": "Kalenderjahr der Düngebedarfsermittlung"
+    },
+    {
+      "name": "Datum",
+      "format": "TT.MM.JJJJ",
+      "description": "Erstelldatum der Düngebedarfsermittlung"
+    },
+    {
+      "name": "Feldblock_ID",
+      "format": "DESTLI und 10- stellige Nummer",
+      "description": "Feldblocknummer entsprechend des Agrarantrages"
+    },
+    {
+      "name": "Parzelle",
+      "format": "Zahl",
+      "description": "Gesamtparzellennummer laut Agrarantrag"
+    },
+    {
+      "name": "NG",
+      "format": "ja/nein",
+      "description": "Lage der Fläche im Nitratgebiet Sachsen-Anhalts?"
+    },
+    {
+      "name": "Phosphorgebiet",
+      "format": "Ja/nein",
+      "description": "Lage der Fläche im Phosphorgebiet Sachsen-Anhalts?"
+    },
+    {
+      "name": "Groesse",
+      "format": "ha",
+      "description": "Größe (netto) der Hauptnutzungsfläche lt. Agrarantrag"
+    },
+    {
+      "name": "Nutzung",
+      "format": "AL/GL/so",
+      "description": "Nutzungsart: Ackerland, Grünland, sonstige"
+    },
+    {
+      "name": "Bewirtschaftung",
+      "format": "k/o",
+      "description": "Art der Bewirtschaftung; k=konventionell, o= ökologisch"
+    },
+    {
+      "name": "BG",
+      "format": "1 bis 6 (Internetseite der LLG)",
+      "description": "Bodengruppe gemäß \"Richtwertsammlung Sachsen-Anhalt\""
+    },
+    {
+      "name": "AZ",
+      "format": "Zahl",
+      "description": "Ackerzahl"
+    },
+    {
+      "name": "VF",
+      "format": "Text",
+      "description": "Bezeichnung der Vorfrucht (lt. Anlage 1)"
+    },
+    {
+      "name": "VF_Nr",
+      "format": "Zahl",
+      "description": "Code-Nummer der Vorfrucht (lt. Anlage 1)"
+    },
+    {
+      "name": "Zwfr",
+      "format": "Text",
+      "description": "Bezeichnung der Zwischenfrucht (lt. Anlage 1)"
+    },
+    {
+      "name": "Zwfr_Nr",
+      "format": "Zahl",
+      "description": "Code-Nummer der Zwischenfrucht (lt. Anlage 1)"
+    },
+    {
+      "name": "HF",
+      "format": "Text",
+      "description": "Bezeichnung der Hauptfrucht (lt. Anlage 1)"
+    },
+    {
+      "name": "HF_Nr",
+      "format": "Zahl",
+      "description": "Code Nummer der Hauptfrucht (lt. Anlage 1)"
+    },
+    {
+      "name": "N_Bedarfswert_DueV",
+      "format": "kg N/ha",
+      "description": "N-Bedarfswert laut DüV bzw. Richtwerte Sachsen-Anhalt"
+    },
+    {
+      "name": "ErtragFM_DueV",
+      "format": "dt FM/ha Anhalt für Acker- und Gemüsekulturen",
+      "description": "Standard-Ertragsniveau laut DüV oder Richtwerte Sachsen-"
+    },
+    {
+      "name": "ErtragFM_Betrieb",
+      "format": "dt FM/ha Gemüsekulturen",
+      "description": "Verwendetes betriebliches Ertragsniveau für Acker- und"
+    },
+    {
+      "name": "ErtragFM_Diff",
+      "format": "dt FM/ha Sachsen-Anhalt und betrieblichem Ertragsniveau in Frischmasse",
+      "description": "Ertragsdifferenz zwischen Ertrag lt. DüV oder Richtwerte"
+    },
+    {
+      "name": "ErtragTM_DueV",
+      "format": "dt TM/ha Anhalt in Trockenmasse bei Grünland/mehrschnittigem Feldfutter",
+      "description": "Standard-Ertragsniveau laut DüV oder Richtwerte Sachsen-"
+    },
+    {
+      "name": "ErtragTM_Betrieb",
+      "format": "dt TM/ha Grünland/mehrschnittigem Feldfutter",
+      "description": "Verwendetes betriebliches Ertragsniveau bei"
+    },
+    {
+      "name": "ErtragTM_Diff",
+      "format": "dt TM/ha Sachsen-Anhalt und betrieblichem Ertragsniveau in Trockenmasse bei Grünland/mehrschnittigem Feldfutter",
+      "description": "Ertragsdifferenz zwischen Ertrag lt. DüV oder Richtwerte"
+    },
+    {
+      "name": "RP_DueV",
+      "format": "% RP i.d.TM nur bei Grünland/mehrschnittigem Feldfutter",
+      "description": "Standard-RP-Gehalt laut DüV oder Richtwerte Sachsen-Anhalt,"
+    },
+    {
+      "name": "RP_Betrieb",
+      "format": "% RP i.d.TM Grünland/mehrschnittigem Feldfutter",
+      "description": "betrieblicher Rohproteingehalt-Gehalt, nur bei"
+    },
+    {
+      "name": "RP_Diff",
+      "format": "% RP i.d.TM Anhalt und betrieblichem RP, nur bei Grünland/Feldfutter",
+      "description": "RP-Differenz zwischen RP lt. DüV oder Richtwerte Sachsen-"
+    },
+    {
+      "name": "Nmin_gesamt",
+      "format": "kg N/ha",
+      "description": "Nmin-Gehalt des Bodens, gesamt angerechnet für DBE"
+    },
+    {
+      "name": "Nmin_0_30",
+      "format": "kg N/ha",
+      "description": "Ermittelter Nmin-Gehalt des Bodens, 0-30 cm"
+    },
+    {
+      "name": "Nmin_30_60",
+      "format": "kg N/ha",
+      "description": "Ermittelter Nmin-Gehalt des Bodens, 30-60 cm"
+    },
+    {
+      "name": "Nmin_60_90",
+      "format": "kg N/ha",
+      "description": "Ermittelter Nmin-Gehalt des Bodens, 60-90 cm"
+    },
+    {
+      "name": "DatenherkunftNmin_0_60",
+      "format": "U/RW oder Verwendung Richtwerte der LLG Sachsen-Anhalt",
+      "description": "Ermittlung Nmin-Gehalt des Bodens 0-60 cm laut Untersuchung"
+    },
+    {
+      "name": "DatenherkunftNmin_60_90",
+      "format": "U/RW/BER",
+      "description": "Ermittlung Nmin-Gehalt des Bodens 60-90 cm laut Untersuchung, Verwendung Richtwerte der LLG Sachsen-Anhalt oder berechnet lt. Formel LLG"
+    },
+    {
+      "name": "ZuAbN_Ertrag_Diff",
+      "format": "kg N/ha",
+      "description": "N-Zu-/Abschlag aufgrund Ertragsdifferenz; negativ bei Abschlag"
+    },
+    {
+      "name": "ZuAbN_RP_Diff",
+      "format": "kg N/ha",
+      "description": "N-Zu-/Abschlag aufgrund RP-Differenz; negativ bei Abschlag"
+    },
+    {
+      "name": "AbN_Nachl_Boden",
+      "format": "kg N/ha",
+      "description": "N-Abschlag aufgrund N-Nachlieferung aus Bodenvorrat; negativ"
+    },
+    {
+      "name": "AbN_Nachl_OD",
+      "format": "kg N/ha des Vorjahres (i.d.R. 10 % des Gesamt-N des VJ); negativ",
+      "description": "N-Abschlag aufgrund N-Nachlieferung aus organischer Düngung"
+    },
+    {
+      "name": "AbN_Nachl_Leg",
+      "format": "kg N/ha Leguminosen; negativ",
+      "description": "N-Abschlag aufgrund N-Nachlieferung aus N-Bindung"
+    },
+    {
+      "name": "AbN_VF",
+      "format": "kg N/ha",
+      "description": "N-Abschlag aufgrund Vorfrucht; negativ"
+    },
+    {
+      "name": "AbN_Zwfr",
+      "format": "kg N/ha",
+      "description": "N-Abschlag aufgrund Zwischenfrucht; negativ"
+    },
+    {
+      "name": "ZuN_Abdeckung",
+      "format": "kg N/ha Ernteverfrühung",
+      "description": "N-Zuschlag aufgrund Abdeckung mit Folie oder Vlies zur"
+    },
+    {
+      "name": "ZuN_nachtraeglich",
+      "format": "kg N/ha",
+      "description": "N-Zuschläge aufgrund nachträglich eintretender Umstände"
+    },
+    {
+      "name": "BedarfN_berechnet",
+      "format": "kg N/ha",
+      "description": "ermittelter N-Düngebedarf"
+    },
+    {
+      "name": "Stickstoffnachlieferung WRWGH",
+      "format": "kg Nverf/ha",
+      "description": "Abzug des verfügbaren N aus Herbstdüngung zu Winterraps/Wintergerste"
+    },
+    {
+      "name": "P205_Gehalt",
+      "format": "mg P2O5/100 g Boden",
+      "description": "Ermittelter P2O5-Gehalt des Bodens laut letzter Bodenuntersuchung"
+    },
+    {
+      "name": "P_AnalyseDatum",
+      "format": "TT.MM.JJJJ",
+      "description": "Datum der letzten P2O5-Bodenuntersuchung"
+    },
+    {
+      "name": "P_Methode",
+      "format": "CAL/DL/EUF",
+      "description": "Angewandte P2O5-Untersuchungsmethode"
+    }
+  ],
+  "Duengungen": [
+    {
+      "name": "Betriebsname",
+      "format": "Text",
+      "description": "eindeutige Bezeichnung des Betriebes"
+    },
+    {
+      "name": "EU_Nummer",
+      "format": "12-stellig",
+      "description": "eindeutige 12-stellige EU-Betriebsnummer"
+    },
+    {
+      "name": "SitzPLZ",
+      "format": "Zahl",
+      "description": "Postleitzahl des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrt",
+      "format": "Text",
+      "description": "Ort des Betriebssitzes"
+    },
+    {
+      "name": "SitzOrtsTeil",
+      "format": "Text",
+      "description": "Ortsteil des Betriebssitz"
+    },
+    {
+      "name": "KreisNr",
+      "format": "Zahl",
+      "description": "Landkreis-Nummer des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Kreis",
+      "format": "Text",
+      "description": "Landkreis des Betriebssitzes (lt. Anlage 3)"
+    },
+    {
+      "name": "Exportquelle",
+      "format": "Text",
+      "description": "Bezeichnung des exportierenden (liefernden Programmes)"
+    },
+    {
+      "name": "Duengejahr",
+      "format": "JJJJ",
+      "description": "Kalenderjahr der Düngemaßnahme"
+    },
+    {
+      "name": "Datum",
+      "format": "TT.MM.JJJJ",
+      "description": "Datum der Düngung"
+    },
+    {
+      "name": "Feldblock_ID",
+      "format": "DESTLI und 10- stellige Nummer",
+      "description": "Feldblock-Nummer des gedüngten Schlages entsprechend des Agrarantrages"
+    },
+    {
+      "name": "Parzelle",
+      "format": "Zahl",
+      "description": "Gesamtparzellennummer des gedüngten Schlages"
+    },
+    {
+      "name": "NG",
+      "format": "ja/nein",
+      "description": "Lage der Fläche im Nitratgebiet Sachsen-Anhalts?"
+    },
+    {
+      "name": "Phosphorgebiet",
+      "format": "ja/nein",
+      "description": "Lage der Fläche im Phosphorgebiet Sachsen-Anhalts?"
+    },
+    {
+      "name": "Groesse",
+      "format": "ha",
+      "description": "Größe des Schlages"
+    },
+    {
+      "name": "Nutzung",
+      "format": "AL/GL/so",
+      "description": "Nutzungsart: Ackerland, Grünland, sonstige"
+    },
+    {
+      "name": "Bewirtschaftung",
+      "format": "k/o",
+      "description": "Art der Bewirtschaftung; k=konventionell, o= ökologisch"
+    },
+    {
+      "name": "HF",
+      "format": "Text Zwischenfruchtliste LLG (lt. Anlage 1)",
+      "description": "Bezeichnung der gedüngten Kultur laut Fruchtarten- oder"
+    },
+    {
+      "name": "HF_Nr",
+      "format": "Zahl Zwischenfruchtliste LLG (lt. Anlage 1)",
+      "description": "Nummer der gedüngten Kultur laut Fruchtarten- oder"
+    },
+    {
+      "name": "Zuordnung",
+      "format": "Text DüV (lt. Anlage 2, Spalte „ZUORDNUNG“)",
+      "description": "Zuordnung des gedüngten Stoffes/der Weidetiere nach Anlage 5"
+    },
+    {
+      "name": "Kategorie",
+      "format": "Text 2, Spalte „KATEGORIE“)",
+      "description": "Kategorisierung des gedüngten Stoffes/der Weidetiere (lt. Anlage"
+    },
+    {
+      "name": "Bezeichnung",
+      "format": "Text Weidetieres nach Anl. 1 Tab. 1 DüV/der angebauten Leguminose",
+      "description": "Bezeichnung des gedüngten Düngemittels/des gehaltenen"
+    },
+    {
+      "name": "Menge",
+      "format": "t/m³/ha",
+      "description": "Aufgebrachte Menge des Düngemittels pro ha"
+    },
+    {
+      "name": "Menge_N",
+      "format": "kg Gesamt-N/ Schlag",
+      "description": "Menge des damit auf den Schlag aufgebrachten Gesamt- Stickstoffs"
+    },
+    {
+      "name": "Menge_NVerf",
+      "format": "kg Nverf/Schlag Stickstoffs",
+      "description": "Menge des damit auf den Schlag aufgebrachten verfügbaren"
+    },
+    {
+      "name": "P2O5_Menge",
+      "format": "kg P2O5/Schlag",
+      "description": "Menge des damit auf den Schlag aufgebrachten P2O5"
+    },
+    {
+      "name": "Menge_N_ha",
+      "format": "kg N/ha Stickstoffs je Hektar",
+      "description": "Menge des damit auf den Schlag aufgebrachten Gesamt-"
+    },
+    {
+      "name": "Menge_NVerf_ha",
+      "format": "kg Nverf/ha Stickstoffs je Hektar",
+      "description": "Menge des damit auf den Schlag aufgebrachten verfügbaren"
+    },
+    {
+      "name": "P2O5_Menge_ha",
+      "format": "kg P2O5 /ha",
+      "description": "Menge des damit auf den Schlag aufgebrachten P2O5 je Hektar"
+    },
+    {
+      "name": "IstHerbstDuengung",
+      "format": "ja/nein",
+      "description": "Wenn Ackerkulturen: Düngung nach Ernte der letzten Hauptfrucht (Herbstdüngung)?"
+    },
+    {
+      "name": "Weidetiere",
+      "format": "Zahl Kalenderjahr",
+      "description": "Anzahl der auf dem Schlag gehaltenen Weidetiere im"
+    },
+    {
+      "name": "Weidetage",
+      "format": "Zahl Kalenderjahr",
+      "description": "Anzahl der auf dem Schlag stattgefundenen Weidetage im"
+    }
+  ]
+}

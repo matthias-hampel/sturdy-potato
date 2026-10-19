@@ -1,9 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   type AgrarantragPreset,
   type AnnualTotals,
   type ExportPreflight,
+  type FederalExportFormat,
+  type FederalState,
   type PreflightIssue,
+  type RegulatoryCodeLists,
+  type RegulatoryExportFile,
+  type RegulatoryRegion,
   availableN,
   type BaseUnit,
   type FarmRegulatory,
@@ -28,10 +33,32 @@ import { diff, record } from '../../core/events.js';
 import { round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
+import { FilesService } from '../files/files.service.js';
 import { type DbfField, polygonShapefile } from '../vra/export/shapefile.js';
 import { zip } from '../vra/export/zip.js';
-import { buildExportData, endoMetadata, enniMetadata } from './export-data.js';
-import { buildEndoXml, buildEnniXml, cropKeyForCode, generateExportFileName, runPreflight } from './harmonie/index.js';
+import { besydMetadata, buildExportData, endoMetadata, enniMetadata, loadDbeResults, stMetadata } from './export-data.js';
+import {
+  AMT_CODES,
+  BESYD_BUNDESLAND_NAMES,
+  BESYD_FRUCHTART_CATALOGUE,
+  BODEN_KLIMA_RAUM_CODES,
+  type BesydBundesland,
+  buildBesydFiles,
+  buildEndoXml,
+  buildEnniXml,
+  buildStFiles,
+  cropKeyForCode,
+  detectBundeslandFromBnr,
+  type DuevDbeResult,
+  type ExportData,
+  generateExportFileName,
+  MINERAL_FERTILIZER_GROUP_CODES,
+  ORGANIC_FERTILIZER_CODES,
+  runPreflight,
+  ST_KREISE,
+  ST_KULTUREN,
+} from './harmonie/index.js';
+import { defaultReportYear, exportFormatFromFileName, formatsForState, getReportDeadline, resolveFertilizerReportRegion, uploadGuide } from './region.js';
 
 export const REGULATORY_RULESET = 'DE-DUEV-2020-Anl5-2026.1';
 
@@ -74,13 +101,27 @@ const UTM_PRJ = (zone: 32 | 33) =>
 
 const emptyGroup = (): NutrientGroupTotals => ({ n: 0, availableN: 0, p2o5: 0 });
 
+/** BESyD Land key → federal state, and back. */
+const BESYD_STATE: Record<BesydBundesland, FederalState> = { '12': 'BB', '14': 'SN', '15': 'ST', '16': 'TH' };
+const BESYD_LAND = Object.fromEntries(Object.entries(BESYD_STATE).map(([k, v]) => [v, k])) as Partial<Record<FederalState, BesydBundesland>>;
+
+/** File names of archived exports: `ENNI_…`, `ENDO_…`, `BESyD_…`, `ST_…`, `agrarantrag-…`. */
+const HISTORY_PREFIXES = ['ENNI\\_%', 'ENDO\\_%', 'BESyD\\_%', 'ST\\_%', 'Agrarantrag%'];
+
+type ReportFormat = FederalExportFormat;
+
 /**
  * Regulatory reporting: farm master data for the authorities, annual nutrient totals (DüV Anlage 5),
  * the 170 kg N limit for organic fertilizers, land-use codes and the subsidy application export.
  */
 @Injectable()
 export class RegulatoryService {
-  constructor(private readonly db: Database) {}
+  private readonly logger = new Logger(RegulatoryService.name);
+
+  constructor(
+    private readonly db: Database,
+    private readonly files: FilesService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // Farm master data
@@ -93,7 +134,7 @@ export class RegulatoryService {
   async loadFarm(trx: Trx, farmId: string): Promise<FarmRegulatory> {
     const f = await trx
       .selectFrom('farms')
-      .select(['id', 'name', 'holding_number', 'federal_state', 'fertilizer_year_start', 'organic_certified', 'regulatory'])
+      .select(['id', 'name', 'holding_number', 'eu_holding_number', 'federal_state', 'fertilizer_year_start', 'organic_certified', 'regulatory'])
       .where('id', '=', farmId)
       .executeTakeFirst();
     if (!f) throw notFound('Farm');
@@ -102,11 +143,14 @@ export class RegulatoryService {
       farmId: f.id,
       farmName: f.name,
       holdingNumber: f.holding_number,
+      euHoldingNumber: f.eu_holding_number,
       federalState: f.federal_state as FarmRegulatory['federalState'],
       fertilizerYearStart: f.fertilizer_year_start as FertilizerYearStart,
       organicCertified: f.organic_certified,
       enni: { nitrateZoneFlag: false, ...r.enni },
       endo: { ...r.endo },
+      besyd: { ...r.besyd },
+      st: { ...r.st, sitzInSt: r.st?.sitzInSt ?? true },
       contact: { ...r.contact },
       otherFertilizersApplied: r.otherFertilizersApplied ?? false,
       compostApplied: r.compostApplied ?? false,
@@ -117,15 +161,21 @@ export class RegulatoryService {
   saveFarmData(ctx: Ctx, farmId: string, input: Out<typeof FarmRegulatoryInput>): Promise<FarmRegulatory> {
     return this.db.run(ctx, async (trx) => {
       const before = await this.loadFarm(trx, farmId);
-      const { holdingNumber, federalState, fertilizerYearStart, organicCertified, ...rest } = input;
+      const { holdingNumber, euHoldingNumber, federalState, fertilizerYearStart, organicCertified, besyd, st, ...rest } = input;
+      const eu = euHoldingNumber === undefined ? before.euHoldingNumber : euHoldingNumber;
+      // BESyD and ST data are kept when the request leaves them out (the ENNI/ENDO form does).
+      const besydData = besyd ?? before.besyd;
+      const stData = st ?? before.st;
+      this.validateCodes(besydData, stData, eu, federalState ?? null);
       await trx
         .updateTable('farms')
         .set({
           holding_number: holdingNumber ?? null,
+          eu_holding_number: eu ?? null,
           federal_state: federalState ?? null,
           fertilizer_year_start: fertilizerYearStart,
           organic_certified: organicCertified,
-          regulatory: JSON.stringify(rest),
+          regulatory: JSON.stringify({ ...rest, besyd: besydData, st: stData }),
         })
         .where('id', '=', farmId)
         .execute();
@@ -133,6 +183,19 @@ export class RegulatoryService {
       await record(trx, ctx, { entityType: 'farm', entityId: farmId, action: 'updated', changes: diff(before as never, after as never), event: { type: 'farm.updated', payload: { farmId } } });
       return after;
     });
+  }
+
+  /** Boden-Klima-Raum of the farm's BESyD Land, Amt and Landkreis must be codes the authorities know. */
+  private validateCodes(besyd: FarmRegulatory['besyd'], st: FarmRegulatory['st'], eu: string | null, state: FederalState | null) {
+    if (besyd.bodenklimaraum) {
+      const bkr = BODEN_KLIMA_RAUM_CODES.find((b) => b.code === besyd.bodenklimaraum);
+      const land = (eu ? detectBundeslandFromBnr(eu) : null) ?? (state ? BESYD_LAND[state] : undefined) ?? null;
+      if (!bkr) throw badRequest('unknown_bodenklimaraum', `Unknown Boden-Klima-Raum ${besyd.bodenklimaraum}`);
+      if (land && !bkr.bundeslaender.includes(land))
+        throw badRequest('bodenklimaraum_not_in_state', `Boden-Klima-Raum ${besyd.bodenklimaraum} is not in ${BESYD_BUNDESLAND_NAMES[land]}`);
+    }
+    if (besyd.amt && !Object.hasOwn(AMT_CODES, besyd.amt)) throw badRequest('unknown_amt', `Unknown Amt ${besyd.amt}`);
+    if (st.kreisNr != null && !ST_KREISE.some((k) => k.nr === st.kreisNr)) throw badRequest('unknown_kreis', `Unknown Landkreis ${st.kreisNr}`);
   }
 
   landUseCodes(ctx: Ctx): Promise<LandUseCode[]> {
@@ -318,8 +381,8 @@ export class RegulatoryService {
    * One polygon per crop (on its part field, if any) of the season with the portal's column names,
    * in ETRS89 / UTM. Fields without a crop are exported with their boundary and no code.
    */
-  agrarantragShapefile(ctx: Ctx, farmId: string, seasonId: string, preset: AgrarantragPreset): Promise<{ filename: string; body: Buffer }> {
-    return this.db.run(ctx, async (trx) => {
+  async agrarantragShapefile(ctx: Ctx, farmId: string, seasonId: string, preset: AgrarantragPreset): Promise<{ filename: string; body: Buffer }> {
+    const file = await this.db.run(ctx, async (trx) => {
       const p = PRESETS[preset];
       if (!p) throw badRequest('unknown_preset', 'Unknown portal');
       const farm = await this.loadFarm(trx, farmId);
@@ -371,6 +434,7 @@ export class RegulatoryService {
       await record(trx, ctx, { entityType: 'farm', entityId: farmId, action: 'agrarantrag_exported', changes: { preset, harvestYear: season.harvest_year, parcels: rows.length } });
       return {
         filename: `${stem}.zip`,
+        year: season.harvest_year,
         body: zip([
           { name: `${stem}.shp`, data: shape.shp },
           { name: `${stem}.shx`, data: shape.shx },
@@ -380,39 +444,92 @@ export class RegulatoryService {
         ]),
       };
     });
+    await this.archive(ctx, file.filename, 'application/zip', file.body, file.year);
+    return { filename: file.filename, body: file.body };
   }
 
   // ---------------------------------------------------------------------------
-  // Fertilization records for the authorities (ENNI Niedersachsen, ENDO Schleswig-Holstein)
+  // Fertilization records for the authorities (ENNI Niedersachsen, ENDO Schleswig-Holstein,
+  // webBESyD BB/SN/ST/TH, Sachsen-Anhalt Mitteilungspflicht)
   // ---------------------------------------------------------------------------
 
-  preflight(ctx: Ctx, format: 'enni' | 'endo', farmId: string, year: number): Promise<ExportPreflight> {
+  preflight(ctx: Ctx, format: ReportFormat, farmId: string, year: number): Promise<ExportPreflight> {
     return this.db.run(ctx, async (trx) => (await this.prepare(trx, ctx, format, farmId, year)).preflight);
   }
 
-  /** The XML file; refused while the preflight has blocking findings. */
-  exportXml(ctx: Ctx, format: 'enni' | 'endo', farmId: string, year: number): Promise<{ filename: string; xml: string }> {
-    return this.db.run(ctx, async (trx) => {
+  /** The XML file; refused while the preflight has blocking findings. Archived in Files (exports). */
+  async exportXml(ctx: Ctx, format: 'enni' | 'endo', farmId: string, year: number): Promise<{ filename: string; xml: string }> {
+    const file = await this.db.run(ctx, async (trx) => {
       const { preflight, data, farm } = await this.prepare(trx, ctx, format, farmId, year);
-      if (!preflight.ready) throw badRequest('export_blocked', 'Resolve the blocking findings before exporting', preflight.issues.filter((i) => i.severity === 'blocking'));
+      this.assertReady(preflight);
       const xml = format === 'enni' ? buildEnniXml(data, enniMetadata(farm)) : buildEndoXml(data, endoMetadata(farm));
       await record(trx, ctx, { entityType: 'farm', entityId: farmId, action: `${format}_exported`, changes: { year, fields: data.fields.length, ruleset: REGULATORY_RULESET } });
       return { filename: preflight.fileName, xml };
     });
+    await this.archive(ctx, file.filename, 'application/xml', Buffer.from(file.xml, 'utf8'), year);
+    return file;
   }
 
-  private async prepare(trx: Trx, ctx: Ctx, format: 'enni' | 'endo', farmId: string, year: number) {
+  /**
+   * webBESyD (eleven IMP*.TXT) or Sachsen-Anhalt (DBE, Duengungen, Anl5, Ertraege) as a ZIP; refused
+   * while the preflight has blocking findings. Archived in Files (exports).
+   */
+  async exportZip(ctx: Ctx, format: 'besyd' | 'st', farmId: string, year: number): Promise<{ filename: string; body: Buffer }> {
+    const file = await this.db.run(ctx, async (trx) => {
+      const { preflight, data, farm, dbe } = await this.prepare(trx, ctx, format, farmId, year);
+      this.assertReady(preflight);
+      const files = format === 'besyd' ? buildBesydFiles(data, besydMetadata(farm)) : buildStFiles(data, stMetadata(farm), dbe);
+      await record(trx, ctx, { entityType: 'farm', entityId: farmId, action: `${format}_exported`, changes: { year, fields: data.fields.length, files: Object.keys(files).length, ruleset: REGULATORY_RULESET } });
+      return { filename: preflight.fileName, body: zip(Object.entries(files).map(([name, content]) => ({ name, data: Buffer.from(content, 'utf8') }))) };
+    });
+    await this.archive(ctx, file.filename, 'application/zip', file.body, year);
+    return file;
+  }
+
+  private assertReady(preflight: ExportPreflight) {
+    if (!preflight.ready) throw badRequest('export_blocked', 'Resolve the blocking findings before exporting', preflight.issues.filter((i) => i.severity === 'blocking'));
+  }
+
+  /** Keeps a copy of a downloaded export in the organization's Files; a storage failure never costs the download. */
+  private async archive(ctx: Ctx, name: string, mimeType: string, body: Buffer, year: number | null) {
+    try {
+      await this.files.storeGenerated(ctx, 'exports', name, mimeType, body, year);
+    } catch (e) {
+      this.logger.error(`Archiving export ${name} failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  private async prepare(trx: Trx, ctx: Ctx, format: ReportFormat, farmId: string, year: number) {
     const farm = await this.loadFarm(trx, farmId);
+    const region = await this.detectRegion(trx, farm);
     const n170 = (await this.computeN170(trx, farmId, year)).data;
-    const data = await buildExportData(trx, ctx.orgId, farm, year, n170);
-    const result = runPreflight(format, data, format === 'enni' ? enniMetadata(farm) : endoMetadata(farm));
+    // BESyD and the LLG report the calendar year (Erntejahr), whatever the farm's Düngejahr.
+    const calendarYear = format === 'besyd' || format === 'st';
+    const data = await buildExportData(trx, ctx.orgId, farm, year, n170, { duengejahrbeginn: calendarYear ? 'JANUAR' : undefined, federalState: region.federalState });
+    const dbe: Record<string, DuevDbeResult> = format === 'st' ? await loadDbeResults(trx, cultivationIds(data)) : {};
+    const result =
+      format === 'enni'
+        ? runPreflight('enni', data, enniMetadata(farm))
+        : format === 'endo'
+          ? runPreflight('endo', data, endoMetadata(farm))
+          : format === 'besyd'
+            ? runPreflight('besyd', data, besydMetadata(farm))
+            : runPreflight('st', data, stMetadata(farm), new Set(Object.keys(dbe)));
     const issues: PreflightIssue[] = [];
     for (const m of result.missingFields) issues.push({ code: `missing.${m.key}`, severity: 'blocking', scope: 'farm', message: `Missing: ${m.label}` });
-    for (const m of result.missingCropMappings) issues.push({ code: 'missing_crop_mapping', severity: 'blocking', scope: 'crop', params: { crop: m.cropName, count: m.cultivationCount }, message: `No authority crop code for ${m.cropName}` });
     // Findings name crops by the library's keys; show the farm's crop names instead.
     const cropNames = new Map(
       (await trx.selectFrom('crops').select(['code', sql<string>`coalesce(name_de, name)`.as('name')]).execute()).map((c) => [cropKeyForCode(c.code) ?? c.code, c.name]),
     );
+    for (const m of result.missingCropMappings)
+      issues.push({
+        code: 'missing_crop_mapping',
+        severity: 'blocking',
+        scope: 'crop',
+        // cropKey is the key a crop code override is stored under.
+        params: { crop: cropNames.get(m.cropName) ?? m.cropName, cropKey: m.cropName, count: m.cultivationCount },
+        message: `No authority crop code for ${cropNames.get(m.cropName) ?? m.cropName}`,
+      });
     for (const i of result.issues) {
       if (typeof i.params?.crop === 'string') i.params.crop = cropNames.get(i.params.crop) ?? i.params.crop;
       issues.push({
@@ -424,14 +541,102 @@ export class RegulatoryService {
         message: [i.code, i.value].filter(Boolean).join(': '),
       });
     }
+    const number = calendarYear ? (farm.euHoldingNumber ?? 'unknown') : (farm.holdingNumber ?? '000000000000000');
     const preflight: ExportPreflight = {
       format,
       farmId,
       year,
       ready: !issues.some((i) => i.severity === 'blocking'),
       issues,
-      fileName: generateExportFileName(format, farm.holdingNumber ?? '000000000000000', year),
+      fileName: generateExportFileName(format, number, year),
     };
-    return { preflight, data, farm };
+    return { preflight, data, farm, dbe };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Region, formats and deadlines; export history; code lists
+  // ---------------------------------------------------------------------------
+
+  /** Stored farm state, else the majority of the active fields' FLIK prefixes (from 50 % coverage). */
+  private async detectRegion(trx: Trx, farm: FarmRegulatory) {
+    const fields = await trx.selectFrom('fields').select('identifier').where('farm_id', '=', farm.farmId).where('status', '=', 'active').execute();
+    return resolveFertilizerReportRegion(farm.federalState ?? null, fields.map((f) => f.identifier));
+  }
+
+  region(ctx: Ctx, farmId: string, year?: number): Promise<RegulatoryRegion> {
+    return this.db.run(ctx, async (trx) => {
+      const farm = await this.loadFarm(trx, farmId);
+      const region = await this.detectRegion(trx, farm);
+      const reportYear = year ?? defaultReportYear();
+      return {
+        farmId,
+        year: reportYear,
+        federalState: region.federalState,
+        source: region.source,
+        flikCoverage: round(region.flikCoverage, 3),
+        formats: formatsForState(region.federalState).map((format) => ({
+          format,
+          deadline: getReportDeadline(format, reportYear)?.toISOString() ?? null,
+          upload: uploadGuide(format, region.federalState),
+        })),
+      };
+    });
+  }
+
+  /** Archived exports of the year in the Files system folder "exports", newest first. */
+  exportHistory(ctx: Ctx, year: number): Promise<RegulatoryExportFile[]> {
+    return this.db.run(ctx, async (trx) => {
+      const rows = await trx
+        .selectFrom('files as f')
+        .innerJoin('file_folders as d', 'd.id', 'f.folder_id')
+        .select(['f.id', 'f.name', 'f.size_bytes', 'f.created_at'])
+        .where('d.system_key', '=', 'exports')
+        .where('d.deleted_at', 'is', null)
+        .where('f.deleted_at', 'is', null)
+        .where('f.year', '=', year)
+        .where((eb) => eb.or(HISTORY_PREFIXES.map((p) => eb('f.name', 'ilike', p))))
+        .orderBy('f.created_at', 'desc')
+        .orderBy('f.id', 'desc')
+        .limit(50)
+        .execute();
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        format: exportFormatFromFileName(r.name),
+        sizeBytes: Number(r.size_bytes),
+        createdAt: new Date(r.created_at as unknown as string).toISOString(),
+      }));
+    });
+  }
+
+  /** Authority code lists for the BESyD / Sachsen-Anhalt farm data and code overrides. */
+  codeLists(format: 'besyd' | 'st', state?: FederalState): RegulatoryCodeLists {
+    const land = state ? BESYD_LAND[state] : undefined;
+    if (format === 'st') {
+      return {
+        format,
+        bodenklimaraum: [],
+        amt: [],
+        kreise: ST_KREISE.map((k) => ({ ...k })),
+        crops: ST_KULTUREN.map((k) => ({ code: k.code, name: k.bezeichnung, category: k.einteilung })),
+        organicFertilizers: [],
+        mineralFertilizerGroups: [],
+      };
+    }
+    return {
+      format,
+      bodenklimaraum: BODEN_KLIMA_RAUM_CODES.filter((b) => !state || (land != null && b.bundeslaender.includes(land))).map((b) => ({
+        code: b.code,
+        name: b.name,
+        states: b.bundeslaender.map((l) => BESYD_STATE[l]),
+      })),
+      amt: Object.entries(AMT_CODES).map(([code, name]) => ({ code, name })),
+      kreise: [],
+      crops: BESYD_FRUCHTART_CATALOGUE.map((f) => ({ code: f.code, name: f.bezeichnung, category: f.category })),
+      organicFertilizers: ORGANIC_FERTILIZER_CODES.map((o) => ({ code: o.code, name: o.name })),
+      mineralFertilizerGroups: Object.entries(MINERAL_FERTILIZER_GROUP_CODES).map(([code, name]) => ({ code, name })),
+    };
   }
 }
+
+const cultivationIds = (data: ExportData) => data.fields.flatMap((f) => f.cultivations.map((c) => c.cultivationId));

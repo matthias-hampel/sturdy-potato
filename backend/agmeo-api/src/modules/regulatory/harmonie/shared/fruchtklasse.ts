@@ -19,6 +19,33 @@ export const GRASSLAND_CROPS: readonly AgmeoCropKey[] = [
   'fieldGrassWiltedSilage',
 ];
 
+/** agmeo co2calculator `cropsLegumes` (src/lib/co2calculator/src/types.ts). */
+export const LEGUME_CROPS: readonly AgmeoCropKey[] = [
+  'broadBeans',
+  'peasDry',
+  'peasDryFodder',
+  'soybeanBeans',
+  'lupine',
+  'winterBroadBeans',
+  'alfalfa',
+  'persianCloverIntercrop',
+  'winterPeas',
+  'lentils',
+  'chickpeas',
+  'vetch',
+  'clover',
+  'cloverGrass',
+  'alfalfaGrass',
+  'vetchIntercrop',
+  'crimsonCloverIntercrop',
+  'alexandrineCloverIntercrop',
+  'serradellaIntercrop',
+  'cloverGrassUndersow',
+  'bushBeans',
+  'cowpeas',
+  'dryBeans',
+];
+
 export type FruchtklasseDialect = 'enni' | 'endo';
 
 export type SharedFruchtklasse =

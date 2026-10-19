@@ -45,19 +45,78 @@ const contact = z.object({
 });
 export type RegulatoryContact = z.input<typeof contact>;
 
+/** Authority codes per crop or fertilizer key; an empty value is ignored. */
+const codeOverrides = z.record(z.string().trim().min(1).max(120), z.string().trim().max(20));
+
+/** webBESyD (Brandenburg, Sachsen, Sachsen-Anhalt, Thüringen): Berechnungsgrundlage. */
+export const BESYD_BERECHNUNGSGRUNDLAGEN = ['DV', 'ÖL'] as const;
+/** Sachsen-Anhalt Mitteilungspflicht: konventionell / ökologisch. */
+export const ST_BEWIRTSCHAFTUNGEN = ['k', 'o'] as const;
+
+/**
+ * webBESyD farm data. The Betriebsnummer is `euHoldingNumber`, the address comes from `contact`.
+ * `cropCodeOverrides` is keyed by the crop key a `missing_crop_mapping` finding names
+ * (`params.cropKey`), the fertilizer overrides by the article key of the application
+ * (`ORGANIC__SLURRY_CATTLE`, `MINERAL__CAN`, …).
+ */
+export const BesydFarmData = z.object({
+  /** DV konventionell, ÖL ökologisch; unset → derived from `organicCertified`. */
+  berechnungsgrundlage: z.enum(BESYD_BERECHNUNGSGRUNDLAGEN).nullish(),
+  /** BESyD Tabelle 4 Boden-Klima-Raum code of the farm's Bundesland (see the code lists). */
+  bodenklimaraum: z.string().trim().regex(/^[0-9]{3}$/, 'Three digits').nullish(),
+  /** Tabelle 2 Amt (Sachsen only; 99 = Amt allgemein). */
+  amt: z.string().trim().regex(/^[0-9]{1,2}$/, 'Digits only').nullish(),
+  cropCodeOverrides: codeOverrides.optional(),
+  organicFertilizerCodeOverrides: codeOverrides.optional(),
+  mineralFertilizerCodeOverrides: codeOverrides.optional(),
+});
+export type BesydFarmData = z.input<typeof BesydFarmData>;
+
+/**
+ * Sachsen-Anhalt Mitteilungspflicht farm data. The EU-Betriebsnummer is `euHoldingNumber`;
+ * Betriebsname, PLZ and Ort of the Betriebssitz come from `contact` (firma, plz, ort).
+ */
+export const StFarmData = z.object({
+  sitzOrtsteil: shortText,
+  /** Anlage 3 Landkreis number (1–3, 81–91, see the code lists). */
+  kreisNr: z.int().min(1).max(99).nullish(),
+  /** k konventionell, o ökologisch; unset → derived from `organicCertified`. */
+  bewirtschaftung: z.enum(ST_BEWIRTSCHAFTUNGEN).nullish(),
+  /** Farms seated outside Sachsen-Anhalt deliver only the DBE and Duengungen files. */
+  sitzInSt: z.boolean().default(true),
+  cropCodeOverrides: codeOverrides.optional(),
+});
+export type StFarmData = z.input<typeof StFarmData>;
+
 export const FarmRegulatoryInput = z.object({
   holdingNumber: z
     .string()
     .trim()
     .regex(/^[0-9]{6,20}$/, 'Digits only')
     .nullish(),
+  /**
+   * The 12-digit Betriebsnummer of webBESyD and the Sachsen-Anhalt Mitteilung (Land key 12 BB,
+   * 14 SN, 15 ST, 16 TH + 10 digits); `holdingNumber` stays the 15-digit 276… number of ENNI/ENDO.
+   * Left out → unchanged, null → removed.
+   */
+  euHoldingNumber: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{12}$/, 'Twelve digits')
+    .nullish(),
   federalState: z.enum(FEDERAL_STATES).nullish(),
   fertilizerYearStart: z.enum(FERTILIZER_YEAR_STARTS).default('JANUAR'),
   organicCertified: z.boolean().default(false),
   /** Niedersachsen: Boden-Klima-Raum; file the Nitratkulisse flag of the fields. */
-  enni: z.object({ soilClimateArea: z.enum(ENNI_SOIL_CLIMATE_AREAS).nullish(), nitrateZoneFlag: z.boolean().default(false) }).default({ nitrateZoneFlag: false }),
+  enni: z
+    .object({ soilClimateArea: z.enum(ENNI_SOIL_CLIMATE_AREAS).nullish(), nitrateZoneFlag: z.boolean().default(false), cropCodeOverrides: codeOverrides.optional() })
+    .default({ nitrateZoneFlag: false }),
   /** Schleswig-Holstein: Naturraum. */
-  endo: z.object({ naturalRegion: z.enum(ENDO_NATURAL_REGIONS).nullish() }).default({}),
+  endo: z.object({ naturalRegion: z.enum(ENDO_NATURAL_REGIONS).nullish(), cropCodeOverrides: codeOverrides.optional() }).default({}),
+  /** webBESyD (BB, SN, ST, TH). Left out → unchanged. */
+  besyd: BesydFarmData.optional(),
+  /** Sachsen-Anhalt Mitteilungspflicht. Left out → unchanged. */
+  st: StFarmData.optional(),
   contact: contact.default({}),
   /** Fertilizers other than mineral and manure, compost, restrictions on fertilization or grazing. */
   otherFertilizersApplied: z.boolean().default(false),
@@ -65,7 +124,13 @@ export const FarmRegulatoryInput = z.object({
   restrictions: z.boolean().default(false),
 });
 export type FarmRegulatoryInput = z.input<typeof FarmRegulatoryInput>;
-export type FarmRegulatory = z.output<typeof FarmRegulatoryInput> & { farmId: string; farmName: string };
+export type FarmRegulatory = Omit<z.output<typeof FarmRegulatoryInput>, 'euHoldingNumber' | 'besyd' | 'st'> & {
+  farmId: string;
+  farmName: string;
+  euHoldingNumber: string | null;
+  besyd: z.output<typeof BesydFarmData>;
+  st: z.output<typeof StFarmData>;
+};
 
 // ---------------------------------------------------------------------------
 // Annual totals (DüV Anlage 5) and 170 kg N
@@ -142,7 +207,12 @@ export interface N170Balance {
 // Exports
 // ---------------------------------------------------------------------------
 
-export const EXPORT_FORMATS = ['enni', 'endo', 'agrarantrag'] as const;
+/** Fertilization reports to the authorities, in the order a farm is offered them. */
+export const FEDERAL_EXPORT_FORMATS = ['enni', 'endo', 'st', 'besyd'] as const;
+/** enni Niedersachsen, endo Schleswig-Holstein, st Sachsen-Anhalt Mitteilungspflicht, besyd webBESyD (BB, SN, ST, TH). */
+export type FederalExportFormat = (typeof FEDERAL_EXPORT_FORMATS)[number];
+
+export const EXPORT_FORMATS = ['enni', 'endo', 'besyd', 'st', 'agrarantrag'] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
 export interface PreflightIssue {
@@ -162,6 +232,68 @@ export interface ExportPreflight {
   ready: boolean;
   issues: PreflightIssue[];
   fileName: string;
+}
+
+/** Where a format's file goes and who answers questions (agmeo formatCatalog). */
+export interface ExportUploadGuide {
+  fileType: 'xml' | 'zip';
+  /** Authority portal the file is uploaded to; absent when the files are e-mailed. */
+  portalUrl?: string;
+  /** Mailbox the files are sent to (Sachsen-Anhalt). */
+  email?: string;
+  hotline?: string;
+  contactEmail?: string;
+}
+
+export interface RegulatoryFormatOffer {
+  format: FederalExportFormat;
+  /** End of the reporting deadline (Europe/Berlin 23:59:59) for the report year, ISO; null without a Meldepflicht (webBESyD). */
+  deadline: string | null;
+  upload: ExportUploadGuide;
+}
+
+/** GET regulatory/region: the Bundesland a farm reports in and the formats offered there. */
+export interface RegulatoryRegion {
+  farmId: string;
+  year: number;
+  /** Null when neither the farm nor its fields' FLIKs name a state. */
+  federalState: FederalState | null;
+  /** farm: stored on the farm; flik: majority of the active fields' FLIK prefixes. */
+  source: 'farm' | 'flik' | null;
+  /** Share of the farm's active fields whose FLIK names a state (0–1); the FLIK majority counts from 0.5. */
+  flikCoverage: number;
+  formats: RegulatoryFormatOffer[];
+}
+
+/** One archived export in the organization's Files (system folder "exports"); download via files/:id/content. */
+export interface RegulatoryExportFile {
+  id: string;
+  name: string;
+  format: ExportFormat | null;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface RegulatoryCodeOption {
+  code: string;
+  name: string;
+}
+
+/** GET regulatory/code-lists: the authority code lists the farm-data forms and overrides choose from. */
+export interface RegulatoryCodeLists {
+  format: 'besyd' | 'st';
+  /** BESyD Tabelle 4, filtered by `state` when given. */
+  bodenklimaraum: (RegulatoryCodeOption & { states: FederalState[] })[];
+  /** BESyD Tabelle 2 (Sachsen). */
+  amt: RegulatoryCodeOption[];
+  /** Sachsen-Anhalt Anlage 3. */
+  kreise: { nr: number; name: string }[];
+  /** Fruchtart catalogue of the format (crop code overrides). */
+  crops: (RegulatoryCodeOption & { category: string })[];
+  /** BESyD Tabelle 15 organic fertilizer codes (organic fertilizer overrides). */
+  organicFertilizers: RegulatoryCodeOption[];
+  /** BESyD mineral fertilizer group codes (mineral fertilizer overrides). */
+  mineralFertilizerGroups: RegulatoryCodeOption[];
 }
 
 /** Subsidy application (Agrarantrag) portals: column names and reference system per state. */

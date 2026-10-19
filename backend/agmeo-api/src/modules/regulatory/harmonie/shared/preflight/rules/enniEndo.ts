@@ -61,6 +61,8 @@ type Dialect = {
 const DIALECTS: Record<ExportFormat, Dialect> = {
   enni: { resolve: getFruchtart, inStammdaten: isFruchtartInStammdaten },
   endo: { resolve: getFruchtartSh, inStammdaten: isFruchtartInStammdatenSh },
+  besyd: { resolve: () => undefined, inStammdaten: () => false },
+  st: { resolve: () => undefined, inStammdaten: () => false },
 };
 
 const cropMappings: MetadataRule<XmlMetadata> = {

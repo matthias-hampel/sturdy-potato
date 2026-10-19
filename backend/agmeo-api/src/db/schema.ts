@@ -265,6 +265,7 @@ export interface Farms {
   archived_at: Timestamp | null;
   country: Generated<string>;
   created_at: Generated<Timestamp>;
+  eu_holding_number: string | null;
   federal_state: string | null;
   fertilizer_year_start: Generated<string>;
   holding_number: string | null;
