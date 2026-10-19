@@ -1,3 +1,4 @@
+import base64
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -43,6 +44,11 @@ def client(tmp_path, monkeypatch):
 
         def execute(self, sql, params):
             class Result:
+                def fetchone(self):
+                    if params.get("id") == "r1" and params["org"] == "a":
+                        return {"path": "rasters/f/a.tif", "bands": ["ndvi"]}
+                    return None
+
                 def fetchall(self):
                     if params["day"] != DAY:
                         return []
@@ -106,3 +112,20 @@ def test_unknown_layer_and_missing_organization(client):
 def test_relative_bytes_centres_the_median():
     values = np.array([0.2, 0.5, 0.8, 1.2])
     assert list(relative_bytes(values, 0.2, 0.5, 0.8)) == [0, 127, 255, 255]
+
+
+def test_raster_values_are_served_on_the_field_grid(client):
+    response = client.get("/rasters/r1/values?organization=a&layer=ndvi")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["epsg"] == 3857
+    assert (body["originX"], body["originY"], body["resolution"]) == (0, 2560, 10)
+    assert (body["width"], body["height"]) == (256, 256)
+    values = np.frombuffer(base64.b64decode(body["values"]), dtype="<f4").reshape(256, 256)
+    assert np.isnan(values[0, 0])
+    assert values[0, 200] == pytest.approx(0.7, abs=1e-4)
+
+
+def test_raster_values_of_another_organization_are_not_found(client):
+    assert client.get("/rasters/r1/values?organization=b").status_code == 404
+    assert client.get("/rasters/r1/values?organization=a&layer=rgb").status_code == 404

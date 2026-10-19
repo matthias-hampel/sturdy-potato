@@ -48,6 +48,7 @@ const SYSTEM_FOLDER_NAMES: Record<SystemFolder, { de: string; en: string; parent
   reports: { de: 'Berichte', en: 'Reports' },
   soilImports: { de: 'Bodenproben-Importe', en: 'Soil imports' },
   soilExports: { de: 'Bodenproben-Exporte', en: 'Soil exports' },
+  yieldMaps: { de: 'Ertragskarten', en: 'Yield maps' },
 };
 
 const tooLarge = (used: number, limit: number) =>

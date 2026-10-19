@@ -73,7 +73,7 @@ rework:
 |---|---|---|---|
 | Satellite history and tiles | `satellite`, `cron/satellite-crawler` | present (redesigned) | LAI, SAVI; per-scene stats dialog, image export |
 | Productivity zones | application-map base zonation | present | — |
-| Yield-map import (ISO-XML/AFT/GeoJSON, cleaning, rasterise) + yield analytics | `cron/yield-map-import`, `lib/analytics/yieldMap*` | missing | Whole pipeline |
+| Yield-map import (ISO-XML/AFT/GeoJSON, cleaning, rasterise) + yield analytics | `cron/yield-map-import`, `lib/analytics/yieldMap*` | present | Provider-fed sources (John Deere, CLAAS, AGCO, NEXT Farming); yield zones as a base in the VRA editor |
 | Application maps per cultivation | `applicationMapsPage/*` | partial | Base zonations from soil map, yield map, upload or single scene; brush editor; JD/CLAAS/AGCO push; batch export |
 | Bulk application maps | `application-maps/[year]` | missing | Whole feature |
 | Zone optimisation with ESM N model | `optimization/page.tsx` | partial | N-balance simulation, N-supply graph |
@@ -90,7 +90,7 @@ rework:
 | Crop calendar | `crop-calendar` | partial | Inline edit, crop colours, distribution bar |
 | Seeding, tillage tabs | `seeding/[year]`, `tillage/[year]` | partial | Sowing window, distribute seed, machine/implement/operator columns with diesel/kWh/h, seeding-map button |
 | Plant protection | `protection/[year]` | partial | BBCH phenology with calibration, ISIP disease risk, spray-window column, mix partners, Auflagen, Sachkunde |
-| Harvest | `harvest/[year]` | partial | Yield-map upload, batch satellite yield estimate, coverage KPIs |
+| Harvest | `harvest/[year]` | partial | — (yield-map upload, batch satellite yield estimate and coverage KPIs ported) |
 | Irrigation | `irrigation/[year]`, `irrigation/water-balances` | partial | FAO-56 water balance, irrigator coverage, external event API |
 | N fertilization (DüV) | `nitrogen/[year]` | partial | agmeo N model (supply, loss, leaching), split strategies, apply strategy |
 | Base fertilization | `base-fertilization/[year]` | partial | Multi-year P2O5 balance, delivered/balance columns |

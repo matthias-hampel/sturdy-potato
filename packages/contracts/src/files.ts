@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Folders the app writes into; the user can rename, move or delete them like any folder. */
-export const SYSTEM_FOLDERS = ['imports', 'exports', 'applicationMaps', 'reports', 'soilImports', 'soilExports'] as const;
+export const SYSTEM_FOLDERS = ['imports', 'exports', 'applicationMaps', 'reports', 'soilImports', 'soilExports', 'yieldMaps'] as const;
 export type SystemFolder = (typeof SYSTEM_FOLDERS)[number];
 
 export interface FileItem {

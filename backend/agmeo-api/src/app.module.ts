@@ -65,6 +65,8 @@ import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
 import { NewsController } from './modules/news/news.controller.js';
 import { NewsService } from './modules/news/news.service.js';
+import { YieldController } from './modules/yield/yield.controller.js';
+import { YieldService } from './modules/yield/yield.service.js';
 
 export const DOMAIN_SERVICES = [
   IdentityService,
@@ -99,6 +101,7 @@ export const DOMAIN_SERVICES = [
   CommentsService,
   RadarService,
   CarbonService,
+  YieldService,
 ];
 
 /**
@@ -138,6 +141,7 @@ export const DOMAIN_SERVICES = [
     CommentsController,
     RadarController,
     CarbonController,
+    YieldController,
   ],
   providers: [
     TokenService,

@@ -18,6 +18,7 @@ import { z } from 'zod'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
 import { ApplyTemplateDialog, CycleFields, EMPTY_CYCLE_FORM, EditCycleDialog, seedPayload, useVarietyResolver, type CycleForm } from '#/components/crops/CycleDialogs'
 import { OPERATION_TABS, OperationTabPanel, operationTabType, type OperationTab } from '#/components/crops/OperationTab'
+import { HarvestYieldPanel } from '#/components/yield/HarvestYieldPanel'
 import { PartUsageBadge } from '#/components/fields/FieldParts'
 import { FieldShape } from '#/components/map/FieldShape'
 import { ColumnConfigButton, NoMatches, SelectionBar, selectedIds, useBulkMutation, useColumnConfig, useTableView, type ColumnDef, type ColumnPreset } from '#/components/table/tableTools'
@@ -166,6 +167,7 @@ function CropPlanning() {
           </TabPanel>
           {OPERATION_TABS.map((id: OperationTab) => (
             <TabPanel key={id} id={id}>
+              {id === 'harvest' && <HarvestYieldPanel />}
               <OperationTabPanel tab={id} label={t(`crops.tabs.${id}`)} />
             </TabPanel>
           ))}
