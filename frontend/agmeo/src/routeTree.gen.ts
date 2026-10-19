@@ -29,6 +29,7 @@ import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
 import { Route as OOrgIdTasksRouteImport } from './routes/o.$orgId.tasks'
 import { Route as OOrgIdTeamRouteImport } from './routes/o.$orgId.team'
 import { Route as OOrgIdTemplatesRouteImport } from './routes/o.$orgId.templates'
+import { Route as OOrgIdVraMapsRouteImport } from './routes/o.$orgId.vra-maps'
 import { Route as OOrgIdWeatherRouteImport } from './routes/o.$orgId.weather'
 import { Route as ShareSoilTokenRouteImport } from './routes/share.soil.$token'
 import { Route as OOrgIdComplianceIndexRouteImport } from './routes/o.$orgId.compliance.index'
@@ -148,6 +149,11 @@ const OOrgIdTemplatesRoute = OOrgIdTemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdVraMapsRoute = OOrgIdVraMapsRouteImport.update({
+  id: '/vra-maps',
+  path: '/vra-maps',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdWeatherRoute = OOrgIdWeatherRouteImport.update({
   id: '/weather',
   path: '/weather',
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
+  '/o/$orgId/vra-maps': typeof OOrgIdVraMapsRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
+  '/o/$orgId/vra-maps': typeof OOrgIdVraMapsRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
+  '/o/$orgId/vra-maps': typeof OOrgIdVraMapsRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
@@ -384,6 +393,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
+    | '/o/$orgId/vra-maps'
     | '/o/$orgId/weather'
     | '/share/soil/$token'
     | '/o/$orgId/'
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
+    | '/o/$orgId/vra-maps'
     | '/o/$orgId/weather'
     | '/share/soil/$token'
     | '/o/$orgId'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
+    | '/o/$orgId/vra-maps'
     | '/o/$orgId/weather'
     | '/share/soil/$token'
     | '/o/$orgId/'
@@ -635,6 +647,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdTemplatesRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/vra-maps': {
+      id: '/o/$orgId/vra-maps'
+      path: '/vra-maps'
+      fullPath: '/o/$orgId/vra-maps'
+      preLoaderRoute: typeof OOrgIdVraMapsRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/weather': {
       id: '/o/$orgId/weather'
       path: '/weather'
@@ -779,6 +798,7 @@ interface OOrgIdRouteChildren {
   OOrgIdTasksRoute: typeof OOrgIdTasksRoute
   OOrgIdTeamRoute: typeof OOrgIdTeamRoute
   OOrgIdTemplatesRoute: typeof OOrgIdTemplatesRoute
+  OOrgIdVraMapsRoute: typeof OOrgIdVraMapsRoute
   OOrgIdWeatherRoute: typeof OOrgIdWeatherRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
   OOrgIdCompliancePsmRecordRoute: typeof OOrgIdCompliancePsmRecordRoute
@@ -814,6 +834,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdTasksRoute: OOrgIdTasksRoute,
   OOrgIdTeamRoute: OOrgIdTeamRoute,
   OOrgIdTemplatesRoute: OOrgIdTemplatesRoute,
+  OOrgIdVraMapsRoute: OOrgIdVraMapsRoute,
   OOrgIdWeatherRoute: OOrgIdWeatherRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,
   OOrgIdCompliancePsmRecordRoute: OOrgIdCompliancePsmRecordRoute,

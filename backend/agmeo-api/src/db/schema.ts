@@ -1331,6 +1331,7 @@ export interface Users {
 export interface VraMapInputs {
   column_name: string;
   crop_id: string | null;
+  germination_pct: Numeric | null;
   id: Generated<string>;
   input_type: string;
   name: Generated<string>;
@@ -1339,11 +1340,13 @@ export interface VraMapInputs {
   product_id: string | null;
   rates: Json;
   standard_rate: Numeric | null;
+  strategy: string | null;
   unit: string;
   vra_map_id: string;
 }
 
 export interface VraMaps {
+  batch_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
   field_id: string;
@@ -1515,16 +1518,40 @@ export interface YieldZoneYields {
 export interface Zonings {
   analysis_id: string | null;
   created_at: Generated<Timestamp>;
+  created_by: string | null;
   crop_cycle_id: string | null;
   field_id: string;
   geometry_version_id: string;
   id: Generated<string>;
   is_custom: Generated<boolean>;
+  is_default: Generated<boolean>;
+  listed: Generated<boolean>;
+  name: string | null;
   organization_id: string;
   params: Json | null;
   source: string;
   yield_raster_id: string | null;
   zone_count: number;
+}
+
+export interface ZoningJobs {
+  batch_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  error: string | null;
+  field_id: string;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  index_type: string;
+  name: string | null;
+  organization_id: string;
+  params: Generated<Json>;
+  scene_dates: string[];
+  source: Generated<string>;
+  status: Generated<string>;
+  status_code: string | null;
+  zone_count: number;
+  zoning_id: string | null;
 }
 
 export interface ZoningZones {
@@ -1636,6 +1663,7 @@ export interface DB {
   yield_map_sources: YieldMapSources;
   yield_rasters: YieldRasters;
   yield_zone_yields: YieldZoneYields;
+  zoning_jobs: ZoningJobs;
   zoning_zones: ZoningZones;
   zonings: Zonings;
 }

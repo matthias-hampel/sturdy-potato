@@ -32,6 +32,7 @@ import {
   Users,
   Wheat,
   X,
+  Layers,
   type LucideIcon,
 } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
@@ -66,6 +67,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/crops', label: 'nav.crops', icon: Sprout },
       { to: '/o/$orgId/nutrients', label: 'nav.nutrients', icon: FlaskConical },
       { to: '/o/$orgId/soil', label: 'nav.soil', icon: Shovel },
+      { to: '/o/$orgId/vra-maps', label: 'nav.vraMaps', icon: Layers },
       { to: '/o/$orgId/calendar', label: 'nav.calendar', icon: CalendarRange },
       { to: '/o/$orgId/templates', label: 'nav.templates', icon: ListChecks },
       { to: '/o/$orgId/rotations', label: 'nav.rotations', icon: Repeat },
