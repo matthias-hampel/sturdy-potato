@@ -1380,6 +1380,29 @@ export interface Users {
   updated_at: Generated<Timestamp>;
 }
 
+export interface VoiceDrafts {
+  audio_bytes: number | null;
+  audio_key: string | null;
+  audio_mime: string | null;
+  confidence: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  draft: Json | null;
+  duration_sec: number | null;
+  error: string | null;
+  id: Generated<string>;
+  missing: Generated<Json>;
+  operation_id: string | null;
+  organization_id: string;
+  resolved: Json | null;
+  resolved_at: Timestamp | null;
+  resolved_by: string | null;
+  source: string;
+  status: Generated<string>;
+  transcript: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface VraMapInputs {
   column_name: string;
   crop_id: string | null;
@@ -1710,6 +1733,7 @@ export interface DB {
   template_step_inputs: TemplateStepInputs;
   template_steps: TemplateSteps;
   users: Users;
+  voice_drafts: VoiceDrafts;
   vra_map_inputs: VraMapInputs;
   vra_maps: VraMaps;
   weather_cells: WeatherCells;

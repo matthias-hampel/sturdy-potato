@@ -126,6 +126,20 @@ export const config = {
     photonUrl: env('PHOTON_URL', 'https://photon.komoot.io'),
     userAgent: env('GEOCODING_USER_AGENT', 'agmeo (https://agvolution.com)'),
   },
+  /**
+   * Speech-to-text for voice drafts: any OpenAI-compatible transcription endpoint
+   * (`POST {url}/audio/transcriptions`, e.g. https://api.openai.com/v1 with whisper-1, or
+   * https://api.mistral.ai/v1 with voxtral-mini-latest). Off while the URL is empty: recordings are
+   * refused and typed dictations still become drafts.
+   */
+  voice: {
+    sttUrl: env('VOICE_STT_URL', '').trim().replace(/\/+$/, ''),
+    sttApiKey: env('VOICE_STT_API_KEY', ''),
+    sttModel: env('VOICE_STT_MODEL', 'whisper-1'),
+    language: env('VOICE_STT_LANGUAGE', 'de'),
+    timeoutMs: Number(env('VOICE_STT_TIMEOUT_MS', '120000')),
+    maxAudioBytes: Number(env('VOICE_MAX_AUDIO_MB', '25')) * 1024 * 1024,
+  },
   // Language model that phrases the reasons of field recommendations. Without a key the
   // recommendations still work; the UI then shows the reasons from the evidence codes.
   openai: {
