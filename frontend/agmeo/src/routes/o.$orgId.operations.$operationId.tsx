@@ -1,4 +1,4 @@
-import { NUTRIENT_KEYS, type ApplicationTechnique, type CostCategory, type Field, type NutrientRates, type Operation, type OperationChecks, type PsmFinding, type StockMovement, type StockShortage } from '@agmeo/contracts'
+import { NUTRIENT_KEYS, type ApplicationTechnique, type CostCategory, type Field, type NutrientRates, type Operation, type OperationChecks, type PsmFinding, type PsmUsageType, type StockMovement, type StockShortage } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { AlertTriangle, Ban, CheckCircle2, Info, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -10,7 +10,7 @@ import { FieldMap } from '#/components/map/FieldMap'
 import { OperationForm, initialState, toPayload, type OperationFormState } from '#/components/operations/OperationForm'
 import { t } from '#/i18n'
 import { costCategoryLabel } from '#/i18n/labels'
-import { NUTRIENT_LABELS, applicationTechniqueLabel } from '#/i18n/labels.fieldwork'
+import { NUTRIENT_LABELS, applicationTechniqueLabel, psmUsageTypeLabel } from '#/i18n/labels.fieldwork'
 import { ApiRequestError, api, errorMessage } from '#/lib/api'
 import { fmt, localToIso, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
@@ -242,6 +242,7 @@ function OperationPage() {
 function detailValue(key: string, v: string | number | boolean | null) {
   if (v == null) return null
   if (key === 'applicationTechnique' && typeof v === 'string') return applicationTechniqueLabel(v as ApplicationTechnique)
+  if (key === 'usageType' && typeof v === 'string') return psmUsageTypeLabel(v as PsmUsageType)
   if (typeof v === 'boolean') return v ? t('common.yes') : t('common.no')
   if (typeof v === 'number') return fmt.num(v, 2)
   return v

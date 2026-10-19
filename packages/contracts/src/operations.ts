@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { amount, id, isoDate, isoDateTime, longText, positive, shortText, type Ref } from './common.js';
 import type { BaseUnit, ProductCategory } from './inventory.js';
 import type { NutrientRates } from './nutrients.js';
+import { PSM_USAGE_TYPES } from './psmRecord.js';
 
 export const OPERATION_TYPES = ['tillage', 'sowing', 'fertilization', 'crop_protection', 'irrigation', 'harvest', 'inspection', 'other'] as const;
 export type OperationType = (typeof OPERATION_TYPES)[number];
@@ -78,7 +79,7 @@ export const OPERATION_DETAILS = {
     incorporationHours: optNum(1000),
     applicationTechnique: z.enum(['broadcast', 'trailing_hose', 'trailing_shoe', 'injection', 'other']).nullish(),
   }),
-  crop_protection: z.looseObject({ waterLHa: optNum(5000), psmUseId: z.string().max(40).nullish() }),
+  crop_protection: z.looseObject({ waterLHa: optNum(5000), psmUseId: z.string().max(40).nullish(), usageType: z.enum(PSM_USAGE_TYPES).nullish() }),
   irrigation: z.looseObject({ waterMm: optNum(500) }),
   harvest: z.looseObject({ strawRemoved: z.boolean().nullish() }),
   inspection: z.looseObject({}),
@@ -337,7 +338,9 @@ export interface PsmFinding {
   productId: string;
   productName: string;
   kennr: string | null;
+  fieldId: string;
   fieldName: string | null;
+  cropCycleId: string | null;
   cropName: string | null;
   /** Approved use the application was measured against. */
   awgId: string | null;

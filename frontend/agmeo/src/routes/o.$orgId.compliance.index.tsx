@@ -1,6 +1,6 @@
 import { type ComplianceIssue, type ComplianceReport, type Farm, FEDERAL_EXPORT_FORMATS } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Download, FileWarning, Info, OctagonAlert, ShieldCheck, Tractor } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Download, FileWarning, Info, OctagonAlert, ScrollText, ShieldCheck, Tractor } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -58,6 +58,7 @@ function SeverityBadge({ severity }: { severity: ComplianceIssue['severity'] }) 
 
 function CompliancePage() {
   const { t } = useTranslation()
+  const { orgId } = useOrg()
   const { season } = useSeason()
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
@@ -77,7 +78,14 @@ function CompliancePage() {
       <PageHeader
         title={t('compliance.title')}
         subtitle={season ? t('compliance.subtitleSeason', { season: season.harvestYear }) : t('compliance.subtitle')}
-        actions={tab === 'records' && <ExportRecordsButton />}
+        actions={
+          <>
+            <Link to="/o/$orgId/compliance/psm-record" params={{ orgId }} variant="secondary">
+              <ScrollText /> {t('psmRecord.title')}
+            </Link>
+            {tab === 'records' && <ExportRecordsButton />}
+          </>
+        }
       />
       <Tabs
         selectedKey={tab}

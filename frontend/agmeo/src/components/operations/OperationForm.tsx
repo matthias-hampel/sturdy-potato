@@ -3,6 +3,7 @@ import {
   EQUIPMENT_GONE_STATUSES,
   NUTRIENT_KEYS,
   OPERATION_TYPES,
+  PSM_USAGE_TYPES,
   isOrganicFertilizer,
   nutrientKgPerHa,
   seedKgPerHa,
@@ -27,7 +28,7 @@ import { Form } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { NONE, enumItems, keyOrNull } from '#/components/resources/form'
 import { baseUnitLabel, operationTypeLabel } from '#/i18n/labels'
-import { NUTRIENT_LABELS, applicationTechniqueLabel } from '#/i18n/labels.fieldwork'
+import { NUTRIENT_LABELS, applicationTechniqueLabel, psmUsageTypeLabel } from '#/i18n/labels.fieldwork'
 import { ApiRequestError, errorMessage } from '#/lib/api'
 import { fmt, localToIso, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
@@ -179,10 +180,13 @@ export function initialState(opts: { farmId: string | null; fieldIds?: string[];
     bbchStage: '',
     targetOrganism: '',
     weatherConditions: '',
-    details: {},
+    details: defaultDetails(opts.type ?? 'fertilization'),
     notes: '',
   }
 }
+
+/** Plant protection on arable land is applied in the open field unless the user says otherwise. */
+const defaultDetails = (type: OperationType): Record<string, DetailValue> => (type === 'crop_protection' ? { usageType: 'open_field' } : {})
 
 /** Request body for POST/PUT /operations. */
 /** One line per field; an operation recorded on several parts of a field shows their total. */
@@ -285,7 +289,7 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
     set({ fields: on ? [...s.fields, { fieldId: id, treatedAreaHa: fieldById.get(id)?.croppedAreaHa ?? NaN }] : s.fields.filter((f) => f.fieldId !== id) })
 
   const setType = (type: OperationType) =>
-    set({ type, title: s.titleTouched ? s.title : operationTypeLabel(type), details: {}, inputs: TYPE_CATEGORIES[type].length === 0 && type !== 'other' ? [] : s.inputs })
+    set({ type, title: s.titleTouched ? s.title : operationTypeLabel(type), details: defaultDetails(type), inputs: TYPE_CATEGORIES[type].length === 0 && type !== 'other' ? [] : s.inputs })
 
   /** Takes over an action's type, diesel and default machine, implement and operator (hours from the treated area). */
   const applyAction = (id: string | null) => {
@@ -551,6 +555,14 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
           )}
           {s.type === 'crop_protection' && (
             <>
+              <Select
+                label={t('operations.form.detail.usageType')}
+                items={[{ id: NONE, name: t('operations.form.notSpecified') }, ...enumItems(PSM_USAGE_TYPES, psmUsageTypeLabel.all())]}
+                value={typeof s.details.usageType === 'string' ? s.details.usageType : NONE}
+                onChange={(v) => setDetail('usageType', keyOrNull(v == null ? null : String(v)))}
+              >
+                {(i) => <Option id={i.id}>{i.name}</Option>}
+              </Select>
               <TextField label={t('operations.form.bbch')} value={s.bbchStage} onChange={(bbchStage) => set({ bbchStage })} placeholder={t('operations.form.bbchPlaceholder')} />
               <TextField label={t('operations.form.targetOrganism')} value={s.targetOrganism} onChange={(targetOrganism) => set({ targetOrganism })} placeholder={t('operations.form.targetOrganismPlaceholder')} />
             </>
