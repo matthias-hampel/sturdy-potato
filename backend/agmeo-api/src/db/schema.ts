@@ -117,6 +117,17 @@ export interface CropBenchmarks {
   yield_t_ha: Numeric | null;
 }
 
+export interface CropCycleBbchCalibrations {
+  bd_offset: number;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  crop_cycle_id: string;
+  model_bbch: number | null;
+  observed_bbch: number;
+  observed_on: string;
+  organization_id: string;
+}
+
 export interface CropCycles {
   area_ha: Numeric | null;
   created_at: Generated<Timestamp>;
@@ -1615,6 +1626,7 @@ export interface DB {
   comments: Comments;
   cost_entries: CostEntries;
   crop_benchmarks: CropBenchmarks;
+  crop_cycle_bbch_calibrations: CropCycleBbchCalibrations;
   crop_cycles: CropCycles;
   crop_prices: CropPrices;
   crop_rotation_entries: CropRotationEntries;

@@ -83,7 +83,7 @@ export type GrowthStageParams = {
   bdPMHM: number;
 };
 
-type BbchModelResult = {
+export type BbchModelResult = {
   /** Daily BBCH values (0-97) */
   bbch: number[];
   /** Daily cumulative biological days */
@@ -716,6 +716,32 @@ export function calculateDailyBbchMap(
   sowingDate: string,
   todayOverride?: string,
 ): Map<string, number> | null {
+  const run = runDailyBbchModel(weather, crop, latitude, sowingDate, todayOverride);
+  if (!run) return null;
+  const map = new Map<string, number>();
+  run.dates.forEach((d, i) => map.set(d, run.result.bbch[i]));
+  return map;
+}
+
+/**
+ * The model run behind calculateDailyBbchMap with its dates (sowing to today) kept, so a caller
+ * can read the cumulative biological days per date (farmer calibration).
+ */
+export function runDailyBbchModel(
+  weather: Record<
+    string,
+    {
+      tempMin: number;
+      tempMax: number;
+      tempMean?: number;
+      precipitation?: number;
+    }
+  >,
+  crop: SupportedCrops,
+  latitude: number,
+  sowingDate: string,
+  todayOverride?: string,
+): { dates: string[]; result: BbchModelResult } | null {
   if (!CROP_PARAMS[crop]) return null;
   const dates = Object.keys(weather).sort();
   if (dates.length === 0) return null;
@@ -740,10 +766,7 @@ export function calculateDailyBbchMap(
 
   const result = calculateBbchModel(dailyWeather, crop, latitude, sowingDate);
   if (!result) return null;
-
-  const map = new Map<string, number>();
-  usedDates.forEach((d, i) => map.set(d, result.bbch[i]));
-  return map;
+  return { dates: usedDates, result };
 }
 
 /** Get crop growth stage params for calibration calculations */
