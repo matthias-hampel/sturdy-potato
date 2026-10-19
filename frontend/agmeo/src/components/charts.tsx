@@ -9,7 +9,7 @@ import { fmt } from '#/lib/format'
  * every mark, a legend whenever there are two or more series, text in text colours.
  */
 
-function useWidth<T extends HTMLElement>() {
+export function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null)
   const [width, setWidth] = useState(0)
   useLayoutEffect(() => {

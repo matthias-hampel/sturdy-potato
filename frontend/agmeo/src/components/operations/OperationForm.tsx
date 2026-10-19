@@ -1,5 +1,6 @@
 import {
   APPLICATION_TECHNIQUES,
+  IRRIGATION_METHODS,
   EQUIPMENT_GONE_STATUSES,
   NUTRIENT_KEYS,
   OPERATION_TYPES,
@@ -551,6 +552,16 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
               items={[{ id: NONE, name: t('operations.form.notSpecified') }, ...enumItems(APPLICATION_TECHNIQUES, applicationTechniqueLabel.all())]}
               value={typeof s.details.applicationTechnique === 'string' ? s.details.applicationTechnique : NONE}
               onChange={(v) => setDetail('applicationTechnique', keyOrNull(v == null ? null : String(v)))}
+            >
+              {(i) => <Option id={i.id}>{i.name}</Option>}
+            </Select>
+          )}
+          {s.type === 'irrigation' && (
+            <Select
+              label={t('irrigation.method')}
+              items={[{ id: NONE, name: t('operations.form.notSpecified') }, ...IRRIGATION_METHODS.map((m) => ({ id: m, name: t(`irrigation.method.${m}`) }))]}
+              value={typeof s.details.method === 'string' ? s.details.method : NONE}
+              onChange={(v) => setDetail('method', keyOrNull(v == null ? null : String(v)))}
             >
               {(i) => <Option id={i.id}>{i.name}</Option>}
             </Select>

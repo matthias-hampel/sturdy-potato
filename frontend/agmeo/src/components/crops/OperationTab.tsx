@@ -16,15 +16,17 @@ import {
   type OperationInputLine,
   type OperationType,
   type CropTableConditionsRow,
+  type CycleWaterBalance,
   type PsmFinding,
 } from '@agmeo/contracts'
 import { useNavigate } from '@tanstack/react-router'
 import { Ban, ChartLine, CheckCircle2, Map as MapIcon, Pencil, Plus, Scale } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Form, type Selection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { useCropTableMetrics } from '#/components/crops/cropTableMetrics'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
+import { IrrigationInfoButton, IrrigationMapCard, RootDepthCell, SoilTypeCell, SoilWaterBadge, WaterBalanceDialog, WaterBalanceSparkline } from '#/components/crops/Irrigation'
 import { PhenologyDialog } from '#/components/crops/PhenologyDialog'
 import { ComplianceInfoButton, FindingsFlag, MixBadge, ProductInfo } from '#/components/crops/ProtectionExtras'
 import { MiniConditionBar } from '#/components/fields/ConditionsTab'
@@ -56,6 +58,8 @@ interface Entry {
   cycle: CropCycle | null
   /** Running total of the tab's key figure (kg N/ha, mm) on this field up to and including this entry. */
   cumulative: number | null
+  /** 1-based position among the field's entries of the tab, by date. */
+  index: number
 }
 
 /** A number kept in `details` that can be set on several operations at once. */
@@ -76,6 +80,11 @@ export interface ColumnCtx {
   /** Approval findings of an operation (plant protection). */
   findings: (opId: string) => PsmFinding[]
   openPhenology: (cycle: CropCycle, fieldName: string, date: string | null) => void
+  /** Root-zone water balance of a crop cycle (irrigation). */
+  water: (cycle: CropCycle | null) => CycleWaterBalance | undefined
+  waterLoading: boolean
+  openWaterBalance: (wb: CycleWaterBalance, fieldName: string) => void
+  writable: boolean
 }
 
 interface TabConfig {
@@ -87,8 +96,12 @@ interface TabConfig {
   columns: (ctx: ColumnCtx) => ColumnDef<Entry>[]
   /** Columns about the field rather than one operation (shown on the field's first row). */
   fieldColumns?: (ctx: ColumnCtx) => ColumnDef<GroupRow>[]
+  /** Field-level actions after the status. */
+  trailingColumns?: (ctx: ColumnCtx) => ColumnDef<GroupRow>[]
   /** The tab shows crop-table conditions (bars, BBCH). */
   conditions?: boolean
+  /** The tab shows the water balances (irrigation). */
+  water?: boolean
   /** Columns shown before the viewer picks their own; all when not set. */
   defaults?: string[]
   edits?: () => DetailEdit[]
@@ -221,22 +234,64 @@ const seedMapColumn = ({ orgId }: ColumnCtx): ColumnDef<GroupRow> => ({
   render: (r) =>
     r.first ? (
       <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: r.field.id }} search={{ tab: 'maps' }} variant="quiet" size="sm" aria-label={tt('fieldOps.seedMapFor', { field: r.field.name })}>
-        <MapIcon /> {tt('fieldOps.seedMap')}
+        <MapIcon /> {tt('fieldOps.seedMapShort')}
       </Link>
     ) : null,
 })
 
-/** A field's traffic-light bar of its main crop (reference sowing, spraying and disease columns). */
-const barColumn = (id: string, label: string, key: keyof CropTableConditionsRow['bars'], ctx: ColumnCtx): ColumnDef<GroupRow> => ({
+/** A field's traffic-light bar of its main crop (reference sowing, spraying and disease columns), filtered by today's level. */
+const barColumn = (id: string, label: string, key: keyof CropTableConditionsRow['bars'], ctx: ColumnCtx): ColumnDef<GroupRow> => {
+  const level = (r: GroupRow) => {
+    const days = r.first ? ctx.conditions(r.cycle)?.bars[key] : null
+    if (!days?.length) return null
+    // The disease bar ends at its last simulated day; the others start today.
+    return key === 'disease' ? days[days.length - 1].value : (days.find((d) => d.date >= today()) ?? days[0]).value
+  }
+  return {
+    id,
+    label,
+    filter: 'select',
+    value: level,
+    text: (r) => {
+      const v = level(r)
+      return v == null ? null : tt(key === 'disease' ? `conditions.disease.level.${v}` : `conditions.level.${v}`)
+    },
+    render: (r) => {
+      if (!r.first) return null
+      if (ctx.conditionsLoading) return <span className="text-muted">…</span>
+      return <MiniConditionBar days={ctx.conditions(r.cycle)?.bars[key]} label={label} />
+    },
+  }
+}
+
+// ---- Irrigation: soil, rooting depth and the FAO-56 water balance per field (reference irrigation page) ----
+
+const waterColumn = (id: string, label: string, ctx: ColumnCtx, render: (wb: CycleWaterBalance | undefined, r: GroupRow) => ReactNode, value?: (wb: CycleWaterBalance | undefined) => number | null | undefined, align?: 'end'): ColumnDef<GroupRow> => ({
   id,
   label,
-  value: () => null,
-  render: (r) => {
-    if (!r.first) return null
-    if (ctx.conditionsLoading) return <span className="text-muted">…</span>
-    return <MiniConditionBar days={ctx.conditions(r.cycle)?.bars[key]} label={label} />
-  },
+  align,
+  filter: value ? 'number' : undefined,
+  value: (r) => (r.first && value ? value(ctx.water(r.cycle)) : null),
+  render: (r) => (!r.first ? null : ctx.waterLoading ? <span className="text-muted">…</span> : render(ctx.water(r.cycle), r)),
 })
+const waterColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
+  waterColumn('soilType', tt('irrigation.soilTexture'), ctx, (wb, r) => <SoilTypeCell wb={wb} fieldId={r.field.id} />),
+  waterColumn('awc', tt('irrigation.awc'), ctx, (wb) => (wb?.awcMm == null ? dash : <span className="tabular">{fmt.num(wb.awcMm)} mm</span>), (wb) => wb?.awcMm, 'end'),
+  waterColumn('rootDepth', tt('irrigation.maxRootDepth'), ctx, (wb) => <RootDepthCell wb={wb} writable={ctx.writable} />, (wb) => wb?.rootDepthM),
+  {
+    ...waterColumn('soilWater', tt('irrigation.soilWater'), ctx, (wb) => <SoilWaterBadge wb={wb} />, (wb) => wb?.fillPct),
+    filter: 'select',
+    options: (r) => {
+      const level = r.first ? ctx.water(r.cycle)?.deficitLevel : null
+      return level ? [tt(`irrigation.deficit.${level}`)] : []
+    },
+    text: (r) => {
+      const level = r.first ? ctx.water(r.cycle)?.deficitLevel : null
+      return level ? tt(`irrigation.deficit.${level}`) : null
+    },
+  },
+  waterColumn('waterBalance', tt('irrigation.waterBalance'), ctx, (wb, r) => <WaterBalanceSparkline wb={wb} onOpen={() => wb && ctx.openWaterBalance(wb, r.field.name)} />),
+]
 
 // ---- Plant protection: BBCH at the application date, products with mix and register info, findings ----
 
@@ -335,7 +390,8 @@ const TABS: Record<OperationTab, TabConfig> = {
     work: true,
     seed: true,
     conditions: true,
-    fieldColumns: (ctx) => [barColumn('sowingWindow', tt('fieldOps.sowingWindow'), 'sowing', ctx), seedMapColumn(ctx)],
+    fieldColumns: (ctx) => [barColumn('sowingWindow', tt('fieldOps.sowingWindow'), 'sowing', ctx)],
+    trailingColumns: (ctx) => [seedMapColumn(ctx)],
     defaults: ['sowingWindow', 'date', 'variety', 'products', 'seeds', 'tgw', 'germination', 'seedRate', 'totalSeed', 'seedUnits', 'machine', 'operator', 'seedMap'],
     columns: (ctx) => [
       dateColumn(),
@@ -391,11 +447,15 @@ const TABS: Record<OperationTab, TabConfig> = {
   },
   irrigation: {
     type: 'irrigation',
+    water: true,
     cumulative: (op) => detail(op, 'waterMm'),
+    fieldColumns: waterColumns,
     columns: () => [
       dateColumn(),
+      numberColumn('index', '#', (e) => e.index, { digits: 0 }),
       titleColumn(),
       detailColumn('water', tt('fieldOps.waterMm'), 'waterMm', 'mm'),
+      textColumn('method', tt('irrigation.method'), (e) => (typeof e.op.details.method === 'string' ? tt(`irrigation.method.${e.op.details.method}`) : null), 'select'),
       numberColumn('total', tt('fieldOps.totalMm'), (e) => e.cumulative, { unit: 'mm', strong: true }),
     ],
     edits: () => [{ key: 'waterMm', label: tt('fieldOps.waterMm'), unit: 'mm', max: 500 }],
@@ -437,7 +497,7 @@ interface GroupRow {
 export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: string }) {
   const { t } = useTranslation()
   const { orgId, can } = useOrg()
-  const { seasonId } = useSeason()
+  const { seasonId, season } = useSeason()
   const navigate = useNavigate()
   const cfg = TABS[tab]
   const fields = useOrgQuery<Field[]>('/fields', { seasonId })
@@ -450,8 +510,11 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   const metrics = useCropTableMetrics(cfg.conditions ? (seasonId ?? null) : null, (id) => id === 'bbch')
   const checks = useOrgQuery<PsmFinding[]>('/protection/checks', { seasonId }, { enabled: !!cfg.protection && !!seasonId })
   const [phenology, setPhenology] = useState<{ cycle: CropCycle; fieldName: string; date: string | null } | null>(null)
+  const water = useOrgQuery<CycleWaterBalance[]>('/water-balances', { seasonId }, { enabled: !!cfg.water && !!seasonId, staleTime: 5 * 60_000 })
+  const [waterDialog, setWaterDialog] = useState<{ wb: CycleWaterBalance; fieldName: string } | null>(null)
   const ctx = useMemo<ColumnCtx>(() => {
     const codes = new Map((crops.data ?? []).map((c) => [c.id, c.code]))
+    const waterBy = new Map((water.data ?? []).map((w) => [w.cropCycleId, w]))
     const findings = new Map<string, PsmFinding[]>()
     for (const f of checks.data ?? []) findings.set(f.operationId, [...(findings.get(f.operationId) ?? []), f])
     return {
@@ -461,8 +524,12 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
       conditionsLoading: metrics.conditionsLoading,
       findings: (id) => findings.get(id) ?? [],
       openPhenology: (cycle, fieldName, date) => setPhenology({ cycle, fieldName, date }),
+      water: (c) => (c ? waterBy.get(c.id) : undefined),
+      waterLoading: water.isLoading,
+      openWaterBalance: (wb, fieldName) => setWaterDialog({ wb, fieldName }),
+      writable: can('crop.write'),
     }
-  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId])
+  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId, water.data, water.isLoading, can])
 
   const allColumns = useMemo<ColumnDef<GroupRow>[]>(
     () => [
@@ -494,6 +561,7 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         text: (r) => (r.entry ? t(`enum.operationStatus.${r.entry.op.status}`) : null),
         render: (r) => r.entry && <OperationStatusBadge status={r.entry.op.status} />,
       },
+      ...(cfg.trailingColumns?.(ctx) ?? []),
     ],
     [cfg, t, ctx, orgId],
   )
@@ -515,13 +583,14 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         perField.set(f.fieldId, cur)
       }
       for (const [fieldId, v] of perField) {
-        const entry: Entry = { op, areaHa: v.areaHa, date: opDate(op), cycle: (v.cycleId && cyclesById.get(v.cycleId)) || mainCycle.get(fieldId) || null, cumulative: null }
+        const entry: Entry = { op, areaHa: v.areaHa, date: opDate(op), cycle: (v.cycleId && cyclesById.get(v.cycleId)) || mainCycle.get(fieldId) || null, cumulative: null, index: 0 }
         byField.set(fieldId, [...(byField.get(fieldId) ?? []), entry])
       }
     }
     const out: GroupRow[] = []
     for (const field of fields.data ?? []) {
       const entries = (byField.get(field.id) ?? []).sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999'))
+      entries.forEach((e, i) => (e.index = i + 1))
       if (cfg.cumulative) {
         let sum: number | null = null
         for (const e of entries) {
@@ -571,12 +640,13 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   if (ops.error) return <ErrorNotice error={ops.error} />
 
   // The plan link sits in the first column about the operation.
-  const fieldColumnIds = (cfg.fieldColumns?.(ctx) ?? []).map((f) => f.id)
+  const fieldColumnIds = [...(cfg.fieldColumns?.(ctx) ?? []), ...(cfg.trailingColumns?.(ctx) ?? [])].map((f) => f.id)
   const firstColumn = columns.find((c) => !fixed.includes(c.id) && !fieldColumnIds.includes(c.id))?.id
   return (
     <>
       <div className="flex justify-end gap-2 mb-2">
         {cfg.protection && <ComplianceInfoButton />}
+        {cfg.water && <IrrigationInfoButton />}
         <ColumnConfigButton
           columns={allColumns}
           fixed={fixed}
@@ -587,6 +657,12 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
           config={config}
         />
       </div>
+      {cfg.water && !!water.data?.length && water.data.every((w) => !w.days.length) && (
+        <Notice tone="warning" className="mb-4">
+          {t('irrigation.noWeatherForYear', { year: season?.harvestYear ?? '' })}
+        </Notice>
+      )}
+      {cfg.water && <IrrigationMapCard fields={fields.data ?? []} balances={water.data ?? []} />}
       <Card padded={false}>
         <Table
           aria-label={label}
@@ -680,6 +756,7 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
       {dialog === 'edit' && <BulkEditDialog ops={openOps} skipped={selected.ops.length - openOps.length} cfg={cfg} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'complete' && <CompleteDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'distribute' && <DistributeSeedDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
+      {waterDialog && <WaterBalanceDialog wb={waterDialog.wb} fieldName={waterDialog.fieldName} onClose={() => setWaterDialog(null)} />}
       {phenology && <PhenologyDialog cropCycleId={phenology.cycle.id} fieldName={phenology.fieldName} initialDate={phenology.date} onClose={() => setPhenology(null)} />}
     </>
   )
