@@ -24,13 +24,14 @@ import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { costCategoryLabel } from '#/i18n/labels'
+import { FieldYieldHistory } from '#/components/yield/FieldYieldHistory'
 import { Button, Link, buttonClass } from '#/ui/Button'
 import { DatePicker, TextField } from '#/ui/Field'
 import { Badge, Card, DescriptionList, ErrorNotice, Loading, Notice, PageHeader, Stat, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 import { ConfirmButton, Menu, MenuItem, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
-const TABS = ['overview', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'boundary', 'costs', 'activity'] as const
+const TABS = ['overview', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'yield', 'boundary', 'costs', 'activity'] as const
 
 export const Route = createFileRoute('/o/$orgId/fields/$fieldId')({
   validateSearch: z.object({
@@ -119,6 +120,7 @@ function FieldPage() {
           <Tab id="operations">{t('fieldPage.tabs.operations')}</Tab>
           <Tab id="satellite">{t('fieldPage.tabs.satellite')}</Tab>
           <Tab id="zones">{t('fieldPage.tabs.zones')}</Tab>
+          <Tab id="yield">{t('fieldPage.tabs.yield')}</Tab>
           <Tab id="boundary">{t('fieldPage.tabs.boundary')}</Tab>
           {can('finance.read') && <Tab id="costs">{t('fieldPage.tabs.costs')}</Tab>}
           <Tab id="activity">{t('fieldPage.tabs.activity')}</Tab>
@@ -201,6 +203,9 @@ function FieldPage() {
         </TabPanel>
         <TabPanel id="zones">
           <ProductivityZones field={f} />
+        </TabPanel>
+        <TabPanel id="yield">
+          <FieldYieldHistory field={f} />
         </TabPanel>
         <TabPanel id="boundary">
           <BoundaryHistory fieldId={fieldId} />

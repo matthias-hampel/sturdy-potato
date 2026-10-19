@@ -10,6 +10,7 @@ import { CultivationOperations } from '#/components/cultivation/CultivationOpera
 import { ZoneOptimization, type ZoneFocus } from '#/components/cultivation/ZoneOptimization'
 import { OPT_CATEGORIES } from '#/components/cultivation/zoneMath'
 import { EditCycleDialog } from '#/components/crops/CycleDialogs'
+import { CropCycleYield } from '#/components/yield/CropCycleYield'
 import { CropCycleStatusBadge, CropRoleBadge, CropTag } from '#/components/labels'
 import { FieldMap } from '#/components/map/FieldMap'
 import { zoneName } from '#/components/monitoring/ProductivityZones'
@@ -20,7 +21,7 @@ import { useOrgQuery } from '#/lib/queries'
 import { Button, Link, SegmentedControl } from '#/ui/Button'
 import { Card, EmptyState, ErrorNotice, Loading, PageHeader, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 
-const TABS = ['info', 'operations', 'zones'] as const
+const TABS = ['info', 'operations', 'zones', 'yield'] as const
 type CultivationTab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/crops/$cropCycleId')({
@@ -134,12 +135,13 @@ function CultivationPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] items-start">
+      <div className={tab === 'yield' ? 'grid gap-6' : 'grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] items-start'}>
         <Tabs className="min-w-0" selectedKey={tab} onSelectionChange={(key) => setSearch({ tab: key === 'info' ? undefined : (key as CultivationTab) })}>
           <TabList aria-label={t('cultivation.tabs.label')}>
             <Tab id="info">{t('cultivation.tabs.info')}</Tab>
             <Tab id="operations">{t('cultivation.tabs.operations')}</Tab>
             <Tab id="zones">{t('cultivation.tabs.zones')}</Tab>
+            <Tab id="yield">{t('cultivation.tabs.yield')}</Tab>
           </TabList>
           <TabPanel id="info">
             <CultivationInfo cycle={cycle} field={f} operations={operations} onEdit={can('crop.write') ? () => setEditOpen(true) : undefined} />
@@ -169,11 +171,16 @@ function CultivationPage() {
               onFocus={setFocus}
             />
           </TabPanel>
+          <TabPanel id="yield">
+            <CropCycleYield cycle={cycle} field={f} />
+          </TabPanel>
         </Tabs>
 
-        <aside className="order-first xl:order-none xl:sticky xl:top-4 space-y-3">
-          <MapPreview field={f} part={part} zoning={tab === 'zones' ? zoning : null} focus={tab === 'zones' ? focus : null} />
-        </aside>
+        {tab !== 'yield' && (
+          <aside className="order-first xl:order-none xl:sticky xl:top-4 space-y-3">
+            <MapPreview field={f} part={part} zoning={tab === 'zones' ? zoning : null} focus={tab === 'zones' ? focus : null} />
+          </aside>
+        )}
       </div>
 
       {editOpen && <EditCycleDialog cycle={cycle} onClose={() => setEditOpen(false)} />}
