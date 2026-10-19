@@ -22,3 +22,4 @@ export * from './radar.js';
 export * from './carbon.js';
 export * from './yield.js';
 export * from './annotations.js';
+export * from './soil.js';

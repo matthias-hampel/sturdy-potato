@@ -54,6 +54,13 @@ import { BoardService } from './modules/operations/board.service.js';
 import { CommentsController } from './modules/comments/comments.controller.js';
 import { CommentsService } from './modules/comments/comments.service.js';
 import { OperationsService } from './modules/operations/operations.service.js';
+import { SoilController } from './modules/soil/soil.controller.js';
+import { SoilExportService } from './modules/soil/export.service.js';
+import { SoilHistoryService } from './modules/soil/history.service.js';
+import { SoilLabService } from './modules/soil/lab.service.js';
+import { SoilSharePublicController } from './modules/soil/share.controller.js';
+import { SoilShareService } from './modules/soil/share.service.js';
+import { SoilZonationService } from './modules/soil/zonation.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
 import { VraService } from './modules/vra/vra.service.js';
 import { TasksController } from './modules/tasks/tasks.controller.js';
@@ -97,6 +104,11 @@ export const DOMAIN_SERVICES = [
   MonitoringService,
   ProductivityService,
   VraService,
+  SoilZonationService,
+  SoilExportService,
+  SoilLabService,
+  SoilHistoryService,
+  SoilShareService,
   DashboardService,
   FilesService,
   BoardService,
@@ -138,6 +150,8 @@ export const DOMAIN_SERVICES = [
     MonitoringController,
     ProductivityController,
     VraController,
+    SoilController,
+    SoilSharePublicController,
     DashboardController,
     FilesController,
     BoardController,

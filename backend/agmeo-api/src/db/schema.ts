@@ -977,6 +977,23 @@ export interface Scope2Entries {
   updated_by: string | null;
 }
 
+export interface SoilLabImportZones {
+  import_id: string;
+  organization_id: string;
+  sampled_on: string;
+  values: Json;
+  zone_id: string;
+}
+
+export interface SoilLabImports {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  file_ids: Generated<string[]>;
+  file_names: string[];
+  id: Generated<string>;
+  organization_id: string;
+}
+
 export interface SoilSamples {
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -988,6 +1005,7 @@ export interface SoilSamples {
   k2o_mg_100g: Numeric | null;
   kind: string;
   lab: string | null;
+  lab_import_id: string | null;
   mgo_mg_100g: Numeric | null;
   nmin_0_30: Numeric | null;
   nmin_30_60: Numeric | null;
@@ -1001,6 +1019,62 @@ export interface SoilSamples {
   sample_number: string | null;
   sampled_on: string;
   soil_texture: string | null;
+  soil_zonation_id: string | null;
+}
+
+export interface SoilShares {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  expires_at: Timestamp | null;
+  field_ids: string[];
+  file_id: string | null;
+  id: Generated<string>;
+  kind: Generated<string>;
+  lab_import_id: string | null;
+  locale: string | null;
+  organization_id: string;
+  password_hash: string | null;
+  revoked_at: Timestamp | null;
+  title: string;
+  token: string;
+}
+
+export interface SoilZonations {
+  batch_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  error: string | null;
+  field_id: string;
+  finished_at: Timestamp | null;
+  geometry_version_id: string | null;
+  id: Generated<string>;
+  method: string;
+  organization_id: string;
+  params: Generated<Json>;
+  scene_date: string | null;
+  source: string;
+  status: Generated<string>;
+  status_code: string | null;
+  superseded_at: Timestamp | null;
+  zone_count: number | null;
+}
+
+export interface SoilZones {
+  area_ha: Numeric;
+  color: string;
+  geometry: string;
+  id: Generated<string>;
+  lab_extras: Json | null;
+  label: string;
+  mean_value: number | null;
+  organization_id: string;
+  probe_nr: number | null;
+  properties: Generated<Json>;
+  property_dates: Generated<Json>;
+  property_methods: Generated<Json>;
+  sample_point: string | null;
+  zonation_id: string;
+  zone_no: number;
 }
 
 export interface StockBalances {
@@ -1369,7 +1443,12 @@ export interface DB {
   radar_state: RadarState;
   satellite_scenes: SatelliteScenes;
   scope2_entries: Scope2Entries;
+  soil_lab_import_zones: SoilLabImportZones;
+  soil_lab_imports: SoilLabImports;
   soil_samples: SoilSamples;
+  soil_shares: SoilShares;
+  soil_zonations: SoilZonations;
+  soil_zones: SoilZones;
   stock_balances: StockBalances;
   stock_movements: StockMovements;
   storage_locations: StorageLocations;

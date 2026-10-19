@@ -29,6 +29,7 @@ import { Route as OOrgIdTasksRouteImport } from './routes/o.$orgId.tasks'
 import { Route as OOrgIdTeamRouteImport } from './routes/o.$orgId.team'
 import { Route as OOrgIdTemplatesRouteImport } from './routes/o.$orgId.templates'
 import { Route as OOrgIdWeatherRouteImport } from './routes/o.$orgId.weather'
+import { Route as ShareSoilTokenRouteImport } from './routes/share.soil.$token'
 import { Route as OOrgIdComplianceIndexRouteImport } from './routes/o.$orgId.compliance.index'
 import { Route as OOrgIdCompliancePsmRecordRouteImport } from './routes/o.$orgId.compliance.psm-record'
 import { Route as OOrgIdComplianceReportRouteImport } from './routes/o.$orgId.compliance.report'
@@ -43,6 +44,8 @@ import { Route as OOrgIdMachineryEquipmentIdRouteImport } from './routes/o.$orgI
 import { Route as OOrgIdOperationsIndexRouteImport } from './routes/o.$orgId.operations.index'
 import { Route as OOrgIdOperationsOperationIdRouteImport } from './routes/o.$orgId.operations.$operationId'
 import { Route as OOrgIdOperationsNewRouteImport } from './routes/o.$orgId.operations.new'
+import { Route as OOrgIdSoilIndexRouteImport } from './routes/o.$orgId.soil.index'
+import { Route as OOrgIdSoilFieldIdRouteImport } from './routes/o.$orgId.soil.$fieldId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -144,6 +147,11 @@ const OOrgIdWeatherRoute = OOrgIdWeatherRouteImport.update({
   path: '/weather',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const ShareSoilTokenRoute = ShareSoilTokenRouteImport.update({
+  id: '/share/soil/$token',
+  path: '/share/soil/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OOrgIdComplianceIndexRoute = OOrgIdComplianceIndexRouteImport.update({
   id: '/compliance/',
   path: '/compliance/',
@@ -217,6 +225,16 @@ const OOrgIdOperationsNewRoute = OOrgIdOperationsNewRouteImport.update({
   path: '/operations/new',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdSoilIndexRoute = OOrgIdSoilIndexRouteImport.update({
+  id: '/soil/',
+  path: '/soil/',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdSoilFieldIdRoute = OOrgIdSoilFieldIdRouteImport.update({
+  id: '/soil/$fieldId',
+  path: '/soil/$fieldId',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -238,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
+  '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
@@ -248,11 +267,13 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
   '/o/$orgId/operations/new': typeof OOrgIdOperationsNewRoute
+  '/o/$orgId/soil/$fieldId': typeof OOrgIdSoilFieldIdRoute
   '/o/$orgId/compliance/': typeof OOrgIdComplianceIndexRoute
   '/o/$orgId/crops/': typeof OOrgIdCropsIndexRoute
   '/o/$orgId/fields/': typeof OOrgIdFieldsIndexRoute
   '/o/$orgId/machinery/': typeof OOrgIdMachineryIndexRoute
   '/o/$orgId/operations/': typeof OOrgIdOperationsIndexRoute
+  '/o/$orgId/soil/': typeof OOrgIdSoilIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -273,6 +294,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
+  '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
@@ -283,11 +305,13 @@ export interface FileRoutesByTo {
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
   '/o/$orgId/operations/new': typeof OOrgIdOperationsNewRoute
+  '/o/$orgId/soil/$fieldId': typeof OOrgIdSoilFieldIdRoute
   '/o/$orgId/compliance': typeof OOrgIdComplianceIndexRoute
   '/o/$orgId/crops': typeof OOrgIdCropsIndexRoute
   '/o/$orgId/fields': typeof OOrgIdFieldsIndexRoute
   '/o/$orgId/machinery': typeof OOrgIdMachineryIndexRoute
   '/o/$orgId/operations': typeof OOrgIdOperationsIndexRoute
+  '/o/$orgId/soil': typeof OOrgIdSoilIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -310,6 +334,7 @@ export interface FileRoutesById {
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
+  '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
@@ -320,11 +345,13 @@ export interface FileRoutesById {
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
   '/o/$orgId/operations/new': typeof OOrgIdOperationsNewRoute
+  '/o/$orgId/soil/$fieldId': typeof OOrgIdSoilFieldIdRoute
   '/o/$orgId/compliance/': typeof OOrgIdComplianceIndexRoute
   '/o/$orgId/crops/': typeof OOrgIdCropsIndexRoute
   '/o/$orgId/fields/': typeof OOrgIdFieldsIndexRoute
   '/o/$orgId/machinery/': typeof OOrgIdMachineryIndexRoute
   '/o/$orgId/operations/': typeof OOrgIdOperationsIndexRoute
+  '/o/$orgId/soil/': typeof OOrgIdSoilIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -348,6 +375,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
+    | '/share/soil/$token'
     | '/o/$orgId/'
     | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
@@ -358,11 +386,13 @@ export interface FileRouteTypes {
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
     | '/o/$orgId/operations/new'
+    | '/o/$orgId/soil/$fieldId'
     | '/o/$orgId/compliance/'
     | '/o/$orgId/crops/'
     | '/o/$orgId/fields/'
     | '/o/$orgId/machinery/'
     | '/o/$orgId/operations/'
+    | '/o/$orgId/soil/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -383,6 +413,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
+    | '/share/soil/$token'
     | '/o/$orgId'
     | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
@@ -393,11 +424,13 @@ export interface FileRouteTypes {
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
     | '/o/$orgId/operations/new'
+    | '/o/$orgId/soil/$fieldId'
     | '/o/$orgId/compliance'
     | '/o/$orgId/crops'
     | '/o/$orgId/fields'
     | '/o/$orgId/machinery'
     | '/o/$orgId/operations'
+    | '/o/$orgId/soil'
   id:
     | '__root__'
     | '/'
@@ -419,6 +452,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
+    | '/share/soil/$token'
     | '/o/$orgId/'
     | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
@@ -429,11 +463,13 @@ export interface FileRouteTypes {
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
     | '/o/$orgId/operations/new'
+    | '/o/$orgId/soil/$fieldId'
     | '/o/$orgId/compliance/'
     | '/o/$orgId/crops/'
     | '/o/$orgId/fields/'
     | '/o/$orgId/machinery/'
     | '/o/$orgId/operations/'
+    | '/o/$orgId/soil/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -442,6 +478,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   OOrgIdRoute: typeof OOrgIdRouteWithChildren
+  ShareSoilTokenRoute: typeof ShareSoilTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -586,6 +623,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdWeatherRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/share/soil/$token': {
+      id: '/share/soil/$token'
+      path: '/share/soil/$token'
+      fullPath: '/share/soil/$token'
+      preLoaderRoute: typeof ShareSoilTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/o/$orgId/compliance/': {
       id: '/o/$orgId/compliance/'
       path: '/compliance'
@@ -684,6 +728,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdOperationsNewRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/soil/': {
+      id: '/o/$orgId/soil/'
+      path: '/soil'
+      fullPath: '/o/$orgId/soil/'
+      preLoaderRoute: typeof OOrgIdSoilIndexRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/soil/$fieldId': {
+      id: '/o/$orgId/soil/$fieldId'
+      path: '/soil/$fieldId'
+      fullPath: '/o/$orgId/soil/$fieldId'
+      preLoaderRoute: typeof OOrgIdSoilFieldIdRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
   }
 }
 
@@ -712,11 +770,13 @@ interface OOrgIdRouteChildren {
   OOrgIdMachineryEquipmentIdRoute: typeof OOrgIdMachineryEquipmentIdRoute
   OOrgIdOperationsOperationIdRoute: typeof OOrgIdOperationsOperationIdRoute
   OOrgIdOperationsNewRoute: typeof OOrgIdOperationsNewRoute
+  OOrgIdSoilFieldIdRoute: typeof OOrgIdSoilFieldIdRoute
   OOrgIdComplianceIndexRoute: typeof OOrgIdComplianceIndexRoute
   OOrgIdCropsIndexRoute: typeof OOrgIdCropsIndexRoute
   OOrgIdFieldsIndexRoute: typeof OOrgIdFieldsIndexRoute
   OOrgIdMachineryIndexRoute: typeof OOrgIdMachineryIndexRoute
   OOrgIdOperationsIndexRoute: typeof OOrgIdOperationsIndexRoute
+  OOrgIdSoilIndexRoute: typeof OOrgIdSoilIndexRoute
 }
 
 const OOrgIdRouteChildren: OOrgIdRouteChildren = {
@@ -744,11 +804,13 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdMachineryEquipmentIdRoute: OOrgIdMachineryEquipmentIdRoute,
   OOrgIdOperationsOperationIdRoute: OOrgIdOperationsOperationIdRoute,
   OOrgIdOperationsNewRoute: OOrgIdOperationsNewRoute,
+  OOrgIdSoilFieldIdRoute: OOrgIdSoilFieldIdRoute,
   OOrgIdComplianceIndexRoute: OOrgIdComplianceIndexRoute,
   OOrgIdCropsIndexRoute: OOrgIdCropsIndexRoute,
   OOrgIdFieldsIndexRoute: OOrgIdFieldsIndexRoute,
   OOrgIdMachineryIndexRoute: OOrgIdMachineryIndexRoute,
   OOrgIdOperationsIndexRoute: OOrgIdOperationsIndexRoute,
+  OOrgIdSoilIndexRoute: OOrgIdSoilIndexRoute,
 }
 
 const OOrgIdRouteWithChildren =
@@ -760,6 +822,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   OOrgIdRoute: OOrgIdRouteWithChildren,
+  ShareSoilTokenRoute: ShareSoilTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
