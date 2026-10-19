@@ -28,7 +28,7 @@ function display(key: string, p: Record<string, string | number>): Record<string
   if (key.startsWith('advisory.') && p.date) out.date = fmt.date(String(p.date))
   if (key === 'events.line') {
     out.dates = p.start === p.end ? date(p.start) : `${date(p.start)}–${date(p.end)}`
-    out.location = LOCALE.startsWith('en') ? p.locationEn : p.location
+    out.location = LOCALE.startsWith('de') ? p.location : p.locationEn
   }
   return out
 }

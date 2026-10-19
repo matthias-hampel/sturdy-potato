@@ -26,7 +26,8 @@ export interface MailTemplates {
 export type MailTemplate = keyof MailTemplates;
 
 export function mailLocale(locale: string | null | undefined): MailLocale {
-  return locale?.toLowerCase().startsWith('en') ? 'en' : 'de';
+  // German for German (and unknown) accounts; English for every other language until mails are translated.
+  return !locale || locale.toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

@@ -3,7 +3,8 @@ import { countryCode, currencyCode, name } from './common.js';
 import { MEASUREMENT_SETTINGS, type MeasurementSetting, type MeasurementSystem } from './units.js';
 
 /** UI languages. The user's choice is stored on the account; new accounts follow the browser. */
-export const LOCALES = ['de', 'en'] as const;
+/** UI languages, as in AGVOLUTION/agmeo; German and English are complete, the others fall back to English. */
+export const LOCALES = ['de', 'en', 'cs', 'es', 'et', 'fr', 'lt', 'lv', 'pl', 'ro', 'uk'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const ROLES = ['owner', 'manager', 'agronomist', 'worker', 'accountant', 'viewer'] as const;

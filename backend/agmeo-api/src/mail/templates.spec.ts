@@ -17,9 +17,10 @@ describe('mail templates', () => {
     expect(mail.html).not.toContain('<Sonnenfeld>');
   });
 
-  it('falls back to German for unknown or missing locales', () => {
+  it('writes German to German and unknown accounts and English to every other language', () => {
     expect(mailLocale('en-GB')).toBe('en');
-    expect(mailLocale('fr')).toBe('de');
+    expect(mailLocale('fr')).toBe('en');
+    expect(mailLocale('de-AT')).toBe('de');
     expect(mailLocale(null)).toBe('de');
   });
 });

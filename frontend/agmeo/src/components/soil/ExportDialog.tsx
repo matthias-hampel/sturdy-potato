@@ -74,7 +74,7 @@ export function ExportDialog({ fieldIds, isOpen, onOpenChange }: { fieldIds: str
                   format,
                   customerNumber: customer || null,
                   startProbeNr: start,
-                  locale: i18n.language.startsWith('en') ? 'en' : 'de',
+                  locale: i18n.language === 'de' ? 'de' : 'en',
                   params: format === 'resultsPdf' ? [...DEFAULT_RESULT_COLS] : null,
                 })
               }

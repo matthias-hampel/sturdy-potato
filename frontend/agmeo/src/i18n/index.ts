@@ -40,8 +40,22 @@ function detect(): Locale {
 export const LANGUAGE: Locale = detect()
 
 /** BCP 47 tag for number and date formatting: the browser's regional variant of the UI language when it has one. */
-export const LOCALE: string =
-  browserLanguages().find((tag) => tag.toLowerCase().startsWith(`${LANGUAGE}-`)) ?? (LANGUAGE === 'de' ? 'de-DE' : 'en-GB')
+/** Region used for formatting when the browser offers no regional variant of the UI language. */
+const DEFAULT_REGION: Record<Locale, string> = {
+  de: 'de-DE',
+  en: 'en-GB',
+  cs: 'cs-CZ',
+  es: 'es-ES',
+  et: 'et-EE',
+  fr: 'fr-FR',
+  lt: 'lt-LT',
+  lv: 'lv-LV',
+  pl: 'pl-PL',
+  ro: 'ro-RO',
+  uk: 'uk-UA',
+}
+
+export const LOCALE: string = browserLanguages().find((tag) => tag.toLowerCase().startsWith(`${LANGUAGE}-`)) ?? DEFAULT_REGION[LANGUAGE]
 
 if (typeof document !== 'undefined') document.documentElement.lang = LANGUAGE
 
@@ -60,10 +74,15 @@ export function applyUserLanguage(locale: Locale) {
   if (locale !== LANGUAGE) setLanguage(locale)
 }
 
+// German and English ship with the app; another language's catalogue (keyed like de-DE.json, with
+// the plural forms its language needs) loads before the first render, missing keys fall back to English.
+const catalogues = import.meta.glob<Record<string, string>>(['./*.json', '!./de-DE.json', '!./en-US.json'], { import: 'default' })
+const extra = LANGUAGE !== 'de' && LANGUAGE !== 'en' ? await catalogues[`./${DEFAULT_REGION[LANGUAGE]}.json`]?.() : undefined
+
 void i18n.use(initReactI18next).init({
   lng: LANGUAGE,
-  fallbackLng: 'en',
-  resources: { de: { common: de }, en: { common: en } },
+  fallbackLng: LANGUAGE === 'de' ? 'de' : 'en',
+  resources: { de: { common: de }, en: { common: en }, ...(extra ? { [LANGUAGE]: { common: extra } } : {}) },
   defaultNS: 'common',
   ns: ['common'],
   keySeparator: false,

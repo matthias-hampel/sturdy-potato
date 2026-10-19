@@ -78,7 +78,7 @@ export function ShareDialog({ fieldIds, isOpen, onOpenChange }: { fieldIds: stri
                   password: password || null,
                   expiresAt: expires ? endOfDay(expires) : null,
                   labImportId: kind === 'results' ? importId : null,
-                  locale: i18n.language.startsWith('en') ? 'en' : 'de',
+                  locale: i18n.language === 'de' ? 'de' : 'en',
                 })
               }
             >

@@ -21,7 +21,7 @@ const DEFAULT_DISTANCE_KM = 5
 const DEFAULT_POWER_KW = 120
 const COST_KEYS = ['depreciation', 'interest', 'miscellaneous', 'repairs', 'materials', 'services'] as const
 
-const text = (x: { de: string; en: string }) => (LANGUAGE === 'en' ? x.en : x.de)
+const text = (x: { de: string; en: string }) => (LANGUAGE === 'de' ? x.de : x.en)
 /** Label of a KTBL action: the work and the machine variant. */
 export const ktblActionLabel = (a: KtblAction) => `${text(a.group)}: ${text(a.label)}`
 

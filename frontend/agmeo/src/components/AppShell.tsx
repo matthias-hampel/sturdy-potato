@@ -226,7 +226,19 @@ function OrgSwitcher({ user }: { user: CurrentUser }) {
 }
 
 /** Each language in its own name, so it can be found whatever language is active. */
-const LANGUAGE_NAMES: Record<Locale, string> = { de: 'Deutsch', en: 'English' }
+const LANGUAGE_NAMES: Record<Locale, string> = {
+  de: 'Deutsch',
+  en: 'English',
+  cs: 'Čeština',
+  es: 'Español',
+  et: 'Eesti',
+  fr: 'Français',
+  lt: 'Lietuvių',
+  lv: 'Latviešu',
+  pl: 'Polski',
+  ro: 'Română',
+  uk: 'Українська',
+}
 
 /** Saves the language on the account (it follows the user to other devices), then reloads in it. */
 async function switchLanguage(locale: Locale) {

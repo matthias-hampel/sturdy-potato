@@ -53,6 +53,39 @@ for (const file of files) {
   }
 }
 
+// Further languages (cs-CZ.json, pl-PL.json, ...): every key of de-DE, sorted, with the same
+// placeholders and markup tags; plural keys may add the forms their language needs (_few, _many,
+// _two, _zero). Keys missing from a catalogue fall back to English at runtime but fail this check.
+const PLURAL_FORMS = ['_zero', '_two', '_few', '_many']
+const tokens = (v) => [...v.matchAll(/\{\{\s*([\w.]+)[^}]*\}\}|<\/?(\w+)\s*\/?>/g)].map((m) => m[1] ?? `<${m[2]}>`).sort().join(' ')
+for (const f of readdirSync(join(root, 'i18n'))) {
+  if (!/^[a-z]{2}-[A-Z]{2}\.json$/.test(f) || f === 'de-DE.json' || f === 'en-US.json') continue
+  const cat = load(join(root, 'i18n', f))
+  const keys = Object.keys(cat)
+  if (keys.join('\n') !== [...keys].sort().join('\n')) problems.push(`${f} is not sorted alphabetically`)
+  let missing = 0
+  for (const k of Object.keys(de)) if (!(k in cat)) missing++
+  if (missing) problems.push(`${f}: ${missing} key(s) missing`)
+  for (const [k, v] of Object.entries(cat)) {
+    if (typeof v !== 'string' || !v.trim()) {
+      problems.push(`${f}: empty value for ${k}`)
+      continue
+    }
+    const form = PLURAL_FORMS.find((x) => k.endsWith(x))
+    const base = form ? k.slice(0, -form.length) : k
+    if (!(base in de)) {
+      problems.push(`${f}: unknown key ${k}`)
+      continue
+    }
+    if (form && !de[base].includes('{{count}}')) problems.push(`${f}: ${k} is a plural form of a key without {{count}}`)
+    const want = new Set(tokens(de[base]).split(' ').filter(Boolean))
+    // `_one` forms may drop {{count}} ("ein Schlag").
+    const got = new Set(tokens(v).split(' ').filter(Boolean))
+    for (const tok of want) if (!got.has(tok) && !(tok === 'count' && (k.endsWith('_one') || form))) problems.push(`${f}: ${k} lacks ${tok.startsWith('<') ? tok : `{{${tok}}}`}`)
+    for (const tok of got) if (!want.has(tok)) problems.push(`${f}: ${k} has unknown ${tok.startsWith('<') ? tok : `{{${tok}}}`}`)
+  }
+}
+
 if (problems.length) {
   console.error(problems.join('\n'))
   console.error(`\n${problems.length} problem(s)`)

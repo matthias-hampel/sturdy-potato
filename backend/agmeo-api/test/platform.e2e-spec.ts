@@ -53,7 +53,9 @@ describe('account language', () => {
     expect((await u.get('/me').expect(200)).body.locale).toBeNull()
     const me = (await u.patch('/me', { locale: 'en' }).expect(200)).body
     expect(me.locale).toBe('en')
-    await u.patch('/me', { locale: 'fr' }).expect(400)
+    expect((await u.patch('/me', { locale: 'pl' }).expect(200)).body.locale).toBe('pl')
+    await u.patch('/me', { locale: 'it' }).expect(400)
+    await u.patch('/me', { locale: 'en' }).expect(200)
   })
 })
 
