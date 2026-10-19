@@ -62,6 +62,9 @@ import { SoilSharePublicController } from './modules/soil/share.controller.js';
 import { SoilShareService } from './modules/soil/share.service.js';
 import { SoilZonationService } from './modules/soil/zonation.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
+import { VraBasesController } from './modules/vra/vra-bases.controller.js';
+import { VraOrgController } from './modules/vra/vra-org.controller.js';
+import { VraBasesService } from './modules/vra/bases.service.js';
 import { VraService } from './modules/vra/vra.service.js';
 import { TasksController } from './modules/tasks/tasks.controller.js';
 import { TasksService } from './modules/tasks/tasks.service.js';
@@ -104,6 +107,7 @@ export const DOMAIN_SERVICES = [
   MonitoringService,
   ProductivityService,
   VraService,
+  VraBasesService,
   SoilZonationService,
   SoilExportService,
   SoilLabService,
@@ -150,6 +154,8 @@ export const DOMAIN_SERVICES = [
     MonitoringController,
     ProductivityController,
     VraController,
+    VraBasesController,
+    VraOrgController,
     SoilController,
     SoilSharePublicController,
     DashboardController,

@@ -10,6 +10,7 @@ export * from './tasks.js';
 export * from './economics.js';
 export * from './insights.js';
 export * from './vra.js';
+export * from './vraBases.js';
 export * from './planning.js';
 export * from './nutrients.js';
 export * from './agronomy.js';

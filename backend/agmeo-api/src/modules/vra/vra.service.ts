@@ -1,18 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import {
-  VRA_IMPERIAL,
+  BulkVraInput,
+  strategyRates,
   VraMapInput,
   vraFileName,
+  type BulkVraResult,
   type VraExportFormat,
   type VraMap,
   type VraMapInputView,
+  type VraMapListItem,
   type VraMapSummary,
   type VraMapZone,
   type VraRateUnit,
+  type VraStrategy,
   type VraUnitSystem,
 } from '@agmeo/contracts';
 import type { MultiPolygon, Polygon } from 'geojson';
 import { sql } from 'kysely';
+import { ZodError } from 'zod';
 import type { Ctx } from '../../auth/context.js';
 import { badRequest, conflict, notFound } from '../../core/errors.js';
 import { record } from '../../core/events.js';
@@ -20,12 +26,14 @@ import type { Out } from '../../core/validation.js';
 import { dateIn, iso, round } from '../../core/mappers.js';
 import { Database, type Trx } from '../../db/database.js';
 import { cropName } from '../crops/crop-name.js';
-import { taskDataXml } from './export/isoxml.js';
-import { polygonShapefile, type DbfField } from './export/shapefile.js';
-import { zip } from './export/zip.js';
 import { zoneRows } from '../productivity/zone-rows.js';
+import { VraBasesService } from './bases.service.js';
+import { taskDataXmlMulti } from './export/isoxml.js';
+import { prescriptionGeojson, prescriptionShapefile, prescriptionTask, type PrescriptionMeta } from './export/prescription.js';
+import { zip, type ZipEntry } from './export/zip.js';
 
 type Input = Out<typeof VraMapInput>;
+type BulkInput = Out<typeof BulkVraInput>;
 
 interface MapRow {
   id: string;
@@ -40,6 +48,12 @@ interface MapRow {
   status: VraMap['status'];
   version: number;
   current: boolean;
+  batch_id: string | null;
+  zoning_source: string;
+  zoning_name: string | null;
+  field_name: string;
+  farm_name: string;
+  field_area_ha: number;
   created_by: string | null;
   created_at: Date;
   updated_at: Date;
@@ -51,16 +65,31 @@ export interface ExportFile {
   body: Buffer;
 }
 
-/** A rate in the map's unit system: per hectare, or per acre for imperial maps. */
-function displayRate(value: number, unit: VraRateUnit, system: VraUnitSystem): number {
-  return system === 'imperial' ? round(value * VRA_IMPERIAL[unit].factor, 2) : value;
-}
-const displayUnit = (unit: VraRateUnit, system: VraUnitSystem) => (system === 'imperial' ? VRA_IMPERIAL[unit].unit : unit);
+/** File name segment: ASCII letters, digits, dot, dash and underscore. */
+const safe = (s: string) =>
+  s
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ß/g, 'ss')
+    .replace(/[^A-Za-z0-9._-]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'map';
 
 /** Variable-rate maps on the zones of a field; exported as Shapefile, ISO-XML or GeoJSON. */
 @Injectable()
 export class VraService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly bases: VraBasesService,
+  ) {}
+
+  /** The maps of the organization (reference application-maps page), optionally of one field or batch. */
+  listOrg(ctx: Ctx, query: { fieldId?: string; batchId?: string }): Promise<VraMapListItem[]> {
+    return this.db.run(ctx, async (trx) => {
+      const rows = await this.rows(trx, query.fieldId ?? null, undefined, query.batchId ?? null);
+      const inputs = await this.inputs(trx, rows.map((r) => r.id));
+      return rows.map((r) => ({ ...this.summary(r, inputs.get(r.id) ?? []), fieldName: r.field_name, farmName: r.farm_name, fieldAreaHa: Number(r.field_area_ha) }));
+    });
+  }
 
   list(ctx: Ctx, fieldId: string): Promise<VraMapSummary[]> {
     return this.db.run(ctx, async (trx) => {
@@ -75,24 +104,141 @@ export class VraService {
   }
 
   create(ctx: Ctx, fieldId: string, input: Input): Promise<VraMap> {
-    return this.db.run(ctx, async (trx) => {
-      const zoning = await this.zoning(trx, fieldId, input.zoningId);
-      const operationId = await this.operation(trx, fieldId, input.operationId);
-      const { rows } = await sql<{ id: string }>`
-        INSERT INTO vra_maps (organization_id, field_id, geometry_version_id, zoning_id, operation_id, type, title, unit_system, status, created_by)
-        VALUES (${ctx.orgId}::uuid, ${fieldId}::uuid, ${zoning.geometry_version_id}::uuid, ${zoning.id}::uuid, ${operationId}::uuid, ${input.type},
-                ${input.title}, ${input.unitSystem}, ${input.status}, ${ctx.userId}::uuid)
-        RETURNING id`.execute(trx);
-      const id = rows[0].id;
-      await this.writeInputs(trx, ctx, id, input, zoning.zone_count);
-      await record(trx, ctx, {
-        entityType: 'vra_map',
-        entityId: id,
-        action: 'vra_map.created',
-        changes: { fieldId, zoningId: zoning.id, operationId, type: input.type, title: input.title, inputs: input.inputs.length },
-      });
-      return this.load(trx, fieldId, id);
+    return this.db.run(ctx, async (trx) => this.load(trx, fieldId, await this.insert(trx, ctx, fieldId, input, null)));
+  }
+
+  private async insert(trx: Trx, ctx: Ctx, fieldId: string, input: Input, batchId: string | null): Promise<string> {
+    const zoning = await this.zoning(trx, fieldId, input.zoningId);
+    const operationId = await this.operation(trx, fieldId, input.operationId);
+    const { rows } = await sql<{ id: string }>`
+      INSERT INTO vra_maps (organization_id, field_id, geometry_version_id, zoning_id, operation_id, type, title, unit_system, status, created_by, batch_id)
+      VALUES (${ctx.orgId}::uuid, ${fieldId}::uuid, ${zoning.geometry_version_id}::uuid, ${zoning.id}::uuid, ${operationId}::uuid, ${input.type},
+              ${input.title}, ${input.unitSystem}, ${input.status}, ${ctx.userId}::uuid, ${batchId}::uuid)
+      RETURNING id`.execute(trx);
+    const id = rows[0].id;
+    await this.writeInputs(trx, ctx, id, input, zoning.zone_count);
+    await record(trx, ctx, {
+      entityType: 'vra_map',
+      entityId: id,
+      action: 'vra_map.created',
+      changes: { fieldId, zoningId: zoning.id, operationId, type: input.type, title: input.title, inputs: input.inputs.length, batchId },
     });
+    return id;
+  }
+
+  /**
+   * Maps for many fields at once (reference bulk setup): per field the chosen base zoning — the
+   * field's default, productivity, yield, soil or uniform — else the fallback, and the zone rates
+   * of the strategy around the field's standard rate. Fields left without a map are reported.
+   */
+  bulk(ctx: Ctx, input: BulkInput): Promise<BulkVraResult> {
+    return this.db.run(ctx, async (trx) => {
+      const batchId = randomUUID();
+      const names = new Map(
+        (await trx.selectFrom('fields').select(['id', 'name']).where('id', 'in', input.fields.map((f) => f.fieldId)).execute()).map((f) => [f.id, f.name]),
+      );
+      const product = input.input.productId
+        ? await trx.selectFrom('products').select('name').where('id', '=', input.input.productId).executeTakeFirst()
+        : null;
+      if (input.input.productId && !product) throw notFound('Product');
+      const created: string[] = [];
+      const failed: BulkVraResult['failed'] = [];
+      for (const f of input.fields) {
+        const fieldName = names.get(f.fieldId) ?? null;
+        if (!fieldName) {
+          failed.push({ fieldId: f.fieldId, fieldName, code: 'not_found' });
+          continue;
+        }
+        const zoningId = await this.bulkBase(trx, ctx, f.fieldId, input.base, input.fallback, f.zoneCount ?? input.zoneCount);
+        if (!zoningId) {
+          failed.push({ fieldId: f.fieldId, fieldName, code: 'no_zoning' });
+          continue;
+        }
+        const zones = await trx
+          .selectFrom('zoning_zones')
+          .select(['zone_no', 'area_ha', 'relative_productivity'])
+          .where('zoning_id', '=', zoningId)
+          .orderBy('zone_no')
+          .execute();
+        const standardRate = f.standardRate ?? input.input.standardRate;
+        const rates = strategyRates(
+          zones.map((z) => ({ zoneNo: z.zone_no, areaHa: Number(z.area_ha), relativeProductivity: z.relative_productivity == null ? null : Number(z.relative_productivity) })),
+          standardRate,
+          input.strategy,
+          input.input.unit,
+          input.rateStep,
+        );
+        let payload: Input;
+        try {
+          payload = VraMapInput.parse({
+            zoningId,
+            type: input.type,
+            title: input.title.replaceAll('{field}', fieldName).slice(0, 120),
+            unitSystem: input.unitSystem,
+            status: input.status,
+            inputs: [
+              {
+                inputType: input.type,
+                productId: input.input.productId ?? null,
+                cropId: input.type === 'sowing' ? (input.input.cropId ?? null) : null,
+                name: input.input.name || product?.name || '',
+                unit: input.input.unit,
+                standardRate,
+                germinationPct: input.input.germinationPct ?? null,
+                strategy: input.strategy,
+                rates,
+              },
+            ],
+          });
+        } catch (e) {
+          if (!(e instanceof ZodError)) throw e;
+          failed.push({ fieldId: f.fieldId, fieldName, code: 'invalid' });
+          continue;
+        }
+        created.push(await this.insert(trx, ctx, f.fieldId, payload, batchId));
+      }
+      await record(trx, ctx, { entityType: 'vra_map', entityId: batchId, action: 'vra_map.bulk_created', changes: { maps: created.length, failed: failed.length, base: input.base } });
+      const rows = created.length ? await this.rows(trx, null, undefined, batchId) : [];
+      const inputs = await this.inputs(trx, rows.map((r) => r.id));
+      return {
+        batchId,
+        created: rows.map((r) => ({ ...this.summary(r, inputs.get(r.id) ?? []), fieldName: r.field_name, farmName: r.farm_name, fieldAreaHa: Number(r.field_area_ha) })),
+        failed,
+      };
+    });
+  }
+
+  /** The zoning a bulk map of a field is made on, or null. */
+  private async bulkBase(trx: Trx, ctx: Ctx, fieldId: string, base: BulkInput['base'], fallback: BulkInput['fallback'], zoneCount: number): Promise<string | null> {
+    const productivity = async () => {
+      const { rows } = await sql<{ id: string }>`
+        SELECT z.id FROM zonings z
+        WHERE z.analysis_id = (
+          SELECT a.id FROM productivity_analyses a JOIN field_current_geometry g ON g.id = a.geometry_version_id
+          WHERE g.field_id = ${fieldId}::uuid AND a.status = 'finished' ORDER BY a.finished_at DESC NULLS LAST LIMIT 1)
+          AND NOT z.is_custom
+        ORDER BY abs(z.zone_count - ${zoneCount}), z.zone_count LIMIT 1`.execute(trx);
+      return rows[0]?.id ?? null;
+    };
+    const pick = async (which: BulkInput['base']): Promise<string | null> => {
+      if (which === 'default') {
+        const z = await trx.selectFrom('zonings').select('id').where('field_id', '=', fieldId).where('is_default', '=', true).executeTakeFirst();
+        return z?.id ?? null;
+      }
+      if (which === 'productivity') return productivity();
+      if (which === 'yield') {
+        const { rows } = await sql<{ id: string }>`
+          SELECT z.id FROM zonings z JOIN field_current_geometry g ON g.field_id = z.field_id AND g.id = z.geometry_version_id
+          WHERE z.field_id = ${fieldId}::uuid AND z.source IN ('yield_map', 'yield_estimate') AND z.listed
+          ORDER BY (z.source = 'yield_map') DESC, z.created_at DESC LIMIT 1`.execute(trx);
+        return rows[0]?.id ?? null;
+      }
+      if (which === 'soil') return this.bases.soilZoning(trx, ctx, fieldId, null);
+      return this.bases.uniformZoning(trx, ctx, fieldId, null);
+    };
+    const chosen = await pick(base);
+    if (chosen || fallback === 'skip') return chosen;
+    return pick(fallback === 'uniform' ? 'uniform' : 'productivity');
   }
 
   update(ctx: Ctx, fieldId: string, id: string, input: Input): Promise<VraMap> {
@@ -146,83 +292,60 @@ export class VraService {
   export(ctx: Ctx, fieldId: string, id: string, format: VraExportFormat): Promise<ExportFile> {
     return this.db.run(ctx, async (trx) => {
       const map = await this.load(trx, fieldId, id);
-      const meta = await sql<{ field: string; farm: string; organization: string; boundary: string; area_ha: number }>`
-        SELECT f.name AS field, fa.name AS farm, o.name AS organization, ST_AsGeoJSON(g.geometry, 9) AS boundary, g.area_ha
-        FROM vra_maps m
-        JOIN fields f ON f.id = m.field_id
-        JOIN farms fa ON fa.id = f.farm_id
-        JOIN organizations o ON o.id = m.organization_id
-        JOIN field_geometry_versions g ON g.id = m.geometry_version_id
-        WHERE m.id = ${id}::uuid`.execute(trx);
-      const info = meta.rows[0];
-      const name = vraFileName(info.field, map.type, dateIn(new Date()));
+      const meta = await this.meta(trx, id);
+      const name = vraFileName(meta.field, map.type, dateIn(new Date()));
       await record(trx, ctx, { entityType: 'vra_map', entityId: id, action: 'vra_map.exported', changes: { format } });
-
-      // A single-input map has one RATE column; several inputs keep their own column names.
-      const columns = map.inputs.map((i) => (map.type === 'several' ? i.columnName : 'RATE'));
-      const rate = (input: VraMapInputView, zoneNo: number) => displayRate(input.rates[String(zoneNo)] ?? 0, input.unit, map.unitSystem);
-
       if (format === 'geojson') {
-        const collection = {
-          type: 'FeatureCollection',
-          name,
-          properties: {
-            title: map.title,
-            type: map.type,
-            field: info.field,
-            units: Object.fromEntries(map.inputs.map((i, k) => [columns[k], displayUnit(i.unit, map.unitSystem)])),
-            inputs: map.inputs.map((i, k) => ({ column: columns[k], name: i.name || i.cropName, unit: displayUnit(i.unit, map.unitSystem) })),
-          },
-          features: map.zones.map((z) => ({
-            type: 'Feature',
-            geometry: z.geometry,
-            properties: {
-              ZONE: z.zoneNo,
-              AREA_HA: z.areaHa,
-              ...Object.fromEntries(map.inputs.map((i, k) => [columns[k], rate(i, z.zoneNo)])),
-            },
-          })),
-        };
-        return { filename: `${name}.geojson`, contentType: 'application/geo+json', body: Buffer.from(JSON.stringify(collection)) };
+        return { filename: `${name}.geojson`, contentType: 'application/geo+json', body: Buffer.from(JSON.stringify(prescriptionGeojson(map, meta, name))) };
       }
-
-      if (format === 'shp') {
-        const fields: DbfField[] = [
-          ...map.inputs.map((i, k) => ({ name: columns[k], length: 14, decimals: i.unit === 'seeds/ha' && map.unitSystem === 'metric' ? 0 : 2 })),
-          { name: 'ZONE', length: 2, decimals: 0 },
-          { name: 'AREA_HA', length: 12, decimals: 4 },
-        ];
-        const shape = polygonShapefile(
-          fields,
-          map.zones.map((z) => ({
-            geometry: z.geometry,
-            values: { ZONE: z.zoneNo, AREA_HA: z.areaHa, ...Object.fromEntries(map.inputs.map((i, k) => [columns[k], rate(i, z.zoneNo)])) },
-          })),
-        );
-        const body = zip([
-          { name: `${name}.shp`, data: shape.shp },
-          { name: `${name}.shx`, data: shape.shx },
-          { name: `${name}.dbf`, data: shape.dbf },
-          { name: `${name}.prj`, data: shape.prj },
-        ]);
-        return { filename: `${name}.zip`, contentType: 'application/zip', body };
-      }
-
-      // ISO-XML always uses SI process data, whatever the map's display units.
-      const xml = taskDataXml({
-        customer: info.organization,
-        farm: info.farm,
-        field: { name: info.field, areaM2: info.area_ha * 10_000, boundary: JSON.parse(info.boundary) as Polygon | MultiPolygon },
-        task: map.title,
-        inputs: map.inputs.map((i) => ({ productName: i.productName ?? (i.name || i.cropName || i.inputType), unit: i.unit, standardRate: i.standardRate })),
-        zones: map.zones.map((z) => ({ zoneNo: z.zoneNo, geometry: z.geometry, rates: map.inputs.map((i) => i.rates[String(z.zoneNo)] ?? 0) })),
-      });
-      return {
-        filename: `${name}_ISOXML.zip`,
-        contentType: 'application/zip',
-        body: zip([{ name: 'TASKDATA/TASKDATA.XML', data: Buffer.from(xml, 'utf8') }]),
-      };
+      if (format === 'shp') return { filename: `${name}.zip`, contentType: 'application/zip', body: zip(prescriptionShapefile(map, name)) };
+      const xml = taskDataXmlMulti(meta.organization, [prescriptionTask(map, meta)]);
+      return { filename: `${name}_ISOXML.zip`, contentType: 'application/zip', body: zip([{ name: 'TASKDATA/TASKDATA.XML', data: Buffer.from(xml, 'utf8') }]) };
     });
+  }
+
+  /**
+   * Several maps in one ZIP (reference batch export): ISO-XML as one TASKDATA with a task per map,
+   * Shapefiles in a folder per map, GeoJSON as one file per map.
+   */
+  exportBatch(ctx: Ctx, mapIds: string[], format: VraExportFormat): Promise<ExportFile> {
+    return this.db.run(ctx, async (trx) => {
+      const found = await trx.selectFrom('vra_maps').select(['id', 'field_id']).where('id', 'in', mapIds).execute();
+      if (found.length !== new Set(mapIds).size) throw notFound('VRA map');
+      const byId = new Map(found.map((m) => [m.id, m.field_id]));
+      const used = new Set<string>();
+      const entries: ZipEntry[] = [];
+      const tasks: ReturnType<typeof prescriptionTask>[] = [];
+      let customer = '';
+      for (const id of [...new Set(mapIds)]) {
+        const map = await this.load(trx, byId.get(id)!, id);
+        const meta = await this.meta(trx, id);
+        customer = meta.organization;
+        let name = vraFileName(meta.field, map.type, dateIn(new Date()));
+        for (let n = 2; used.has(name.toLowerCase()); n++) name = `${vraFileName(meta.field, map.type, dateIn(new Date()))}_${n}`;
+        used.add(name.toLowerCase());
+        if (format === 'isoxml') tasks.push(prescriptionTask(map, meta));
+        else if (format === 'shp') entries.push(...prescriptionShapefile(map, name, name));
+        else entries.push({ name: `${name}.geojson`, data: Buffer.from(JSON.stringify(prescriptionGeojson(map, meta, name))) });
+        await record(trx, ctx, { entityType: 'vra_map', entityId: id, action: 'vra_map.exported', changes: { format, batch: true } });
+      }
+      if (format === 'isoxml') entries.push({ name: 'TASKDATA/TASKDATA.XML', data: Buffer.from(taskDataXmlMulti(customer, tasks), 'utf8') });
+      const base = `${safe(customer).slice(0, 40)}_VRA_${dateIn(new Date())}`;
+      return { filename: `${base}${format === 'isoxml' ? '_ISOXML' : ''}.zip`, contentType: 'application/zip', body: zip(entries) };
+    });
+  }
+
+  private async meta(trx: Trx, mapId: string): Promise<PrescriptionMeta> {
+    const { rows } = await sql<{ field: string; farm: string; organization: string; boundary: string; area_ha: number }>`
+      SELECT f.name AS field, fa.name AS farm, o.name AS organization, ST_AsGeoJSON(g.geometry, 9) AS boundary, g.area_ha::float8 AS area_ha
+      FROM vra_maps m
+      JOIN fields f ON f.id = m.field_id
+      JOIN farms fa ON fa.id = f.farm_id
+      JOIN organizations o ON o.id = m.organization_id
+      JOIN field_geometry_versions g ON g.id = m.geometry_version_id
+      WHERE m.id = ${mapId}::uuid`.execute(trx);
+    const r = rows[0];
+    return { field: r.field, farm: r.farm, organization: r.organization, boundary: JSON.parse(r.boundary) as Polygon | MultiPolygon, areaHa: Number(r.area_ha) };
   }
 
   private async zoning(trx: Trx, fieldId: string, zoningId: string) {
@@ -278,6 +401,8 @@ export class VraService {
         name,
         unit: item.unit,
         standard_rate: item.standardRate ?? null,
+        germination_pct: item.unit === 'plants/ha' ? (item.germinationPct ?? null) : null,
+        strategy: item.strategy ?? null,
         column_name: input.type === 'several' ? item.columnName! : 'RATE',
         rates: JSON.stringify(Object.fromEntries(zoneNos.map((k) => [k, item.rates[k]]))),
       };
@@ -285,16 +410,21 @@ export class VraService {
     await trx.insertInto('vra_map_inputs').values(rows).execute();
   }
 
-  private async rows(trx: Trx, fieldId: string, id?: string): Promise<MapRow[]> {
+  private async rows(trx: Trx, fieldId: string | null, id?: string, batchId: string | null = null): Promise<MapRow[]> {
     const { rows } = await sql<MapRow>`
       SELECT m.id, m.field_id, m.zoning_id, z.zone_count, m.operation_id, m.geometry_version_id, m.type, m.title, m.unit_system, m.status,
-             m.version, (m.geometry_version_id = g.id) AS current, u.display_name AS created_by, m.created_at, m.updated_at
+             m.version, (m.geometry_version_id = g.id) AS current, m.batch_id, z.source AS zoning_source, z.name AS zoning_name,
+             f.name AS field_name, fa.name AS farm_name, g.area_ha::float8 AS field_area_ha,
+             u.display_name AS created_by, m.created_at, m.updated_at
       FROM vra_maps m
       JOIN zonings z ON z.id = m.zoning_id
+      JOIN fields f ON f.id = m.field_id
+      JOIN farms fa ON fa.id = f.farm_id
       JOIN field_current_geometry g ON g.field_id = m.field_id
       LEFT JOIN users u ON u.id = m.created_by
-      WHERE m.field_id = ${fieldId}::uuid ${id ? sql`AND m.id = ${id}::uuid` : sql``}
-      ORDER BY m.created_at DESC`.execute(trx);
+      WHERE true ${fieldId ? sql`AND m.field_id = ${fieldId}::uuid` : sql``} ${id ? sql`AND m.id = ${id}::uuid` : sql``}
+        ${batchId ? sql`AND m.batch_id = ${batchId}::uuid` : sql``}
+      ORDER BY m.created_at DESC, f.name`.execute(trx);
     return rows;
   }
 
@@ -307,7 +437,7 @@ export class VraService {
       .leftJoin('crops as c', 'c.id', 'i.crop_id')
       .select([
         'i.id', 'i.vra_map_id', 'i.input_type', 'i.product_id', 'p.name as product_name', 'i.crop_id', cropName<string | null>('c').as('crop_name'), 'i.name',
-        'i.unit', 'i.standard_rate', 'i.column_name', 'i.rates',
+        'i.unit', 'i.standard_rate', 'i.column_name', 'i.rates', 'i.germination_pct', 'i.strategy',
       ])
       .where('i.vra_map_id', 'in', mapIds)
       .orderBy('i.position')
@@ -326,6 +456,8 @@ export class VraService {
         standardRate: r.standard_rate,
         columnName: r.column_name,
         rates: r.rates as Record<string, number>,
+        germinationPct: r.germination_pct == null ? null : Number(r.germination_pct),
+        strategy: r.strategy as VraStrategy | null,
       });
       out.set(r.vra_map_id, list);
     }
@@ -345,6 +477,9 @@ export class VraService {
       status: r.status,
       version: r.version,
       current: r.current,
+      batchId: r.batch_id,
+      zoningSource: r.zoning_source,
+      zoningName: r.zoning_name,
       createdBy: r.created_by,
       createdAt: iso(r.created_at),
       updatedAt: iso(r.updated_at),

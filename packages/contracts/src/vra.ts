@@ -10,11 +10,14 @@ export type VraMapType = (typeof VRA_MAP_TYPES)[number]
 export const VRA_INPUT_TYPES = ['sowing', 'fertilizing', 'spraying'] as const
 export type VraInputType = (typeof VRA_INPUT_TYPES)[number]
 
-/** Rates are stored per hectare; the unit system only changes display and export. */
-export const VRA_RATE_UNITS = ['seeds/ha', 'kg/ha', 'l/ha'] as const
+/**
+ * Rates are stored per hectare; the unit system only changes display and export. A sowing input
+ * in plants/ha holds the target stand; the export turns it into seeds through the germination rate.
+ */
+export const VRA_RATE_UNITS = ['seeds/ha', 'plants/ha', 'kg/ha', 'l/ha'] as const
 export type VraRateUnit = (typeof VRA_RATE_UNITS)[number]
 export const VRA_UNITS_BY_TYPE: Record<VraInputType, readonly VraRateUnit[]> = {
-  sowing: ['seeds/ha', 'kg/ha'],
+  sowing: ['seeds/ha', 'plants/ha', 'kg/ha'],
   fertilizing: ['kg/ha', 'l/ha'],
   spraying: ['l/ha', 'kg/ha'],
 }
@@ -27,6 +30,7 @@ export type VraMapStatus = (typeof VRA_MAP_STATUSES)[number]
 export const VRA_IMPERIAL: Record<VraRateUnit, { unit: string; factor: number }> = {
   // 1 ac = 0.40468564 ha; 1 lb = 0.45359237 kg; 1 US gal = 3.78541178 l.
   'seeds/ha': { unit: 'seeds/ac', factor: 0.40468564 },
+  'plants/ha': { unit: 'plants/ac', factor: 0.40468564 },
   'kg/ha': { unit: 'lb/ac', factor: 0.40468564 / 0.45359237 },
   'l/ha': { unit: 'gal/ac', factor: 0.40468564 / 3.78541178 },
 }
@@ -34,9 +38,12 @@ export const VRA_IMPERIAL: Record<VraRateUnit, { unit: string; factor: number }>
 /** Rate presets relative to the standard rate, %. */
 export const VRA_PRESETS = [30, 20, 15, 10, 5, 0, -5, -10, -15, -20, -30] as const
 
+/** Counts (seeds, plants) and large values are whole numbers; everything else has two decimals. */
+export const isCountUnit = (unit: VraRateUnit) => unit === 'seeds/ha' || unit === 'plants/ha'
+
 /** Seeds and large values are whole numbers; everything else has two decimals. */
 export function roundRate(value: number, unit: VraRateUnit): number {
-  const digits = unit === 'seeds/ha' || Math.abs(value) >= 1000 ? 0 : 2
+  const digits = isCountUnit(unit) || Math.abs(value) >= 1000 ? 0 : 2
   const f = 10 ** digits
   return Math.round(value * f) / f
 }
@@ -150,6 +157,90 @@ export function vraFileName(fieldName: string, type: VraMapType, date: string): 
   return `${field}${suffix}`.slice(0, FILE_NAME_MAX)
 }
 
+// ---------------------------------------------------------------------------
+// Rate distribution of the reference app (applicationMapsPage/utils.ts)
+// ---------------------------------------------------------------------------
+
+/** Bounds of a zone's rate relative to the standard rate (reference MULTIPLIER_MIN/MAX). */
+export const MULTIPLIER_MIN = MIN_ZONE_FACTOR
+export const MULTIPLIER_MAX = MAX_ZONE_FACTOR
+
+/**
+ * How rates follow the zones: proportional gives productive zones more (reference default),
+ * inverse ("Raten umkehren") gives them less, manual keeps rates typed per zone.
+ */
+export const VRA_STRATEGIES = ['proportional', 'inverse', 'manual'] as const
+export type VraStrategy = (typeof VRA_STRATEGIES)[number]
+
+/** Spreader resolution: rates rounded to the nearest multiple of the step (reference rateSnap). */
+export const VRA_RATE_STEPS = [1, 5, 10, 25] as const
+
+/**
+ * Relative yield of each zone (1 = field mean), normalised so its area-weighted mean is 1:
+ * the map then spreads exactly the standard amount before clipping (reference
+ * normalizeZoneYields). Zones without a value count as the mean.
+ */
+export function normalizedRelative(zones: VraZoneLike[]): Map<number, number> {
+  const raw = zones.map((z) => ({ z, r: (z.relativeProductivity ?? 100) / 100 }))
+  const area = raw.reduce((s, x) => s + x.z.areaHa, 0)
+  const mean = area > 0 ? raw.reduce((s, x) => s + x.r * x.z.areaHa, 0) / area : 1
+  const m = mean > 0 ? mean : 1
+  return new Map(raw.map((x) => [x.z.zoneNo, x.r / m]))
+}
+
+/** Nearest multiple of `step` (no step: unchanged). */
+export const snapRate = (rate: number, step?: number | null) => (step && step > 0 ? Math.round(rate / step) * step : rate)
+
+/**
+ * Zone rates of a strategy (reference calculateAllZoneRates / calculateInvertedZoneRates): the
+ * standard rate times the zone's normalised relative yield — or 2 minus it, inverted — clipped
+ * to 65–135 % of the standard rate, rounded for the unit and optionally to a spreader step.
+ */
+export function strategyRates(
+  zones: VraZoneLike[],
+  standardRate: number,
+  strategy: Exclude<VraStrategy, 'manual'>,
+  unit: VraRateUnit,
+  step?: number | null,
+): Record<string, number> {
+  const relative = normalizedRelative(zones)
+  return Object.fromEntries(
+    zones.map((z) => {
+      const r = relative.get(z.zoneNo) ?? 1
+      const multiplier = Math.min(MULTIPLIER_MAX, Math.max(MULTIPLIER_MIN, strategy === 'inverse' ? 2 - r : r))
+      return [String(z.zoneNo), roundRate(snapRate(standardRate * multiplier, step), unit)]
+    }),
+  )
+}
+
+/** Area-weighted mean rate of the zones (reference areaWeightedRateMean); 0 without area. */
+export function areaWeightedRate(rates: Record<string, number>, zones: { zoneNo: number; areaHa: number }[]): number {
+  const area = zones.reduce((s, z) => s + z.areaHa, 0)
+  return area > 0 ? zones.reduce((s, z) => s + (rates[String(z.zoneNo)] ?? 0) * z.areaHa, 0) / area : 0
+}
+
+/** Zones whose rate leaves 65–135 % of the standard rate (reference violationsWarning). */
+export function multiplierViolations(rates: Record<string, number>, standardRate: number | null): number {
+  if (!standardRate) return 0
+  return Object.values(rates).filter((r) => r / standardRate < MULTIPLIER_MIN - 1e-9 || r / standardRate > MULTIPLIER_MAX + 1e-9).length
+}
+
+/**
+ * The rate a terminal receives (reference createGeojson): a target stand in plants/ha becomes
+ * seeds/ha, divided by the germination rate exactly once; without a germination rate it stays a
+ * target stand. Every other unit passes unchanged.
+ */
+export function exportRate(rate: number, unit: VraRateUnit, germinationPct?: number | null): { rate: number; unit: VraRateUnit } {
+  if (unit !== 'plants/ha' || !germinationPct || germinationPct <= 0) return { rate, unit }
+  return { rate: Math.round((rate * 100) / germinationPct), unit: 'seeds/ha' }
+}
+
+/** kg of a nutrient per hectare at a rate in kg/ha, from the product's content in %. */
+export function nutrientPerHa(rate: number, unit: VraRateUnit, pct: number | null | undefined): number | null {
+  if (pct == null || unit !== 'kg/ha') return null
+  return (rate * pct) / 100
+}
+
 const ColumnName = z
   .string()
   .trim()
@@ -165,7 +256,10 @@ export const VraMapInputItem = z.object({
   standardRate: z.number().min(0).max(1e8).nullish(),
   columnName: ColumnName.optional(),
   /** Rate per hectare by zone number. */
-  rates: z.record(z.string().regex(/^[1-7]$/), z.number().min(0).max(1e8)),
+  rates: z.record(z.string().regex(/^([1-9]|[1-4][0-9]|50)$/), z.number().min(0).max(1e10)),
+  /** Germination rate (%) of a target stand in plants/ha. */
+  germinationPct: z.number().gt(0).max(100).nullish(),
+  strategy: z.enum(VRA_STRATEGIES).nullish(),
 })
 export type VraMapInputItem = z.input<typeof VraMapInputItem>
 
@@ -191,6 +285,7 @@ export const VraMapInput = z
     map.inputs.forEach((input, i) => {
       if (map.type !== 'several' && input.inputType !== map.type) issue(['inputs', i, 'inputType'], `Expected a ${map.type} input`)
       if (!VRA_UNITS_BY_TYPE[input.inputType].includes(input.unit)) issue(['inputs', i, 'unit'], `Unit ${input.unit} does not fit ${input.inputType}`)
+      if (input.unit === 'plants/ha' && !input.germinationPct) issue(['inputs', i, 'germinationPct'], 'A target stand needs the germination rate')
       if (input.inputType === 'sowing') {
         if (!input.standardRate) issue(['inputs', i, 'standardRate'], 'Sowing needs a standard rate above 0')
         if (!input.cropId) issue(['inputs', i, 'cropId'], 'Sowing needs a crop')
@@ -220,6 +315,8 @@ export interface VraMapInputView {
   standardRate: number | null
   columnName: string
   rates: Record<string, number>
+  germinationPct: number | null
+  strategy: VraStrategy | null
 }
 
 export interface VraMapZone {
@@ -244,10 +341,22 @@ export interface VraMapSummary {
   version: number
   /** Whether the map was made on the field's current boundary. */
   current: boolean
+  /** Maps made together in the bulk setup. */
+  batchId: string | null
+  /** Where the zones come from (productivity, soil, upload, …) and the zoning's name. */
+  zoningSource: string
+  zoningName: string | null
   createdBy: string | null
   createdAt: string
   updatedAt: string
   inputs: VraMapInputView[]
+}
+
+/** A map in the organization-wide list. */
+export interface VraMapListItem extends VraMapSummary {
+  fieldName: string
+  farmName: string
+  fieldAreaHa: number
 }
 
 export interface VraMap extends VraMapSummary {
