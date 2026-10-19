@@ -53,6 +53,8 @@ export interface FieldMapProps {
   image?: MapImageOverlay | null
   /** An overlay (e.g. a popup child) the selected field is centred clear of. */
   occludedBy?: RefObject<HTMLElement | null>
+  /** Receives the MapLibre map once it is ready (and null when it goes away), e.g. for an image export. */
+  onMap?: (map: MapLibreMap | null) => void
 }
 
 export function FieldMap({
@@ -74,6 +76,7 @@ export function FieldMap({
   overlayOpacity = 0.85,
   image,
   occludedBy,
+  onMap,
 }: FieldMapProps) {
   const { t } = useTranslation()
   const [basemap, setBasemap] = useState<Basemap>(defaultBasemap)
@@ -85,6 +88,12 @@ export function FieldMap({
   const { containerRef, map, styleVersion } = useMap({ basemap, interactive, ...initial })
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
+  const onMapRef = useRef(onMap)
+  onMapRef.current = onMap
+  useEffect(() => {
+    onMapRef.current?.(map)
+    return () => onMapRef.current?.(null)
+  }, [map])
 
   const data = useMemo<FeatureCollection>(
     () => ({

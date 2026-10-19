@@ -103,12 +103,14 @@ def grid_stats(values: np.ndarray, analysis: np.ndarray) -> FieldStats:
     inside = inside[np.isfinite(inside)]
     if inside.size == 0:
         return FieldStats(None, None, None, None, None, 0, total)
-    p10, median, p90 = np.percentile(inside, [10, 50, 90])
+    p10, p20, median, p80, p90 = np.percentile(inside, [10, 20, 50, 80, 90])
     return FieldStats(
         mean=float(inside.mean()),
         median=float(median),
         p10=float(p10),
         p90=float(p90),
+        p20=float(p20),
+        p80=float(p80),
         stddev=float(inside.std()),
         valid_pixels=int(inside.size),
         total_pixels=total,

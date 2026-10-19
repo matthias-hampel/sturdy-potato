@@ -2,6 +2,7 @@ import { IMAGERY_LAYERS, type CostEntry, type CropCycle, type Farm, type Field, 
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, RotateCcw, Shapes, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { Button as AriaButton, Form } from 'react-aria-components'
@@ -16,6 +17,7 @@ import { FieldMap } from '#/components/map/FieldMap'
 import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
 import { INDEX_INFO, type ShownIndex } from '#/components/monitoring/indices'
 import { ObservationsChart } from '#/components/monitoring/ObservationsChart'
+import { SceneStats } from '#/components/monitoring/SceneStats'
 import { ProductivityZones } from '#/components/monitoring/ProductivityZones'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
 import { OperationsTable } from '#/components/operations/OperationsTable'
@@ -417,6 +419,7 @@ function SatelliteTab({
   const shown = satellite.date
   const index: ShownIndex = layer === 'rgb' ? 'ndvi' : layer
   const select = satellite.setDate
+  const [map, setMap] = useState<MapLibreMap | null>(null)
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -430,15 +433,18 @@ function SatelliteTab({
       )}
       <div className="grid xl:grid-cols-[1fr_1.2fr] gap-6 items-start">
         <div className="space-y-2">
-          <FieldMap fields={[field]} fillOpacity={0} raster={satellite.raster} labels={false} className="h-96 xl:h-[28rem]">
+          <FieldMap fields={[field]} fillOpacity={0} raster={satellite.raster} labels={false} className="h-96 xl:h-[28rem]" onMap={setMap}>
             <IndexLegend index={layer} stretch={stretch} />
           </FieldMap>
           {satellite.dates.length > 0 && <AcquisitionTimeline dates={satellite.dates} date={shown} onDate={select} single />}
           {shown && layer === 'rgb' && !shown.hasRgb && <p className="text-xs text-muted">{t('fieldPage.satellite.noRgb')}</p>}
         </div>
-        <Card title={t('fieldPage.satellite.overTime', { index: INDEX_INFO[index].label })} description={INDEX_INFO[index].description}>
-          <ObservationsChart fieldId={field.id} fieldName={field.name} index={index} selectedDate={shown?.date} onSelect={select} />
-        </Card>
+        <div className="space-y-6">
+          <Card title={t('fieldPage.satellite.overTime', { index: INDEX_INFO[index].label })} description={INDEX_INFO[index].description}>
+            <ObservationsChart fieldId={field.id} fieldName={field.name} index={index} selectedDate={shown?.date} onSelect={select} />
+          </Card>
+          <SceneStats fieldId={field.id} fieldName={field.name} index={index} layerLabel={layer === 'rgb' ? 'rgb' : layer} date={shown ?? null} map={map} />
+        </div>
       </div>
       <p className="text-xs text-muted">{t('fieldPage.satellite.method', { year: satellite.status?.historyFrom?.slice(0, 4) ?? '2018' })}</p>
     </div>

@@ -447,6 +447,8 @@ export interface FieldObservations {
   observed_on: string;
   organization_id: string;
   p10: Numeric | null;
+  p20: number | null;
+  p80: number | null;
   p90: Numeric | null;
   processing_version: string;
   scene_id: string | null;

@@ -269,6 +269,9 @@ export interface FieldObservation {
   mean: number | null;
   median: number | null;
   p10: number | null;
+  /** 20 % and 80 % quantiles (null on observations processed before they were recorded). */
+  p20: number | null;
+  p80: number | null;
   p90: number | null;
   stddev: number | null;
   validPixelPct: number;

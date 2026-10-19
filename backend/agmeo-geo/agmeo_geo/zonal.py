@@ -20,6 +20,9 @@ class FieldStats:
     stddev: float | None
     valid_pixels: int
     total_pixels: int
+    # Quartile-like bounds the scene statistics show (the reference's q20/q80).
+    p20: float | None = None
+    p80: float | None = None
 
     @property
     def valid_fraction(self) -> float:
@@ -70,12 +73,14 @@ def field_stats(dataset, band: int, geometry_wgs84: dict, inner_buffer_m: float 
     values = values[np.isfinite(values)]
     if values.size == 0:
         return FieldStats(None, None, None, None, None, 0, total)
-    p10, median, p90 = np.percentile(values, [10, 50, 90])
+    p10, p20, median, p80, p90 = np.percentile(values, [10, 20, 50, 80, 90])
     return FieldStats(
         mean=float(values.mean()),
         median=float(median),
         p10=float(p10),
         p90=float(p90),
+        p20=float(p20),
+        p80=float(p80),
         stddev=float(values.std()),
         valid_pixels=int(values.size),
         total_pixels=total,
