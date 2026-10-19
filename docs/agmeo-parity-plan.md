@@ -250,7 +250,6 @@ Differences from the reference that remain deliberate or open:
   do not yet archive themselves into the Exports folder (phase 1, "export history").
 - Units: forms that take input in hectares or kg/ha still take metric values; they convert as their screens
   are reworked in the following phases.
-- Languages: German and English only; the other nine follow in phase 5.
 
 ### Phase 1 — core workflow gaps (in progress, 2026-10-19)
 
@@ -415,8 +414,12 @@ Differences from the reference:
 - Every service stays off while its URL or credentials are empty: reads say "not configured", calls
   answer 503 `service_not_configured`, jobs skip themselves.
 
+- **Languages** (000049): Czech, Spanish, Estonian, French, Lithuanian, Latvian, Polish, Romanian and
+  Ukrainian beside German and English, seeded from the reference app's catalogues where the German text
+  matches (about a third) and translated otherwise, with each language's plural forms; a catalogue loads
+  on demand, missing keys fall back to English. Mails and server-side PDFs stay German or English.
+
 Open:
-- The remaining nine languages.
 - ESM timeseries answer 404 for crop cycles of this app until the ESM stops checking ids against the
   reference database; no ESM writeback receiver; ESM runs are started by hand only.
 - DMC: offsets per variety instead of per KWS sales region; no pre-computing job; FAO maturity entered
