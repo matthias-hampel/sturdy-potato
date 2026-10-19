@@ -78,8 +78,10 @@ import { TasksService } from './modules/tasks/tasks.service.js';
 import { TeamController } from './modules/team/team.controller.js';
 import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
+import { SeasonConditionsController } from './modules/weather/season-conditions.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
+import { SeasonConditionsService } from './modules/weather/season-conditions.service.js';
 import { MaizeDmcClient } from './modules/maize-dmc/client.js';
 import { MaizeDmcController } from './modules/maize-dmc/maize-dmc.controller.js';
 import { MaizeDmcService } from './modules/maize-dmc/maize-dmc.service.js';
@@ -117,6 +119,7 @@ export const DOMAIN_SERVICES = [
   ComplianceService,
   WeatherService,
   FieldConditionsService,
+  SeasonConditionsService,
   NewsService,
   MonitoringService,
   ProductivityService,
@@ -172,6 +175,7 @@ export const DOMAIN_SERVICES = [
     NewsController,
     ComplianceController,
     WeatherController,
+    SeasonConditionsController,
     MonitoringController,
     ProductivityController,
     VraController,

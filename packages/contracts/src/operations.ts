@@ -80,7 +80,7 @@ export const OPERATION_DETAILS = {
     applicationTechnique: z.enum(['broadcast', 'trailing_hose', 'trailing_shoe', 'injection', 'other']).nullish(),
   }),
   crop_protection: z.looseObject({ waterLHa: optNum(5000), psmUseId: z.string().max(40).nullish(), usageType: z.enum(PSM_USAGE_TYPES).nullish() }),
-  irrigation: z.looseObject({ waterMm: optNum(500) }),
+  irrigation: z.looseObject({ waterMm: optNum(500), method: z.enum(['sprinkler', 'drip', 'pivot']).nullish() }),
   harvest: z.looseObject({ strawRemoved: z.boolean().nullish() }),
   inspection: z.looseObject({}),
   other: z.looseObject({}),
