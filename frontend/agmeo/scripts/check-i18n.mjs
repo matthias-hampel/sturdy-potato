@@ -71,7 +71,8 @@ for (const f of readdirSync(join(root, 'i18n'))) {
       problems.push(`${f}: empty value for ${k}`)
       continue
     }
-    const form = PLURAL_FORMS.find((x) => k.endsWith(x))
+    // A key of de-DE itself (some end in _zero by name) is never a plural form.
+    const form = k in de ? undefined : PLURAL_FORMS.find((x) => k.endsWith(x))
     const base = form ? k.slice(0, -form.length) : k
     if (!(base in de)) {
       problems.push(`${f}: unknown key ${k}`)
