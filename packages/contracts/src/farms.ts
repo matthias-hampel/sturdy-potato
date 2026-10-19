@@ -102,7 +102,7 @@ export interface GeometryValidation {
 
 export const ImportFieldsInput = z.object({
   farmId: id,
-  /** Season the imported crops are planned in; required when any feature carries a crop. */
+  /** Season the imported crops are planned in unless a feature names its own; one of the two is required for a feature with a crop. */
   seasonId: id.nullish(),
   features: z
     .array(
@@ -110,8 +110,10 @@ export const ImportFieldsInput = z.object({
         name,
         identifier: shortText,
         geometry: FieldGeometry,
-        /** Main crop of the field in `seasonId`, e.g. resolved from the land-use code of a subsidy application. */
+        /** Main crop of the field in the season, e.g. resolved from the land-use code of a subsidy application. */
         cropId: id.nullish(),
+        /** Season of this feature's crop, e.g. the harvest year of the file it came from; overrides the top-level `seasonId`. */
+        seasonId: id.nullish(),
         /** Land-use code (Nutzungscode) from the source; kept on the crop when it differs from the crop's default. */
         landUseCode: z.string().trim().max(5).nullish(),
       }),

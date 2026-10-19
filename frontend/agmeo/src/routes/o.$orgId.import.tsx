@@ -19,6 +19,7 @@ import {
   detectAntragColumns,
   existingField,
   guessShapeMapping,
+  harvestYearFromName,
   isoxmlRows,
   matchCrop,
   propertyKeys,
@@ -144,7 +145,8 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   const [shapeMapping, setShapeMapping] = useState<ShapeMapping | null>(null)
   const [excluded, setExcluded] = useState<Set<number> | null>(null)
   const [farmId, setFarmId] = useState<string | null>(farms[0]?.id ?? null)
-  const [seasonId, setSeasonId] = useState<string | null>(workingSeasonId ?? null)
+  // The season each file's crops go to, by file, where the user changed it.
+  const [seasonChoice, setSeasonChoice] = useState<Record<string, string | null>>({})
   const [assignCrops, setAssignCrops] = useState(true)
   const [cropChoice, setCropChoice] = useState<Record<string, string | null>>({})
   const [result, setResult] = useState<ImportFieldsResult | null>(null)
@@ -235,20 +237,30 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   }, [rows])
   const resolvedCrop = (key: string) => (key in cropChoice ? cropChoice[key] : (matchCrop(key, crops.data ?? [])?.id ?? null))
   const canAssign = can('crop.write') && cropKeys.length > 0 && seasons.length > 0
-  const withCrops = canAssign && assignCrops && !!seasonId
+  // Crops go to the season of the year in their file's name, e.g. "Antrag 2026.zip"; without a year to the working season.
+  const cropFiles = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const r of rows) if (r.cropKey) counts.set(r.file ?? '', (counts.get(r.file ?? '') ?? 0) + 1)
+    return [...counts].map(([file, count]) => {
+      const year = harvestYearFromName(file)
+      return { file, count, year, detected: year == null ? (workingSeasonId ?? null) : (seasons.find((s) => s.harvestYear === year)?.id ?? null) }
+    })
+  }, [rows, seasons, workingSeasonId])
+  const seasonFor = (file: string | null) => {
+    const f = file ?? ''
+    return f in seasonChoice ? seasonChoice[f] : (cropFiles.find((c) => c.file === f)?.detected ?? null)
+  }
+  const withCrops = (r: ImportRow) => canAssign && assignCrops && !!r.cropKey && !!seasonFor(r.file)
+  const seasonItems = [{ id: '__none', name: t('import.crops.noSeasonOption') }, ...[...seasons].sort((a, b) => b.harvestYear - a.harvestYear).map((s) => ({ id: s.id, name: String(s.harvestYear) }))]
 
   const importMutation = useOrgMutation(
     (base, _: void) =>
       api.post<ImportFieldsResult>(`${base}/fields/import`, {
         farmId,
-        seasonId: withCrops ? seasonId : null,
-        features: selected.map((r) => ({
-          name: r.name,
-          identifier: r.identifier,
-          geometry: r.geometry,
-          cropId: withCrops && r.cropKey ? resolvedCrop(r.cropKey) : null,
-          landUseCode: r.landUseCode,
-        })),
+        features: selected.map((r) => {
+          const cropId = withCrops(r) ? resolvedCrop(r.cropKey!) : null
+          return { name: r.name, identifier: r.identifier, geometry: r.geometry, cropId, seasonId: cropId ? seasonFor(r.file) : null, landUseCode: r.landUseCode }
+        }),
       }),
     { success: (r) => t('fields.import.imported', { count: r.created.length }), onSuccess: setResult },
   )
@@ -260,6 +272,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     setLayerChoice({})
     setCrsOverride(null)
     setCropChoice({})
+    setSeasonChoice({})
     try {
       // Name order puts the export of a later year after the earlier one (see repeatedRows).
       const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
@@ -358,7 +371,8 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                           <Cell>
                             {r.cropKey && (
                               <span className="whitespace-nowrap">
-                                {crops.data?.find((c) => c.id === cropId)?.name ?? <span className="text-muted">{r.cropKey}</span>}
+                                {/* Muted where the row's file gets no crops. */}
+                                <span className={cx(!withCrops(r) && 'text-muted')}>{crops.data?.find((c) => c.id === cropId)?.name ?? r.cropKey}</span>
                               </span>
                             )}
                           </Cell>
@@ -485,9 +499,27 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   <Switch isSelected={assignCrops} onChange={setAssignCrops}>{t('import.crops.assign')}</Switch>
                   {assignCrops && (
                     <>
-                      <Select label={t('nav.season')} items={seasons.map((s) => ({ id: s.id, name: String(s.harvestYear) }))} value={seasonId} onChange={(v) => setSeasonId(v ? String(v) : null)}>
-                        {(s) => <Option id={s.id}>{s.name}</Option>}
-                      </Select>
+                      <div>
+                        <div className="text-sm font-medium text-fg mb-1">{t('import.crops.season')}</div>
+                        <p className="text-xs text-muted mb-2">{t('import.crops.seasonHint')}</p>
+                        <div className="space-y-3">
+                          {cropFiles.map(({ file, count, year, detected }) => (
+                            <Select
+                              key={file}
+                              label={cropFiles.length > 1 ? file : t('nav.season')}
+                              description={[
+                                t('import.crops.rows', { count }),
+                                year != null && !detected && t('import.crops.noSeasonForYear', { year }),
+                              ].filter(Boolean).join(' · ')}
+                              items={seasonItems}
+                              value={seasonFor(file) ?? '__none'}
+                              onChange={(v) => setSeasonChoice({ ...seasonChoice, [file]: v && v !== '__none' ? String(v) : null })}
+                            >
+                              {(s) => <Option id={s.id}>{s.name}</Option>}
+                            </Select>
+                          ))}
+                        </div>
+                      </div>
                       <div>
                         <div className="text-sm font-medium text-fg mb-1">{t('import.crops.mapping')}</div>
                         <p className="text-xs text-muted mb-2">{t('import.crops.mappingHint')}</p>
@@ -518,7 +550,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   )}
                 </>
               )}
-              <Button variant="primary" className="w-full" isDisabled={!farmId || !selected.length || (withCrops && !seasonId)} isPending={importMutation.isPending} onPress={() => importMutation.mutate()}>
+              <Button variant="primary" className="w-full" isDisabled={!farmId || !selected.length} isPending={importMutation.isPending} onPress={() => importMutation.mutate()}>
                 {t('fields.import.submit', { count: selected.length })}
               </Button>
             </div>
