@@ -811,10 +811,18 @@ export interface MarketQuotes {
   source: Generated<string>;
 }
 
+export interface MembershipFarms {
+  created_at: Generated<Timestamp>;
+  farm_id: string;
+  organization_id: string;
+  user_id: string;
+}
+
 export interface Memberships {
   created_at: Generated<Timestamp>;
   invited_by: string | null;
   organization_id: string;
+  restricted_to_farms: Generated<boolean>;
   role: string;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
@@ -941,14 +949,28 @@ export interface OrgCropColors {
   organization_id: string;
 }
 
+export interface OrganizationLogos {
+  content: Buffer;
+  height: number;
+  mime_type: string;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  width: number;
+}
+
 export interface Organizations {
   country: Generated<string>;
   created_at: Generated<Timestamp>;
   crop_year_start_month: Generated<number>;
   currency: Generated<string>;
   id: Generated<string>;
+  lock_zoned_fields: Generated<boolean>;
+  logo_updated_at: Timestamp | null;
   measurement_setting: Generated<string>;
   name: string;
+  onboarding_step: string | null;
+  rain_digest_enabled: Generated<boolean>;
   status: Generated<string>;
   storage_limit_bytes: Int8 | null;
   updated_at: Generated<Timestamp>;
@@ -1360,6 +1382,13 @@ export interface TemplateSteps {
   type: string;
 }
 
+export interface UserNotificationSettings {
+  enabled: boolean;
+  key: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface Users {
   auth_subject: string | null;
   created_at: Generated<Timestamp>;
@@ -1661,6 +1690,7 @@ export interface DB {
   maize_dmc_variety_maturities: MaizeDmcVarietyMaturities;
   maize_dmc_variety_offsets: MaizeDmcVarietyOffsets;
   market_quotes: MarketQuotes;
+  membership_farms: MembershipFarms;
   memberships: Memberships;
   n170_inputs: N170Inputs;
   nmin_reference_values: NminReferenceValues;
@@ -1671,6 +1701,7 @@ export interface DB {
   operation_labor: OperationLabor;
   operations: Operations;
   org_crop_colors: OrgCropColors;
+  organization_logos: OrganizationLogos;
   organizations: Organizations;
   outbox_events: OutboxEvents;
   product_prices: ProductPrices;
@@ -1699,6 +1730,7 @@ export interface DB {
   tasks: Tasks;
   template_step_inputs: TemplateStepInputs;
   template_steps: TemplateSteps;
+  user_notification_settings: UserNotificationSettings;
   users: Users;
   vra_map_inputs: VraMapInputs;
   vra_maps: VraMaps;

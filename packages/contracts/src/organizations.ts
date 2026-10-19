@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { countryCode, currencyCode, name } from './common.js';
+import { countryCode, currencyCode, id, name } from './common.js';
 import { MEASUREMENT_SETTINGS, type MeasurementSetting, type MeasurementSystem } from './units.js';
 
 /** UI languages. The user's choice is stored on the account; new accounts follow the browser. */
@@ -56,12 +56,22 @@ export const CreateOrganizationInput = z.object({
 });
 export type CreateOrganizationInput = z.infer<typeof CreateOrganizationInput>;
 
+/** Onboarding steps that come after the organization and its first farm exist. */
+export const ONBOARDING_STEPS = ['crops', 'fields', 'invite'] as const;
+export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
 export const UpdateOrganizationInput = z.object({
   name: name.optional(),
   country: countryCode.optional(),
   currency: currencyCode.optional(),
   cropYearStartMonth: z.int().min(1).max(12).optional(),
   measurementSetting: z.enum(MEASUREMENT_SETTINGS).optional(),
+  /** The open onboarding step; null when the onboarding is finished or skipped. */
+  onboardingStep: z.enum(ONBOARDING_STEPS).nullable().optional(),
+  /** Daily rainfall e-mail to the members (Settings → Notifications). */
+  rainDigestEnabled: z.boolean().optional(),
+  /** Fields with a soil zonation cannot be re-zoned or have their zones edited (Settings → Soil). */
+  lockZonedFields: z.boolean().optional(),
 });
 export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationInput>;
 
@@ -77,6 +87,13 @@ export interface Organization {
   measurementSystem: MeasurementSystem;
   status: 'active' | 'archived';
   role: Role;
+  /** Farms the current user is limited to; null when the user sees every farm. */
+  farmIds: string[] | null;
+  onboardingStep: OnboardingStep | null;
+  rainDigestEnabled: boolean;
+  lockZonedFields: boolean;
+  /** When the logo last changed (cache key of `GET /orgs/:orgId/logo`); null without a logo. */
+  logoUpdatedAt: string | null;
   createdAt: string;
 }
 
@@ -86,20 +103,28 @@ export interface Member {
   displayName: string;
   role: Role;
   status: 'active' | 'invited' | 'disabled';
+  /** Farms the member is limited to; null = every farm of the organization. */
+  farmIds: string[] | null;
   lastLoginAt: string | null;
   createdAt: string;
 }
 
+/** Farms a member is limited to: null or absent = every farm, a list = only those (owners are never limited). */
+const memberFarmIds = z.array(id).max(500);
+
 export const InviteMemberInput = z.object({
   email: z.email().max(320),
-  displayName: name,
+  /** Defaults to the part of the address before the @. */
+  displayName: name.optional(),
   role: z.enum(ROLES),
+  farmIds: memberFarmIds.nullish(),
 });
-export type InviteMemberInput = z.infer<typeof InviteMemberInput>;
+export type InviteMemberInput = z.input<typeof InviteMemberInput>;
 
 export const UpdateMemberInput = z.object({
   role: z.enum(ROLES).optional(),
   status: z.enum(['active', 'disabled']).optional(),
+  farmIds: memberFarmIds.nullable().optional(),
 });
 export type UpdateMemberInput = z.infer<typeof UpdateMemberInput>;
 
@@ -117,6 +142,23 @@ export const UpdateProfileInput = z.object({
   locale: z.enum(LOCALES).optional(),
 });
 export type UpdateProfileInput = z.infer<typeof UpdateProfileInput>;
+
+/** E-mail notifications a user can switch off for themselves. */
+export const NOTIFICATION_KEYS = ['rain_digest', 'storage_digest'] as const;
+export type NotificationKey = (typeof NOTIFICATION_KEYS)[number];
+export type NotificationSettings = Record<NotificationKey, boolean>;
+
+export const UpdateNotificationSettingsInput = z.object(
+  Object.fromEntries(NOTIFICATION_KEYS.map((k) => [k, z.boolean().optional()])) as Record<NotificationKey, z.ZodOptional<z.ZodBoolean>>,
+);
+export type UpdateNotificationSettingsInput = z.infer<typeof UpdateNotificationSettingsInput>;
+
+/** Unsubscribe link of a notification e-mail (no sign-in needed). */
+export const UnsubscribeInput = z.object({ token: z.string().min(10).max(500) });
+export interface UnsubscribeResult {
+  key: NotificationKey;
+  email: string;
+}
 
 /** How the web app signs in, served by `GET /auth/config`. */
 export type AuthConfig = { mode: 'dev' } | { mode: 'oidc'; issuer: string; clientId: string };
