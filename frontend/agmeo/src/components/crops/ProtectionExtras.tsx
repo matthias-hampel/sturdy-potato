@@ -3,12 +3,13 @@ import { CheckCircle2, Circle, Droplets, ExternalLink, Info, Link2, Shield, Tria
 import type { ReactNode } from 'react'
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger, Popover } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
+import { t as tt } from '#/i18n'
 import { fmt } from '#/lib/format'
 import { useOrg } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
 import { Button, Link } from '#/ui/Button'
 import { Badge, Loading, Notice } from '#/ui/Layout'
-import { ModalDialog } from '#/ui/Overlay'
+import { Dialog } from '#/ui/Overlay'
 import { cx, focusRing } from '#/ui/utils'
 
 /** A button that opens a small dialog next to it. */
@@ -125,6 +126,14 @@ function ProductInfoBody({ productId, productName, awgId }: { productId: string;
   )
 }
 
+/** Date params of PSM findings are ISO dates; numbers are shown in the locale (as on the operation page). */
+const DATE_PARAMS = new Set(['date', 'limit', 'harvestDate', 'earliest', 'previous'])
+function findingMessage(f: PsmFinding) {
+  const params = Object.fromEntries(Object.entries(f.params).map(([k, v]) => [k, k === 'count' ? v : typeof v === 'number' ? fmt.num(v, 3) : DATE_PARAMS.has(k) ? fmt.date(v) : v]))
+  const key = f.code === 'unknown_registration' && !f.params.kennr ? 'psm.finding.unknown_registration_none' : `psm.finding.${f.code}`
+  return tt(key, { ...params, defaultValue: f.message })
+}
+
 const FINDING_TONE = { deviation: 'text-danger', notice: 'text-warning' } as const
 
 /** The approval findings of one operation as a warning icon with the messages on press. */
@@ -140,7 +149,7 @@ export function FindingsFlag({ findings }: { findings: PsmFinding[] }) {
           <li key={i} className={FINDING_TONE[f.severity]}>
             <span className="font-medium">{f.productName}</span>
             {f.fieldName && <span className="text-muted"> · {f.fieldName}</span>}
-            <span className="block text-fg-2">{t(`protection.finding.${f.code}`, { ...f.params, defaultValue: f.message })}</span>
+            <span className="block text-fg-2">{findingMessage(f)}</span>
           </li>
         ))}
       </ul>
@@ -172,7 +181,7 @@ function ComplianceDialog() {
   const today = new Date().toISOString().slice(0, 10)
   const sprayerOld = a?.sprayerInspectedOn ? Date.parse(a.sprayerInspectedOn) < Date.now() - 3 * 365.25 * 86_400_000 : false
   return (
-    <ModalDialog isOpen={undefined as unknown as boolean} onOpenChange={() => {}} title={t('protection.compliance.title')} size="lg">
+    <Dialog title={t('protection.compliance.title')} size="lg">
       <div className="space-y-5 text-sm">
         <section className="space-y-1">
           <h3 className="font-semibold text-fg">{t('protection.compliance.overviewTitle')}</h3>
@@ -235,7 +244,7 @@ function ComplianceDialog() {
         </section>
         <Notice tone="info">{t('protection.compliance.disclaimer')}</Notice>
       </div>
-    </ModalDialog>
+    </Dialog>
   )
 }
 

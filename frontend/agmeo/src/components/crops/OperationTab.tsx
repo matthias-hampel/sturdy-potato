@@ -15,13 +15,19 @@ import {
   type Operation,
   type OperationInputLine,
   type OperationType,
+  type CropTableConditionsRow,
+  type PsmFinding,
 } from '@agmeo/contracts'
 import { useNavigate } from '@tanstack/react-router'
-import { Ban, CheckCircle2, Map as MapIcon, Pencil, Plus, Scale } from 'lucide-react'
+import { Ban, ChartLine, CheckCircle2, Map as MapIcon, Pencil, Plus, Scale } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Form, type Selection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
+import { useCropTableMetrics } from '#/components/crops/cropTableMetrics'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
+import { PhenologyDialog } from '#/components/crops/PhenologyDialog'
+import { ComplianceInfoButton, FindingsFlag, MixBadge, ProductInfo } from '#/components/crops/ProtectionExtras'
+import { MiniConditionBar } from '#/components/fields/ConditionsTab'
 import { CropTag, OperationStatusBadge } from '#/components/labels'
 import { FieldShape } from '#/components/map/FieldShape'
 import { initialState, toPayload } from '#/components/operations/OperationForm'
@@ -62,7 +68,14 @@ interface DetailEdit {
 
 /** What column factories need besides the entry: crop codes and the season's field conditions. */
 export interface ColumnCtx {
+  orgId: string
   cropCode: (cycle: CropCycle | null) => string | null
+  /** Crop-table conditions (bars, daily BBCH) of a crop cycle. */
+  conditions: (cycle: CropCycle | null) => CropTableConditionsRow | undefined
+  conditionsLoading: boolean
+  /** Approval findings of an operation (plant protection). */
+  findings: (opId: string) => PsmFinding[]
+  openPhenology: (cycle: CropCycle, fieldName: string, date: string | null) => void
 }
 
 interface TabConfig {
@@ -73,7 +86,9 @@ interface TabConfig {
   cumulative?: (op: Operation) => number | null
   columns: (ctx: ColumnCtx) => ColumnDef<Entry>[]
   /** Columns about the field rather than one operation (shown on the field's first row). */
-  fieldColumns?: (orgId: string) => ColumnDef<GroupRow>[]
+  fieldColumns?: (ctx: ColumnCtx) => ColumnDef<GroupRow>[]
+  /** The tab shows crop-table conditions (bars, BBCH). */
+  conditions?: boolean
   /** Columns shown before the viewer picks their own; all when not set. */
   defaults?: string[]
   edits?: () => DetailEdit[]
@@ -199,7 +214,7 @@ const seedUnits = (e: Entry, ctx: ColumnCtx): number | null => {
 }
 
 /** Field-level column: the button that opens the field's application maps to draw a seeding map. */
-const seedMapColumn = (orgId: string): ColumnDef<GroupRow> => ({
+const seedMapColumn = ({ orgId }: ColumnCtx): ColumnDef<GroupRow> => ({
   id: 'seedMap',
   label: tt('fieldOps.seedMap'),
   value: () => null,
@@ -209,6 +224,84 @@ const seedMapColumn = (orgId: string): ColumnDef<GroupRow> => ({
         <MapIcon /> {tt('fieldOps.seedMap')}
       </Link>
     ) : null,
+})
+
+/** A field's traffic-light bar of its main crop (reference sowing, spraying and disease columns). */
+const barColumn = (id: string, label: string, key: keyof CropTableConditionsRow['bars'], ctx: ColumnCtx): ColumnDef<GroupRow> => ({
+  id,
+  label,
+  value: () => null,
+  render: (r) => {
+    if (!r.first) return null
+    if (ctx.conditionsLoading) return <span className="text-muted">…</span>
+    return <MiniConditionBar days={ctx.conditions(r.cycle)?.bars[key]} label={label} />
+  },
+})
+
+// ---- Plant protection: BBCH at the application date, products with mix and register info, findings ----
+
+/** The stage recorded on the operation, else the (calibrated) model's on its date. */
+const bbchAt = (e: Entry, ctx: ColumnCtx): { value: number | string; source: 'recorded' | 'observed' | 'model' } | null => {
+  if (e.op.bbchStage) return { value: e.op.bbchStage, source: 'recorded' }
+  const c = ctx.conditions(e.cycle)
+  const v = e.date ? c?.bbchByDate?.[e.date] : undefined
+  if (v == null) return null
+  return { value: v, source: c!.bbchObservedDates.includes(e.date!) ? 'observed' : 'model' }
+}
+const bbchColumn = (ctx: ColumnCtx): ColumnDef<Entry> => ({
+  id: 'bbch',
+  label: 'BBCH',
+  filter: 'number',
+  value: (e) => {
+    const b = bbchAt(e, ctx)
+    return b == null ? null : typeof b.value === 'number' ? b.value : Number.parseInt(b.value, 10) || null
+  },
+  text: (e) => bbchAt(e, ctx)?.value.toString(),
+  render: (e) => {
+    const b = bbchAt(e, ctx)
+    const cycle = e.cycle
+    return (
+      <span className="inline-flex items-center gap-1">
+        {b == null ? (
+          dash
+        ) : (
+          <span className={b.source === 'model' ? 'tabular italic text-success' : 'tabular font-semibold text-fg'} title={tt(`protection.bbch.source.${b.source}`)}>
+            {b.value}
+          </span>
+        )}
+        {cycle && (
+          <Button size="icon-xs" variant="ghost" aria-label={tt('protection.bbch.openChart')} onPress={() => ctx.openPhenology(cycle, e.op.fields.find((f) => f.cropCycleId === cycle.id)?.fieldName ?? cycle.fieldName, e.date)}>
+            <ChartLine />
+          </Button>
+        )}
+      </span>
+    )
+  },
+})
+const psmProductsColumn = (): ColumnDef<Entry> => ({
+  ...productsColumn(),
+  render: (e) => (
+    <div className="space-y-0.5">
+      {e.op.inputs.length === 0
+        ? dash
+        : e.op.inputs.map((i) => (
+            <div key={i.id} className="min-w-40 max-w-72 flex items-center gap-1">
+              <span>
+                {i.productName} <span className="text-muted tabular whitespace-nowrap">· {fmt.qty(i.ratePerHa, i.baseUnit)}/ha</span>
+              </span>
+              {i.category === 'crop_protection' && <ProductInfo productId={i.productId} productName={i.productName} awgId={typeof e.op.details.psmUseId === 'string' ? e.op.details.psmUseId : null} />}
+            </div>
+          ))}
+      <MixBadge op={e.op} />
+    </div>
+  ),
+})
+const findingsColumn = (ctx: ColumnCtx): ColumnDef<Entry> => ({
+  id: 'checks',
+  label: tt('protection.checks.column'),
+  filter: 'number',
+  value: (e) => ctx.findings(e.op.id).length,
+  render: (e) => (e.op.inputs.some((i) => i.category === 'crop_protection') ? <FindingsFlag findings={ctx.findings(e.op.id)} /> : dash),
 })
 
 const hasBaseNutrients = (op: Operation) => {
@@ -241,8 +334,9 @@ const TABS: Record<OperationTab, TabConfig> = {
     type: 'sowing',
     work: true,
     seed: true,
-    fieldColumns: (orgId) => [seedMapColumn(orgId)],
-    defaults: ['date', 'variety', 'products', 'seeds', 'tgw', 'germination', 'seedRate', 'totalSeed', 'seedUnits', 'machine', 'operator', 'seedMap'],
+    conditions: true,
+    fieldColumns: (ctx) => [barColumn('sowingWindow', tt('fieldOps.sowingWindow'), 'sowing', ctx), seedMapColumn(ctx)],
+    defaults: ['sowingWindow', 'date', 'variety', 'products', 'seeds', 'tgw', 'germination', 'seedRate', 'totalSeed', 'seedUnits', 'machine', 'operator', 'seedMap'],
     columns: (ctx) => [
       dateColumn(),
       textColumn('variety', tt('crops.form.variety'), (e) => e.cycle?.varietyName, 'select'),
@@ -280,12 +374,18 @@ const TABS: Record<OperationTab, TabConfig> = {
   crop_protection: {
     type: 'crop_protection',
     protection: true,
-    columns: () => [
+    conditions: true,
+    fieldColumns: (ctx) => [barColumn('sprayingWindow', tt('fieldOps.sprayingWindow'), 'spraying', ctx), barColumn('diseaseRisk', tt('fieldOps.diseaseRisk'), 'disease', ctx)],
+    columns: (ctx) => [
       dateColumn(),
-      textColumn('bbch', 'BBCH', (e) => e.op.bbchStage),
-      productsColumn(),
+      bbchColumn(ctx),
+      psmProductsColumn(),
       detailColumn('water', tt('fieldOps.water'), 'waterLHa', 'l/ha', 0),
       textColumn('target', tt('fieldOps.target'), (e) => e.op.targetOrganism, 'select'),
+      textColumn('operator', tt('fieldOps.operator'), (e) => operatorName(e.op), 'select'),
+      textColumn('usageType', tt('fieldOps.usageType'), (e) => (typeof e.op.details.usageType === 'string' ? tt(`enum.psmUsageType.${e.op.details.usageType}`, { defaultValue: e.op.details.usageType }) : null), 'select'),
+      textColumn('time', tt('fieldOps.time'), (e) => (e.op.performedAt ? new Date(e.op.performedAt).toTimeString().slice(0, 5) : null)),
+      findingsColumn(ctx),
     ],
     edits: () => [{ key: 'waterLHa', label: tt('fieldOps.water'), unit: 'l/ha', max: 5000 }],
   },
@@ -347,10 +447,22 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   const [selection, setSelection] = useState<Selection>(new Set())
   const [dialog, setDialog] = useState<'edit' | 'complete' | 'distribute' | null>(null)
   const writable = can('operation.write')
+  const metrics = useCropTableMetrics(cfg.conditions ? (seasonId ?? null) : null, (id) => id === 'bbch')
+  const checks = useOrgQuery<PsmFinding[]>('/protection/checks', { seasonId }, { enabled: !!cfg.protection && !!seasonId })
+  const [phenology, setPhenology] = useState<{ cycle: CropCycle; fieldName: string; date: string | null } | null>(null)
   const ctx = useMemo<ColumnCtx>(() => {
     const codes = new Map((crops.data ?? []).map((c) => [c.id, c.code]))
-    return { cropCode: (c) => (c ? (codes.get(c.cropId) ?? null) : null) }
-  }, [crops.data])
+    const findings = new Map<string, PsmFinding[]>()
+    for (const f of checks.data ?? []) findings.set(f.operationId, [...(findings.get(f.operationId) ?? []), f])
+    return {
+      orgId,
+      cropCode: (c) => (c ? (codes.get(c.cropId) ?? null) : null),
+      conditions: (c) => (c ? metrics.conditions.get(c.id) : undefined),
+      conditionsLoading: metrics.conditionsLoading,
+      findings: (id) => findings.get(id) ?? [],
+      openPhenology: (cycle, fieldName, date) => setPhenology({ cycle, fieldName, date }),
+    }
+  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId])
 
   const allColumns = useMemo<ColumnDef<GroupRow>[]>(
     () => [
@@ -365,7 +477,7 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         text: (r) => fmt.ha(r.entry?.areaHa ?? r.field.croppedAreaHa),
         render: (r) => fmt.ha(r.entry?.areaHa ?? r.field.croppedAreaHa),
       },
-      ...(cfg.fieldColumns?.(orgId) ?? []),
+      ...(cfg.fieldColumns?.(ctx) ?? []),
       // The tab's own columns are about the operation; a field without one has nothing to show or match.
       ...cfg.columns(ctx).map<ColumnDef<GroupRow>>((c) => ({
         ...c,
@@ -459,10 +571,12 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   if (ops.error) return <ErrorNotice error={ops.error} />
 
   // The plan link sits in the first column about the operation.
-  const firstColumn = columns.find((c) => !fixed.includes(c.id) && !(cfg.fieldColumns?.(orgId) ?? []).some((f) => f.id === c.id))?.id
+  const fieldColumnIds = (cfg.fieldColumns?.(ctx) ?? []).map((f) => f.id)
+  const firstColumn = columns.find((c) => !fixed.includes(c.id) && !fieldColumnIds.includes(c.id))?.id
   return (
     <>
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end gap-2 mb-2">
+        {cfg.protection && <ComplianceInfoButton />}
         <ColumnConfigButton
           columns={allColumns}
           fixed={fixed}
@@ -566,6 +680,7 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
       {dialog === 'edit' && <BulkEditDialog ops={openOps} skipped={selected.ops.length - openOps.length} cfg={cfg} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'complete' && <CompleteDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'distribute' && <DistributeSeedDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
+      {phenology && <PhenologyDialog cropCycleId={phenology.cycle.id} fieldName={phenology.fieldName} initialDate={phenology.date} onClose={() => setPhenology(null)} />}
     </>
   )
 }
