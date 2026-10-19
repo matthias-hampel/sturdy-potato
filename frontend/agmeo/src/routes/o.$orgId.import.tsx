@@ -25,6 +25,8 @@ import {
   repeatedRows,
   shapeRows,
 } from '#/components/import/rows'
+import { centreOf, locationWarning } from '#/components/import/plausibility'
+import { RotationPicker } from '#/components/import/RotationPicker'
 import { readShapefiles, type ShapeLayer } from '#/components/import/shapefile'
 import { FieldMap } from '#/components/map/FieldMap'
 import { farmView } from '#/components/map/useMap'
@@ -126,7 +128,7 @@ function defaultLayer(layers: ShapeLayer[], source: ImportSource, knownCodes: Se
 
 function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: Farm[]; fields: Field[] }) {
   const { t } = useTranslation()
-  const { orgId, can } = useOrg()
+  const { orgId, org, can } = useOrg()
   const navigate = useNavigate()
   const { seasons, seasonId: workingSeasonId } = useSeason()
   const crops = useOrgQuery<Crop[]>('/crops', undefined, { staleTime: 5 * 60_000 })
@@ -148,6 +150,10 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   const [assignCrops, setAssignCrops] = useState(true)
   const [cropChoice, setCropChoice] = useState<Record<string, string | null>>({})
   const [result, setResult] = useState<ImportFieldsResult | null>(null)
+  const [rotationId, setRotationId] = useState<string | null>(null)
+  const [rotationAssigned, setRotationAssigned] = useState(0)
+  // A file whose fields land far from where they belong must be confirmed before importing.
+  const [locationConfirmed, setLocationConfirmed] = useState(false)
   // What the map moves to: all fields of a newly read file, or the row clicked in the table.
   const [focus, setFocus] = useState<Geometry | FeatureCollection | null>(null)
 
@@ -237,9 +243,20 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   const canAssign = can('crop.write') && cropKeys.length > 0 && seasons.length > 0
   const withCrops = canAssign && assignCrops && !!seasonId
 
+  const location = useMemo(
+    () =>
+      locationWarning(centreOf(selected.map((r) => r.geometry)), {
+        countries: [org.country],
+        orgCentre: fields.length ? { lon: fields.reduce((s, f) => s + f.centroid.lng, 0) / fields.length, lat: fields.reduce((s, f) => s + f.centroid.lat, 0) / fields.length } : null,
+        europeOnly: source === 'antrag',
+      }),
+    [selected, fields, org.country, source],
+  )
+  const rotationStartYear = seasons.find((s) => s.id === seasonId)?.harvestYear ?? new Date().getFullYear()
+
   const importMutation = useOrgMutation(
-    (base, _: void) =>
-      api.post<ImportFieldsResult>(`${base}/fields/import`, {
+    async (base, _: void) => {
+      const res = await api.post<ImportFieldsResult>(`${base}/fields/import`, {
         farmId,
         seasonId: withCrops ? seasonId : null,
         features: selected.map((r) => ({
@@ -249,7 +266,14 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
           cropId: withCrops && r.cropKey ? resolvedCrop(r.cropKey) : null,
           landUseCode: r.landUseCode,
         })),
-      }),
+      })
+      // The imported fields follow the chosen rotation from the import's season on.
+      if (rotationId && can('crop.write') && res.created.length) {
+        await api.post(`${base}/rotations/${rotationId}/fields`, { fieldIds: res.created.map((c) => c.id), startYear: rotationStartYear })
+        setRotationAssigned(res.created.length)
+      } else setRotationAssigned(0)
+      return res
+    },
     { success: (r) => t('fields.import.imported', { count: r.created.length }), onSuccess: setResult },
   )
 
@@ -260,6 +284,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     setLayerChoice({})
     setCrsOverride(null)
     setCropChoice({})
+    setLocationConfirmed(false)
     try {
       // Name order puts the export of a later year after the earlier one (see repeatedRows).
       const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
@@ -518,7 +543,14 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   )}
                 </>
               )}
-              <Button variant="primary" className="w-full" isDisabled={!farmId || !selected.length || (withCrops && !seasonId)} isPending={importMutation.isPending} onPress={() => importMutation.mutate()}>
+              {can('crop.write') && <RotationPicker value={rotationId} onChange={setRotationId} crops={crops.data ?? []} />}
+              {location && (
+                <Notice tone="warning" icon={AlertTriangle}>
+                  <p className="mb-2">{t(`import.location.${location}`, { country: org.country })}</p>
+                  <Checkbox isSelected={locationConfirmed} onChange={setLocationConfirmed}>{t('import.location.confirm')}</Checkbox>
+                </Notice>
+              )}
+              <Button variant="primary" className="w-full" isDisabled={!farmId || !selected.length || (withCrops && !seasonId) || (!!location && !locationConfirmed)} isPending={importMutation.isPending} onPress={() => importMutation.mutate()}>
                 {t('fields.import.submit', { count: selected.length })}
               </Button>
             </div>
@@ -531,6 +563,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
               <Notice tone="success" icon={CheckCircle2}>
                 {t('fields.import.resultSummary', { count: result.created.length, area: fmt.ha(result.created.reduce((s, c) => s + c.areaHa, 0), 1) })}
                 {result.cropsAssigned > 0 && <> {t('import.result.crops', { count: result.cropsAssigned })}</>}
+                {rotationAssigned > 0 && <> {t('import.result.rotation', { count: rotationAssigned, year: rotationStartYear })}</>}
               </Notice>
               {result.errors.length > 0 && (
                 <Notice tone="danger" icon={AlertTriangle}>

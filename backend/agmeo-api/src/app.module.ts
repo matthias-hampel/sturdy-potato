@@ -4,6 +4,9 @@ import { AuthGuard, OrgGuard } from './auth/auth.guards.js';
 import { TokenService } from './auth/token.service.js';
 import { ApiExceptionFilter } from './core/errors.js';
 import { DatabaseModule } from './db/database.js';
+import { CadastralController } from './modules/cadastral/cadastral.controller.js';
+import { CadastralService } from './modules/cadastral/cadastral.service.js';
+import { CadastralClient, WfsHttp } from './modules/cadastral/wfs/client.js';
 import { CarbonController } from './modules/carbon/carbon.controller.js';
 import { CarbonService } from './modules/carbon/carbon.service.js';
 import { ComplianceController } from './modules/compliance/compliance.controller.js';
@@ -145,6 +148,7 @@ export const DOMAIN_SERVICES = [
   RecommendationsService,
   SearchService,
   GeocodingService,
+  CadastralService,
 ];
 
 /**
@@ -197,11 +201,14 @@ export const DOMAIN_SERVICES = [
     RecommendationsController,
     SearchController,
     GeocodingController,
+    CadastralController,
   ],
   providers: [
     TokenService,
     ObjectStorage,
     MaizeDmcClient,
+    WfsHttp,
+    CadastralClient,
     ...DOMAIN_SERVICES,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: OrgGuard },

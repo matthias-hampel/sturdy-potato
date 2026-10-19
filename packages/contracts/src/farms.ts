@@ -1,6 +1,6 @@
 import type { MultiPolygon } from 'geojson';
 import { z } from 'zod';
-import { LatLng, countryCode, id, isoDate, isoDateTime, longText, name, shortText } from './common.js';
+import { LatLng, amount, countryCode, id, isoDate, isoDateTime, longText, name, shortText } from './common.js';
 
 export const FarmInput = z.object({
   name,
@@ -69,6 +69,8 @@ export const UpdateFieldInput = z.object({
   identifier: shortText,
   parcelNumber: shortText,
   tenure: z.enum(TENURES).optional(),
+  /** The field's own land rent per hectare and year; null uses its parcels' leases, then the farm's figure. */
+  leasePerHa: amount.max(1e6).nullish(),
   soilType: shortText,
   notes: longText,
   status: z.enum(['active', 'archived']).optional(),
@@ -146,6 +148,8 @@ export interface Field {
   name: string;
   identifier: string | null;
   tenure: Tenure;
+  /** The field's own land rent per hectare and year (economics); null when not set. */
+  leasePerHa: number | null;
   soilType: string | null;
   /** Soil texture class used by the fertilization tables (set on the Soil tab). */
   soilTexture: string | null;

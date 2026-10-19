@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wfs:FeatureCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://schemas.opengis.net/gml/3.2.1/gml.xsd http://www.deegree.org/app https://geodienste.bremen.de/wfs_hduk2958loah3976niun?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=DescribeFeatureType&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;TYPENAME=app:flurstuecke&amp;NAMESPACES=xmlns(app,http%3A%2F%2Fwww.deegree.org%2Fapp)" xmlns:wfs="http://www.opengis.net/wfs/2.0" timeStamp="2026-10-19T08:35:36Z" xmlns:gml="http://www.opengis.net/gml/3.2" numberMatched="unknown" numberReturned="3">
+  <!--NOTE: numberReturned attribute should be 'unknown' as well, but this would not validate against the current version of the WFS 2.0 schema (change upcoming). See change request (CR 144): https://portal.opengeospatial.org/files?artifact_id=43925.-->
+  <wfs:member>
+    <app:flurstuecke xmlns:app="http://www.deegree.org/app" gml:id="APP_FLURSTUECKE_73405">
+      <app:oid>DEHB01ALt00006JoFL</app:oid>
+      <app:aktualit>2014-11-21Z</app:aktualit>
+      <app:idflurst>DEHB01ALt00006Jo</app:idflurst>
+      <app:flaeche>20324.0</app:flaeche>
+      <app:flstkennz>043351351000160001__</app:flstkennz>
+      <app:land>Bremen</app:land>
+      <app:landschl>04</app:landschl>
+      <app:gemarkung>VR 351</app:gemarkung>
+      <app:gemaschl>043351</app:gemaschl>
+      <app:flur>351</app:flur>
+      <app:flurschl>043351351</app:flurschl>
+      <app:flstnrzae>16</app:flstnrzae>
+      <app:flstnrnen>1</app:flstnrnen>
+      <app:regbezirk>Freie Hansestadt Bremen</app:regbezirk>
+      <app:regbezschl>040</app:regbezschl>
+      <app:kreis>Kreisfreie Stadt Bremen</app:kreis>
+      <app:kreisschl>04011</app:kreisschl>
+      <app:gemeinde>Stadtgemeinde Bremen</app:gemeinde>
+      <app:gmdschl>04011000</app:gmdschl>
+      <app:abwrecht>Kein abweichender Rechtszustand</app:abwrecht>
+      <app:lagebeztxt>Die Leestkämpe</app:lagebeztxt>
+      <app:tntxt>Landwirtschaft; 20324</app:tntxt>
+      <app:geom>
+        <!--Inlined geometry 'APP_FLURSTUECKE_73405_APP_GEOM'-->
+        <gml:MultiSurface gml:id="APP_FLURSTUECKE_73405_APP_GEOM" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="GEOMETRY_2e3e47b2-072c-4654-9e33-fe65c76a7b24" srsName="urn:ogc:def:crs:EPSG::25832">
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>483161.502 5889102.257 483330.535 5889466.433 483340.456 5889462.628 483344.923 5889460.906 483370.611 5889451.003 483378.737 5889448.573 483209.749 5889082.633 483208.752 5889083.039 483177.600 5889095.710 483161.502 5889102.257</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </app:geom>
+    </app:flurstuecke>
+  </wfs:member>
+<wfs:member>
+    <app:flurstuecke xmlns:app="http://www.deegree.org/app" gml:id="APP_FLURSTUECKE_110906">
+      <app:oid>DEHB01ALt00008B7FL</app:oid>
+      <app:aktualit>2014-11-21Z</app:aktualit>
+      <app:idflurst>DEHB01ALt00008B7</app:idflurst>
+      <app:flaeche>40173.0</app:flaeche>
+      <app:flstkennz>043351351000220001__</app:flstkennz>
+      <app:land>Bremen</app:land>
+      <app:landschl>04</app:landschl>
+      <app:gemarkung>VR 351</app:gemarkung>
+      <app:gemaschl>043351</app:gemaschl>
+      <app:flur>351</app:flur>
+      <app:flurschl>043351351</app:flurschl>
+      <app:flstnrzae>22</app:flstnrzae>
+      <app:flstnrnen>1</app:flstnrnen>
+      <app:regbezirk>Freie Hansestadt Bremen</app:regbezirk>
+      <app:regbezschl>040</app:regbezschl>
+      <app:kreis>Kreisfreie Stadt Bremen</app:kreis>
+      <app:kreisschl>04011</app:kreisschl>
+      <app:gemeinde>Stadtgemeinde Bremen</app:gemeinde>
+      <app:gmdschl>04011000</app:gmdschl>
+      <app:abwrecht>Kein abweichender Rechtszustand</app:abwrecht>
+      <app:lagebeztxt>Die Leestkämpe; Die Mittelkämpe; Die Oberkämpe</app:lagebeztxt>
+      <app:tntxt>Landwirtschaft; 40173</app:tntxt>
+      <app:geom>
+        <!--Inlined geometry 'APP_FLURSTUECKE_110906_APP_GEOM'-->
+        <gml:MultiSurface gml:id="APP_FLURSTUECKE_110906_APP_GEOM" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="GEOMETRY_8625ed82-36dd-4417-a838-7aaa17523f02" srsName="urn:ogc:def:crs:EPSG::25832">
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>482988.859 5888359.341 483136.775 5888682.206 483474.483 5889419.340 483482.757 5889413.492 483489.966 5889410.018 483505.451 5889408.175 483506.694 5889407.585 483167.579 5888667.615 483018.405 5888342.110 482988.859 5888359.341</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </app:geom>
+    </app:flurstuecke>
+  </wfs:member>
+<wfs:member>
+    <app:flurstuecke xmlns:app="http://www.deegree.org/app" gml:id="APP_FLURSTUECKE_86150">
+      <app:oid>DEHB01ALt00008bYFL</app:oid>
+      <app:aktualit>2014-11-21Z</app:aktualit>
+      <app:idflurst>DEHB01ALt00008bY</app:idflurst>
+      <app:flaeche>40193.0</app:flaeche>
+      <app:flstkennz>043351351000210001__</app:flstkennz>
+      <app:land>Bremen</app:land>
+      <app:landschl>04</app:landschl>
+      <app:gemarkung>VR 351</app:gemarkung>
+      <app:gemaschl>043351</app:gemaschl>
+      <app:flur>351</app:flur>
+      <app:flurschl>043351351</app:flurschl>
+      <app:flstnrzae>21</app:flstnrzae>
+      <app:flstnrnen>1</app:flstnrnen>
+      <app:regbezirk>Freie Hansestadt Bremen</app:regbezirk>
+      <app:regbezschl>040</app:regbezschl>
+      <app:kreis>Kreisfreie Stadt Bremen</app:kreis>
+      <app:kreisschl>04011</app:kreisschl>
+      <app:gemeinde>Stadtgemeinde Bremen</app:gemeinde>
+      <app:gmdschl>04011000</app:gmdschl>
+      <app:abwrecht>Kein abweichender Rechtszustand</app:abwrecht>
+      <app:lagebeztxt>Die Leestkämpe; Die Mittelkämpe; Die Oberkämpe</app:lagebeztxt>
+      <app:tntxt>Landwirtschaft; 40193</app:tntxt>
+      <app:geom>
+        <!--Inlined geometry 'APP_FLURSTUECKE_86150_APP_GEOM'-->
+        <gml:MultiSurface gml:id="APP_FLURSTUECKE_86150_APP_GEOM" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="GEOMETRY_f92bd025-5200-477e-bd9b-f10a8079bef8" srsName="urn:ogc:def:crs:EPSG::25832">
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>482988.859 5888359.341 482959.696 5888376.347 483106.655 5888696.473 483445.922 5889435.507 483463.046 5889427.423 483474.483 5889419.340 483136.775 5888682.206 482988.859 5888359.341</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </app:geom>
+    </app:flurstuecke>
+  </wfs:member>
+</wfs:FeatureCollection>

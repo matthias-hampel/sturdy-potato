@@ -1,0 +1,549 @@
+<?xml version='1.0' encoding='UTF-8'?><wfs:FeatureCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:gml="http://www.opengis.net/gml/3.2" xsi:schemaLocation="http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://schemas.opengis.net/gml/3.2.1/gml.xsd http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0 https://www.geoproxy.geoportal-th.de/geoproxy/services/adv_alkis_v2_wfs?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=DescribeFeatureType&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;TYPENAME=ave:Flurstueck&amp;NAMESPACES=xmlns(ave,http%3A%2F%2Frepository.gdi-de.org%2Fschemas%2Fadv%2Fprodukt%2Falkis-vereinfacht%2F2.0)" timeStamp="2026-10-19T08:35:32Z" numberMatched="32" numberReturned="3">
+  <wfs:boundedBy>
+    <gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+      <gml:lowerCorner>639989.35500000 5650849.09400000</gml:lowerCorner>
+      <gml:upperCorner>640769.84200000 5652063.76400000</gml:upperCorner>
+    </gml:Envelope>
+  </wfs:boundedBy>
+  <wfs:member>
+    <ave:Flurstueck xmlns:ave="http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0" gml:id="Flurstueck_DETHL51P0000fOGoFL">
+      <gml:identifier codeSpace="urn:adv:oid:">DETHL51P0000fOGoFL</gml:identifier>
+      <ave:idflurst>DETHL51P0000fOGo</ave:idflurst>
+      <ave:flstkennz>160102001000700006__</ave:flstkennz>
+      <ave:land>Thüringen</ave:land>
+      <ave:landschl>16</ave:landschl>
+      <ave:gemarkung>Erfurt-Nord</ave:gemarkung>
+      <ave:gemaschl>160102</ave:gemaschl>
+      <ave:flur>Flur 1</ave:flur>
+      <ave:flurschl>160102001</ave:flurschl>
+      <ave:flstnrzae>70</ave:flstnrzae>
+      <ave:flstnrnen>6</ave:flstnrnen>
+      <ave:regbezirk>unbesetzt</ave:regbezirk>
+      <ave:regbezschl>160</ave:regbezschl>
+      <ave:kreis>Erfurt</ave:kreis>
+      <ave:kreisschl>16051</ave:kreisschl>
+      <ave:gemeinde>Erfurt</ave:gemeinde>
+      <ave:gmdschl>16051000</ave:gmdschl>
+      <ave:oid>DETHL51P0000fOGoFL</ave:oid>
+      <ave:aktualit>2020-07-13</ave:aktualit>
+      <ave:geometrie>
+        <!--Inlined geometry 'Flurstueck_DETHL51P0000fOGoFL_AVE_GEOMETRIE'-->
+        <gml:MultiSurface gml:id="Flurstueck_DETHL51P0000fOGoFL_AVE_GEOMETRIE" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="GEOMETRY_a3e4e788-8d28-4a7b-894a-07e84c678141" srsName="urn:ogc:def:crs:EPSG::25832">
+              <gml:exterior>
+                <gml:Ring>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="GEOMETRY_d0d34513-3b88-4d7b-a2e2-dec208a7b822" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640436.47800000 5651847.51200000 640438.62330452 5651848.26213326 640440.63000000 5651849.32900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640440.63000000 5651849.32900000 640448.10100000 5651854.04300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640448.10100000 5651854.04300000 640449.93801513 5651854.91240184 640451.94028928 5651855.26080164 640453.96300000 5651855.06300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640453.96300000 5651855.06300000 640455.85819352 5651854.34507306 640457.51387470 5651853.17635693 640458.82500000 5651851.63100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640458.82500000 5651851.63100000 640464.58800000 5651842.54900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640464.58800000 5651842.54900000 640474.76400000 5651826.51200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640474.76400000 5651826.51200000 640484.94400000 5651810.46900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640484.94400000 5651810.46900000 640495.11900000 5651794.43300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640495.11900000 5651794.43300000 640500.91600000 5651785.29800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640500.91600000 5651785.29800000 640501.72400162 5651783.44974061 640502.07257717 5651781.46292797 640501.94200000 5651779.45000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640501.94200000 5651779.45000000 640501.20483960 5651777.57595070 640500.04215682 5651775.93167730 640498.52100000 5651774.61200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640498.52100000 5651774.61200000 640483.58300000 5651765.16300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640483.58300000 5651765.16300000 640479.76400000 5651762.74100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640479.76400000 5651762.74100000 640468.38700000 5651755.52700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640468.38700000 5651755.52700000 640470.64800000 5651750.73600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640470.64800000 5651750.73600000 640491.76500000 5651764.14200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640491.76500000 5651764.14200000 640508.66400000 5651774.85600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640508.66400000 5651774.85600000 640516.42600000 5651779.73600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640516.42600000 5651779.73600000 640524.75100000 5651785.00600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640524.75100000 5651785.00600000 640540.81400000 5651795.16600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640540.81400000 5651795.16600000 640556.78500000 5651805.38800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640556.78500000 5651805.38800000 640572.82500000 5651815.56600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640572.82500000 5651815.56600000 640589.60100000 5651826.21000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640589.60100000 5651826.21000000 640586.83800000 5651830.63100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640586.83800000 5651830.63100000 640568.12000000 5651818.75600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640568.12000000 5651818.75600000 640566.28208365 5651817.91784420 640564.29253357 5651817.56837007 640562.27900000 5651817.73000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640562.27900000 5651817.73000000 640560.36861208 5651818.41032166 640558.71130664 5651819.57897828 640557.42900000 5651821.15000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640557.42900000 5651821.15000000 640551.63700000 5651830.27300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640551.63700000 5651830.27300000 640541.44800000 5651846.32000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640541.44800000 5651846.32000000 640531.27000000 5651862.35100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640531.27000000 5651862.35100000 640521.08300000 5651878.39500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640521.08300000 5651878.39500000 640515.22600000 5651887.62100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640515.22600000 5651887.62100000 640514.36342638 5651889.43722531 640514.03759635 5651891.42129749 640514.27400000 5651893.41800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640514.27400000 5651893.41800000 640514.93320442 5651895.32128304 640516.09144423 5651896.96916573 640517.65900000 5651898.23400000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640517.65900000 5651898.23400000 640535.06800000 5651909.32500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640535.06800000 5651909.32500000 640534.68500000 5651909.92700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640534.68500000 5651909.92700000 640436.47800000 5651847.51200000</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                </gml:Ring>
+              </gml:exterior>
+              <gml:interior>
+                <gml:Ring>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="GEOMETRY_d981ff2a-437f-44dd-a954-0016952c34a3" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640506.40900000 5651888.05000000 640508.21616546 5651887.25299678 640509.77703427 5651886.04272835 640510.99900000 5651884.49100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640510.99900000 5651884.49100000 640516.64200000 5651875.59900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640516.64200000 5651875.59900000 640526.82300000 5651859.55600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640526.82300000 5651859.55600000 640537.00500000 5651843.51100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640537.00500000 5651843.51100000 640547.18400000 5651827.47000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640547.18400000 5651827.47000000 640552.97300000 5651818.34800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640552.97300000 5651818.34800000 640553.78740286 5651816.49816291 640554.14109539 5651814.50817526 640554.01400000 5651812.49100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640554.01400000 5651812.49100000 640553.27733037 5651810.61437907 640552.11619949 5651808.96630040 640550.59700000 5651807.64100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640550.59700000 5651807.64100000 640533.32100000 5651796.67900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640533.32100000 5651796.67900000 640516.05100000 5651785.72000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640516.05100000 5651785.72000000 640514.21073915 5651784.88410081 640512.21943739 5651784.53768379 640510.20500000 5651784.70300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640510.20500000 5651784.70300000 640508.29654015 5651785.38029073 640506.63836640 5651786.54278872 640505.35100000 5651788.10600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640505.35100000 5651788.10600000 640499.56300000 5651797.22800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640499.56300000 5651797.22800000 640489.38900000 5651813.26100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640489.38900000 5651813.26100000 640479.21100000 5651829.30100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640479.21100000 5651829.30100000 640469.03100000 5651845.34400000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640469.03100000 5651845.34400000 640463.23800000 5651854.47400000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640463.23800000 5651854.47400000 640462.33866673 5651856.30325936 640461.98896034 5651858.31141662 640462.21700000 5651860.33700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640462.21700000 5651860.33700000 640462.88265080 5651862.25814669 640464.05774171 5651863.91738053 640465.64900000 5651865.18300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640465.64900000 5651865.18300000 640482.90100000 5651876.14800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640482.90100000 5651876.14800000 640500.63300000 5651887.41800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640500.63300000 5651887.41800000 640502.48133200 5651888.13022236 640504.45038583 5651888.34567285 640506.40900000 5651888.05000000</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                </gml:Ring>
+              </gml:interior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </ave:geometrie>
+      <ave:flaeche>1911</ave:flaeche>
+      <ave:abwrecht>Kein abweichender Rechtszustand</ave:abwrecht>
+      <ave:lagebeztxt>Joachim-Bellermann-Straße</ave:lagebeztxt>
+      <ave:tntxt>Strassenverkehr; 1911</ave:tntxt>
+    </ave:Flurstueck>
+  </wfs:member>
+<wfs:member>
+    <ave:Flurstueck xmlns:ave="http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0" gml:id="Flurstueck_DETHL51P0000fOHlFL">
+      <gml:identifier codeSpace="urn:adv:oid:">DETHL51P0000fOHlFL</gml:identifier>
+      <ave:idflurst>DETHL51P0000fOHl</ave:idflurst>
+      <ave:flstkennz>160102001001020012__</ave:flstkennz>
+      <ave:land>Thüringen</ave:land>
+      <ave:landschl>16</ave:landschl>
+      <ave:gemarkung>Erfurt-Nord</ave:gemarkung>
+      <ave:gemaschl>160102</ave:gemaschl>
+      <ave:flur>Flur 1</ave:flur>
+      <ave:flurschl>160102001</ave:flurschl>
+      <ave:flstnrzae>102</ave:flstnrzae>
+      <ave:flstnrnen>12</ave:flstnrnen>
+      <ave:regbezirk>unbesetzt</ave:regbezirk>
+      <ave:regbezschl>160</ave:regbezschl>
+      <ave:kreis>Erfurt</ave:kreis>
+      <ave:kreisschl>16051</ave:kreisschl>
+      <ave:gemeinde>Erfurt</ave:gemeinde>
+      <ave:gmdschl>16051000</ave:gmdschl>
+      <ave:oid>DETHL51P0000fOHlFL</ave:oid>
+      <ave:aktualit>2026-09-28</ave:aktualit>
+      <ave:geometrie>
+        <!--Inlined geometry 'Flurstueck_DETHL51P0000fOHlFL_AVE_GEOMETRIE'-->
+        <gml:MultiSurface gml:id="Flurstueck_DETHL51P0000fOHlFL_AVE_GEOMETRIE" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="GEOMETRY_c186ac62-7395-417e-adca-869f28cd406a" srsName="urn:ogc:def:crs:EPSG::25832">
+              <gml:exterior>
+                <gml:Ring>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="GEOMETRY_6d111463-dd93-4f33-a037-9db543fb9989" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640579.02800000 5651522.67800000 640578.03000000 5651524.78300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640578.03000000 5651524.78300000 640574.92200000 5651531.32300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640574.92200000 5651531.32300000 640570.81700000 5651539.96900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640570.81700000 5651539.96900000 640566.71100000 5651548.61500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640566.71100000 5651548.61500000 640562.60600000 5651557.26000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640562.60600000 5651557.26000000 640558.35900000 5651566.20200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640558.35900000 5651566.20200000 640555.49600000 5651572.23000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640555.49600000 5651572.23000000 640551.34600000 5651580.96900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640551.34600000 5651580.96900000 640547.19600000 5651589.70800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640547.19600000 5651589.70800000 640543.04600000 5651598.44700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640543.04600000 5651598.44700000 640538.89600000 5651607.18700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640538.89600000 5651607.18700000 640534.74600000 5651615.92600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640534.74600000 5651615.92600000 640530.59600000 5651624.66600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640530.59600000 5651624.66600000 640527.37000000 5651631.46000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640527.37000000 5651631.46000000 640524.10600000 5651638.33100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640524.10600000 5651638.33100000 640523.24800000 5651640.13700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640523.24800000 5651640.13700000 640520.21000000 5651646.52600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640520.21000000 5651646.52600000 640519.13500000 5651648.78900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640519.13500000 5651648.78900000 640515.02400000 5651657.43400000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640515.02400000 5651657.43400000 640510.91200000 5651666.08000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640510.91200000 5651666.08000000 640506.80100000 5651674.72500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640506.80100000 5651674.72500000 640502.67300000 5651683.40600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640502.67300000 5651683.40600000 640497.93000000 5651693.33100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640497.93000000 5651693.33100000 640470.64800000 5651750.73600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640470.64800000 5651750.73600000 640468.38700000 5651755.52700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640468.38700000 5651755.52700000 640427.36800000 5651841.72200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640427.36800000 5651841.72200000 640423.19400000 5651850.51100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640423.19400000 5651850.51100000 640422.88000000 5651850.78300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640422.88000000 5651850.78300000 640413.50600000 5651859.17300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640413.50600000 5651859.17300000 640423.09000000 5651839.01100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640423.09000000 5651839.01100000 640442.65400000 5651797.87000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640442.65400000 5651797.87000000 640483.23300000 5651712.56300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640483.23300000 5651712.56300000 640515.96400000 5651643.81200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640515.96400000 5651643.81200000 640516.87800000 5651641.87500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640516.87800000 5651641.87500000 640518.97600000 5651637.42800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640518.97600000 5651637.42800000 640565.97800000 5651538.45400000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640565.97800000 5651538.45400000 640586.42000000 5651495.40800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640586.42000000 5651495.40800000 640630.08100000 5651403.47000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640630.08100000 5651403.47000000 640668.59500000 5651322.36400000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640668.59500000 5651322.36400000 640681.39100000 5651295.41600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640681.39100000 5651295.41600000 640717.04800000 5651220.34200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640717.04800000 5651220.34200000 640725.91800000 5651201.66500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640725.91800000 5651201.66500000 640755.40800000 5651139.56400000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640755.40800000 5651139.56400000 640761.96800000 5651125.75000000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640761.96800000 5651125.75000000 640764.11700000 5651121.22600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640764.11700000 5651121.22600000 640765.54500000 5651118.21900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640765.54500000 5651118.21900000 640769.84200000 5651120.86100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640769.84200000 5651120.86100000 640768.29300000 5651124.12500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640768.29300000 5651124.12500000 640756.43900000 5651149.04100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640756.43900000 5651149.04100000 640720.77000000 5651224.24200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640720.77000000 5651224.24200000 640710.40700000 5651246.06300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640710.40700000 5651246.06300000 640676.06800000 5651318.35500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640676.06800000 5651318.35500000 640671.42800000 5651328.11200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640671.42800000 5651328.11200000 640658.91900000 5651354.44900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640658.91900000 5651354.44900000 640647.23400000 5651379.05500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640647.23400000 5651379.05500000 640643.99900000 5651385.86700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640643.99900000 5651385.86700000 640613.00800000 5651451.12500000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640613.00800000 5651451.12500000 640588.84000000 5651502.01600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640588.84000000 5651502.01600000 640583.27400000 5651513.73600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640583.27400000 5651513.73600000 640579.02800000 5651522.67800000</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                </gml:Ring>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </ave:geometrie>
+      <ave:flaeche>4096</ave:flaeche>
+      <ave:abwrecht>Kein abweichender Rechtszustand</ave:abwrecht>
+      <ave:lagebeztxt>Zwischen Markenstieg und Marbacher Grenze</ave:lagebeztxt>
+      <ave:tntxt>Weg; 4096</ave:tntxt>
+    </ave:Flurstueck>
+  </wfs:member>
+<wfs:member>
+    <ave:Flurstueck xmlns:ave="http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0" gml:id="Flurstueck_DETHL51P0000fOGhFL">
+      <gml:identifier codeSpace="urn:adv:oid:">DETHL51P0000fOGhFL</gml:identifier>
+      <ave:idflurst>DETHL51P0000fOGh</ave:idflurst>
+      <ave:flstkennz>160102001000730010__</ave:flstkennz>
+      <ave:land>Thüringen</ave:land>
+      <ave:landschl>16</ave:landschl>
+      <ave:gemarkung>Erfurt-Nord</ave:gemarkung>
+      <ave:gemaschl>160102</ave:gemaschl>
+      <ave:flur>Flur 1</ave:flur>
+      <ave:flurschl>160102001</ave:flurschl>
+      <ave:flstnrzae>73</ave:flstnrzae>
+      <ave:flstnrnen>10</ave:flstnrnen>
+      <ave:regbezirk>unbesetzt</ave:regbezirk>
+      <ave:regbezschl>160</ave:regbezschl>
+      <ave:kreis>Erfurt</ave:kreis>
+      <ave:kreisschl>16051</ave:kreisschl>
+      <ave:gemeinde>Erfurt</ave:gemeinde>
+      <ave:gmdschl>16051000</ave:gmdschl>
+      <ave:oid>DETHL51P0000fOGhFL</ave:oid>
+      <ave:aktualit>2020-07-13</ave:aktualit>
+      <ave:geometrie>
+        <!--Inlined geometry 'Flurstueck_DETHL51P0000fOGhFL_AVE_GEOMETRIE'-->
+        <gml:MultiSurface gml:id="Flurstueck_DETHL51P0000fOGhFL_AVE_GEOMETRIE" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="GEOMETRY_d75550cd-716e-489f-997d-db98c6292569" srsName="urn:ogc:def:crs:EPSG::25832">
+              <gml:exterior>
+                <gml:Ring>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="GEOMETRY_2959786b-a585-48bf-92fb-e64c51a3a5e1" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640436.88400000 5651854.60500000 640434.61406375 5651853.70279074 640432.17600000 5651853.55300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640432.17600000 5651853.55300000 640429.81281360 5651854.16808170 640427.75900000 5651855.48900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640427.75900000 5651855.48900000 640415.69500000 5651866.27700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640415.69500000 5651866.27700000 640423.19400000 5651850.51100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640423.19400000 5651850.51100000 640425.70762743 5651848.79574424 640428.51991812 5651847.63322706 640431.51100000 5651847.07300000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640431.51100000 5651847.07300000 640434.01319158 5651847.08101693 640436.47800000 5651847.51200000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640436.47800000 5651847.51200000 640534.68500000 5651909.92700000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640534.68500000 5651909.92700000 640532.25500000 5651913.75600000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640532.25500000 5651913.75600000 640463.59900000 5651870.13900000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640463.59900000 5651870.13900000 640454.31700000 5651864.23100000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640454.31700000 5651864.23100000 640440.22000000 5651856.58800000</gml:posList>
+                        </gml:LineStringSegment>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>640440.22000000 5651856.58800000 640436.88400000 5651854.60500000</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                </gml:Ring>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </ave:geometrie>
+      <ave:flaeche>668</ave:flaeche>
+      <ave:abwrecht>Kein abweichender Rechtszustand</ave:abwrecht>
+      <ave:lagebeztxt>Augsburger Straße; Nikolaus-Marschalk-Straße</ave:lagebeztxt>
+      <ave:tntxt>Strassenverkehr; 668</ave:tntxt>
+    </ave:Flurstueck>
+  </wfs:member>
+</wfs:FeatureCollection>

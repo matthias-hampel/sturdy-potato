@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='utf-8'?><wfs:FeatureCollection xmlns:base="http://inspire.ec.europa.eu/schemas/base/3.3" xmlns="http://inspire.ec.europa.eu/schemas/cp/4.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" timeStamp="2026-10-19T10:35:31.590+02:00" numberReturned="3" numberMatched="unknown" xsi:schemaLocation="http://inspire.ec.europa.eu/schemas/cp/4.0 http://download.lgln.niedersachsen.de/aaa-suite/schema/inspire.ec.europa.eu/schemas/cp/4.0/CadastralParcels.xsd http://www.opengis.net/wfs/2.0 http://download.lgln.niedersachsen.de/aaa-suite/schema/ogc/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://download.lgln.niedersachsen.de/aaa-suite/schema/ogc/gml/3.2.1/gml.xsd">
+<wfs:boundedBy>
+<gml:Envelope srsName="http://www.opengis.net/def/crs/epsg/0/25832" srsDimension="2">
+<gml:lowerCorner>564085.428 5705598.013</gml:lowerCorner>
+<gml:upperCorner>564726.281 5706153.760</gml:upperCorner>
+</gml:Envelope>
+</wfs:boundedBy>
+<wfs:member>
+<CadastralParcel gml:id="CadastralParcel_036520015000210001__">
+<gml:identifier codeSpace="http://inspire.ec.europa.eu/ids">https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis/CadastralParcel_036520015000210001__</gml:identifier>
+<areaValue uom="m2">75240.0</areaValue>
+<beginLifespanVersion>2024-10-02T17:27:42Z</beginLifespanVersion>
+<endLifespanVersion nilReason="other:unpopulated" xsi:nil="true"/>
+<geometry>
+<gml:Polygon gml:id="o11001.id.433925095.position.Geom_0" srsName="http://www.opengis.net/def/crs/epsg/0/25832" srsDimension="2">
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>564097.573 5706095.273 564466.539 5706023.917 564527.450 5706012.137 564514.598 5705921.822 564506.893 5705867.685 564505.571 5705858.394 564499.553 5705816.101 564496.145 5705792.154 564672.062 5705758.382 564699.036 5705950.733 564711.075 5706036.585 564572.964 5706062.984 564466.273 5706083.361 564348.445 5706106.788 564255.072 5706124.983 564186.463 5706138.353 564107.458 5706153.760 564097.573 5706095.273</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</geometry>
+<inspireId>
+<base:Identifier>
+<base:localId>CadastralParcel_036520015000210001__</base:localId>
+<base:namespace>https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis</base:namespace>
+</base:Identifier>
+</inspireId>
+<label>21/1</label>
+<nationalCadastralReference>036520015000210001__</nationalCadastralReference>
+<referencePoint>
+<gml:Point gml:id="o11001.id.433925095.ST_PointOnSurface__T_.position__.Geom_0" srsName="http://www.opengis.net/def/crs/epsg/0/25832" srsDimension="2">
+<gml:pos>564613.211 5705981.435</gml:pos>
+</gml:Point>
+</referencePoint>
+<validFrom>1959-01-01</validFrom>
+<validTo nilReason="other:unpopulated" xsi:nil="true"/>
+<zoning xlink:href="https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis/CadastralZoning_036520015"/>
+</CadastralParcel>
+</wfs:member>
+<wfs:member>
+<CadastralParcel gml:id="CadastralParcel_036520015000930001__">
+<gml:identifier codeSpace="http://inspire.ec.europa.eu/ids">https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis/CadastralParcel_036520015000930001__</gml:identifier>
+<areaValue uom="m2">3850.0</areaValue>
+<beginLifespanVersion>2023-09-21T12:54:33Z</beginLifespanVersion>
+<endLifespanVersion nilReason="other:unpopulated" xsi:nil="true"/>
+<geometry>
+<gml:Polygon gml:id="o11001.id.433939072.position.Geom_0" srsName="http://www.opengis.net/def/crs/epsg/0/25832" srsDimension="2">
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>564626.698 5705648.118 564637.406 5705649.231 564641.964 5705649.705 564664.459 5705685.709 564668.456 5705695.713 564670.109 5705701.346 564677.295 5705725.825 564682.201 5705762.236 564695.678 5705858.360 564695.882 5705859.723 564710.928 5705967.082 564714.290 5705991.074 564726.281 5706076.638 564716.913 5706078.215 564711.075 5706036.585 564699.036 5705950.733 564672.062 5705758.382 564675.925 5705757.641 564672.146 5705734.243 564671.265 5705728.784 564668.394 5705719.124 564666.237 5705711.864 564663.110 5705701.341 564657.580 5705686.014 564637.625 5705657.761 564626.698 5705648.118</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</geometry>
+<inspireId>
+<base:Identifier>
+<base:localId>CadastralParcel_036520015000930001__</base:localId>
+<base:namespace>https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis</base:namespace>
+</base:Identifier>
+</inspireId>
+<label>93/1</label>
+<nationalCadastralReference>036520015000930001__</nationalCadastralReference>
+<referencePoint>
+<gml:Point gml:id="o11001.id.433939072.ST_PointOnSurface__T_.position__.Geom_0" srsName="http://www.opengis.net/def/crs/epsg/0/25832" srsDimension="2">
+<gml:pos>564697.457 5705905.228</gml:pos>
+</gml:Point>
+</referencePoint>
+<validFrom>1959-01-01</validFrom>
+<validTo nilReason="other:unpopulated" xsi:nil="true"/>
+<zoning xlink:href="https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis/CadastralZoning_036520015"/>
+</CadastralParcel>
+</wfs:member>
+<wfs:member>
+<CadastralParcel gml:id="CadastralParcel_036592001000190001__">
+<gml:identifier codeSpace="http://inspire.ec.europa.eu/ids">https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis/CadastralParcel_036592001000190001__</gml:identifier>
+<areaValue uom="m2">157265.0</areaValue>
+<beginLifespanVersion>2024-10-02T18:17:29Z</beginLifespanVersion>
+<endLifespanVersion nilReason="other:unpopulated" xsi:nil="true"/>
+<geometry>
+<gml:Polygon gml:id="o11001.id.434043469.position.Geom_0" srsName="http://www.opengis.net/def/crs/epsg/0/25832" srsDimension="2">
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>564085.428 5706026.211 564096.298 5706007.567 564097.823 5706004.951 564105.460 5705991.852 564136.474 5705938.516 564141.556 5705929.519 564158.346 5705899.784 564183.967 5705855.217 564205.327 5705818.739 564225.825 5705783.353 564244.969 5705749.846 564252.881 5705735.684 564257.781 5705728.098 564264.841 5705717.170 564275.393 5705704.289 564287.035 5705692.349 564312.861 5705665.487 564319.728 5705658.601 564325.750 5705652.562 564342.906 5705635.360 564343.683 5705634.581 564353.362 5705624.703 564361.318 5705618.311 564366.835 5705614.617 564386.716 5705605.385 564403.330 5705598.013 564404.534 5705605.037 564408.869 5705615.829 564417.961 5705629.472 564419.795 5705629.310 564490.816 5705623.028 564567.145 5705616.278 564568.004 5705616.202 564570.547 5705619.285 564582.294 5705629.166 564592.160 5705633.995 564601.604 5705636.621 564615.164 5705640.394 564626.698 5705648.118 564637.625 5705657.761 564657.580 5705686.014 564663.110 5705701.341 564666.237 5705711.864 564668.394 5705719.124 564671.265 5705728.784 564672.146 5705734.243 564675.925 5705757.641 564672.062 5705758.382 564496.145 5705792.154 564499.553 5705816.101 564505.571 5705858.394 564506.893 5705867.685 564514.598 5705921.822 564527.450 5706012.137 564466.539 5706023.917 564097.573 5706095.273 564085.428 5706026.211</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</geometry>
+<inspireId>
+<base:Identifier>
+<base:localId>CadastralParcel_036592001000190001__</base:localId>
+<base:namespace>https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis</base:namespace>
+</base:Identifier>
+</inspireId>
+<label>19/1</label>
+<nationalCadastralReference>036592001000190001__</nationalCadastralReference>
+<referencePoint>
+<gml:Point gml:id="o11001.id.434043469.ST_PointOnSurface__T_.position__.Geom_0" srsName="http://www.opengis.net/def/crs/epsg/0/25832" srsDimension="2">
+<gml:pos>564348.585 5705836.978</gml:pos>
+</gml:Point>
+</referencePoint>
+<validFrom>1950-01-01</validFrom>
+<validTo nilReason="other:unpopulated" xsi:nil="true"/>
+<zoning xlink:href="https://registry.gdi-de.org/id/de.ni.land.geobasisdaten.inspire.cp.alkis/CadastralZoning_036592001"/>
+</CadastralParcel>
+</wfs:member>
+</wfs:FeatureCollection>

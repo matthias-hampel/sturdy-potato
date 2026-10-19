@@ -1,7 +1,7 @@
 import { FIELD_PART_USAGE_COLORS, IMAGERY_LAYERS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
 import type { FeatureCollection } from 'geojson'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, Download, Info, Map as MapIcon, Minus, Plus, Settings2, Upload } from 'lucide-react'
+import { ArrowDown, ArrowUp, Download, Info, Landmark, Map as MapIcon, Minus, Plus, Settings2, Upload } from 'lucide-react'
 import { type Ref, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -125,6 +125,9 @@ function FieldsPage() {
             </Button>
             <Link to="/o/$orgId/fields/manage" params={{ orgId }} variant="secondary">
               <Settings2 /> {t('fieldsManage.title')}
+            </Link>
+            <Link to="/o/$orgId/fields/leases" params={{ orgId }} search={{}} variant="secondary">
+              <Landmark /> {t('cadastral.leases.title')}
             </Link>
             {can('field.write') && (
               <>

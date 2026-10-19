@@ -62,6 +62,25 @@ export interface BsaVarieties {
   synced_at: Generated<Timestamp>;
 }
 
+export interface CadastralParcels {
+  area_m2: Numeric;
+  created_at: Generated<Timestamp>;
+  denominator: string | null;
+  district: string | null;
+  field_id: string;
+  geometry: string;
+  id: Generated<string>;
+  label: string | null;
+  numerator: string | null;
+  official_id: string | null;
+  organization_id: string;
+  sector: string | null;
+  source: Generated<string>;
+  source_state: string | null;
+  synced_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface CarbonSettings {
   nuts2_code: string | null;
   organization_id: string;
@@ -979,6 +998,25 @@ export interface OutboxEvents {
   published_at: Timestamp | null;
 }
 
+export interface ParcelLeases {
+  created_at: Generated<Timestamp>;
+  ends_on: string | null;
+  land_register_number: string | null;
+  land_register_sheet: string | null;
+  land_register_volume: string | null;
+  lease_type: Generated<string>;
+  leaseholder_name: string | null;
+  notes: string | null;
+  organization_id: string;
+  owner_address: string | null;
+  owner_name: string | null;
+  parcel_id: string;
+  rent_amount: Numeric | null;
+  rent_basis: Generated<string>;
+  starts_on: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface ProductPrices {
   organization_id: string;
   price: Numeric;
@@ -1622,6 +1660,7 @@ export interface DB {
   audit_events: AuditEvents;
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
+  cadastral_parcels: CadastralParcels;
   carbon_settings: CarbonSettings;
   comments: Comments;
   cost_entries: CostEntries;
@@ -1685,6 +1724,7 @@ export interface DB {
   org_crop_colors: OrgCropColors;
   organizations: Organizations;
   outbox_events: OutboxEvents;
+  parcel_leases: ParcelLeases;
   product_prices: ProductPrices;
   productivity_analyses: ProductivityAnalyses;
   products: Products;

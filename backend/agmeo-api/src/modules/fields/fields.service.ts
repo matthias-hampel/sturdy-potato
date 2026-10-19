@@ -101,7 +101,8 @@ export class FieldsService {
     });
   }
 
-  private async insert(
+  /** Inserts a field with its first boundary (also used for fields made of cadastral parcels). */
+  async insert(
     trx: Trx,
     ctx: Ctx,
     input: Omit<Out<typeof CreateFieldInput>, 'tenure'> & { tenure?: Tenure },
@@ -177,6 +178,7 @@ export class FieldsService {
         identifier: input.identifier,
         parcel_number: input.parcelNumber,
         tenure: input.tenure,
+        lease_per_ha: input.leasePerHa,
         soil_type: input.soilType,
         notes: input.notes,
         status: input.status,
@@ -476,6 +478,7 @@ export class FieldsService {
         'f.name',
         'f.identifier',
         'f.tenure',
+        'f.lease_per_ha',
         'f.soil_type',
         'f.soil_texture',
         'f.nitrate_sensitive_zone',
@@ -521,6 +524,7 @@ export class FieldsService {
       name: r.name,
       identifier: r.identifier,
       tenure: r.tenure as Tenure,
+      leasePerHa: r.lease_per_ha,
       soilType: r.soil_type,
       soilTexture: r.soil_texture,
       nitrateSensitiveZone: r.nitrate_sensitive_zone,
