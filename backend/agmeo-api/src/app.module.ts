@@ -10,6 +10,8 @@ import { ComplianceController } from './modules/compliance/compliance.controller
 import { ComplianceService } from './modules/compliance/compliance.service.js';
 import { CropsController } from './modules/crops/crops.controller.js';
 import { CropsService } from './modules/crops/crops.service.js';
+import { CropTableController } from './modules/crops/crop-table.controller.js';
+import { CropTableService } from './modules/crops/crop-table.service.js';
 import { DashboardController } from './modules/dashboard/dashboard.controller.js';
 import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { EconomicsController } from './modules/economics/economics.controller.js';
@@ -102,6 +104,7 @@ export const DOMAIN_SERVICES = [
   FieldManagementService,
   FieldGroupsService,
   CropsService,
+  CropTableService,
   InventoryService,
   TeamService,
   KtblService,
@@ -172,6 +175,7 @@ export const DOMAIN_SERVICES = [
     NewsController,
     ComplianceController,
     WeatherController,
+    CropTableController,
     MonitoringController,
     ProductivityController,
     VraController,

@@ -439,7 +439,8 @@ export interface FieldConditions {
   disease: FieldDiseaseRisk;
   /** Spray level per hour for the next 48 hours. */
   sprayHours: { time: string; level: ConditionLevel; reasons: ConditionReason[] }[];
-  phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; bbchByDate: Record<string, number> | null } | null;
+  /** `calibrated`: the model's stages follow the farmer's BBCH observations. */
+  phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; calibrated: boolean; bbchByDate: Record<string, number> | null } | null;
   waterBalance: {
     soilTypeKa5: string | null;
     awcMm: number | null;

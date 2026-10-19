@@ -23,7 +23,14 @@ import {
 } from './irrigation/data.js';
 import type { WaterBalanceDay } from './irrigation/waterBalance.js';
 import { calculateBBCH } from './phenology/bbch.js';
-import { calculateDailyBbchMap } from './phenology/bbchModel.js';
+import {
+  bbchToBd,
+  bdToBbch,
+  buildCalibrationCurve,
+  calculateDailyBbchMap,
+  getCropGsParams,
+  runDailyBbchModel,
+} from './phenology/bbchModel.js';
 import {
   buildCalendarBbchMap,
   getDefaultSowingDate,
@@ -128,7 +135,12 @@ export type PhenologyInput = {
   latitude: number;
   /** yyyy-mm-dd; defaults to the wall clock. */
   today?: string;
+  /** Farmer BBCH observations as offsets against the model (see bbchCalibration); ESM crops only. */
+  calibrations?: BbchCalibrationAnchor[];
 };
+
+/** A farmer's BBCH observation, stored as an offset in biological days against the model. */
+export type BbchCalibrationAnchor = { observedBbch: number; bdOffset: number };
 
 export type PhenologyResult = {
   crop: SupportedCrops | null;
@@ -142,6 +154,8 @@ export type PhenologyResult = {
   /** Last value of dailyBbch. */
   currentBbch: number | null;
   bbchSource: 'model' | 'calendar' | null;
+  /** The model's stages were shifted by farmer observations. */
+  calibrated: boolean;
 };
 
 /** GDD and BBCH since sowing for a crop cycle. */
@@ -159,6 +173,7 @@ export function computePhenology(input: PhenologyInput): PhenologyResult {
     dailyBbch: null,
     currentBbch: null,
     bbchSource: null,
+    calibrated: false,
   };
   if (!crop || !sowingDate) return empty;
 
@@ -166,13 +181,23 @@ export function computePhenology(input: PhenologyInput): PhenologyResult {
     Object.entries(input.weather).filter(([date]) => date <= today),
   );
   const gdd = computeGDDFromWeather(pastWeather, crop, sowingDate);
-  const modelMap = calculateDailyBbchMap(
-    input.weather,
-    crop,
-    input.latitude,
-    sowingDate,
-    today,
-  );
+  const calibrated = !!input.calibrations?.length && !!getCropGsParams(crop);
+  const modelMap = calibrated
+    ? calibratedBbchMap(
+        input.weather,
+        crop,
+        input.latitude,
+        sowingDate,
+        today,
+        input.calibrations!,
+      )
+    : calculateDailyBbchMap(
+        input.weather,
+        crop,
+        input.latitude,
+        sowingDate,
+        today,
+      );
   const dailyBbch =
     modelMap ??
     buildCalendarBbchMap(
@@ -197,7 +222,63 @@ export function computePhenology(input: PhenologyInput): PhenologyResult {
     dailyBbch,
     currentBbch,
     bbchSource: dailyBbch ? (modelMap ? 'model' : 'calendar') : null,
+    calibrated: calibrated && !!modelMap,
   };
+}
+
+/**
+ * Daily BBCH of the ESM model shifted along the calibration curve through the farmer's
+ * observations (the reference's bbch snapshot: corrected bd = bd + offsetAt(bd)).
+ */
+function calibratedBbchMap(
+  weather: PhenologyInput['weather'],
+  crop: SupportedCrops,
+  latitude: number,
+  sowingDate: string,
+  today: string,
+  calibrations: BbchCalibrationAnchor[],
+): Map<string, number> | null {
+  const run = runDailyBbchModel(weather, crop, latitude, sowingDate, today);
+  const gs = getCropGsParams(crop);
+  if (!run || !gs) return null;
+  const offsetAt = buildCalibrationCurve(calibrations, crop);
+  const map = new Map<string, number>();
+  run.dates.forEach((d, i) => {
+    const bd = run.result.cumulativeBd[i];
+    map.set(d, Math.round(bdToBbch(Math.max(0, bd + offsetAt(bd)), gs.gs, gs.isCanola)));
+  });
+  return map;
+}
+
+/** Whether the crop's phenology model (ESM) takes farmer BBCH observations. */
+export function bbchCalibratable(cropCode: string | null): boolean {
+  const crop = modelCrop(cropCode);
+  return !!crop && !!getCropGsParams(crop);
+}
+
+export type BbchCalibrationResult =
+  | { ok: true; bdOffset: number; modelBbch: number }
+  | { ok: false; reason: 'unsupported_crop' | 'model_unavailable' | 'date_out_of_range' };
+
+/**
+ * A farmer's BBCH observation on `date` as an offset in biological days against the raw
+ * (uncalibrated) model on that day — the reference's saveBbchCalibration.
+ */
+export function bbchCalibration(
+  input: Omit<PhenologyInput, 'calibrations' | 'today'> & { date: string; observedBbch: number },
+): BbchCalibrationResult {
+  const crop = modelCrop(input.cropCode);
+  const gs = crop ? getCropGsParams(crop) : null;
+  if (!crop || !gs) return { ok: false, reason: 'unsupported_crop' };
+  const sowingDate = input.sowingDate ?? getDefaultSowingDate(crop, input.harvestYear);
+  if (!sowingDate) return { ok: false, reason: 'model_unavailable' };
+  if (input.date < sowingDate) return { ok: false, reason: 'date_out_of_range' };
+  const run = runDailyBbchModel(input.weather, crop, input.latitude, sowingDate, input.date);
+  if (!run) return { ok: false, reason: 'model_unavailable' };
+  const i = run.dates.indexOf(input.date);
+  if (i < 0) return { ok: false, reason: 'date_out_of_range' };
+  const observedBd = bbchToBd(input.observedBbch, gs.gs, gs.isCanola);
+  return { ok: true, bdOffset: observedBd - run.result.cumulativeBd[i], modelBbch: run.result.bbch[i] };
 }
 
 // ── Water balance + irrigation recommendation ──────────────────────────────

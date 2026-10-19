@@ -43,8 +43,8 @@ rework:
 
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
-| Field table | `fields/[year]/columns.tsx`, `ColumnConfigBar.tsx` | partial | BBCH, LAI, GDD, disease, trafficability, sowing/spray/weather bars, rain 24h/7d/season, yield, margin, CO2e, N columns; column config, quick views, inline edit, grouping by field group |
-| Secondary crop, plan next year | `AddSecondaryCropDialog.tsx`, `PlanNextYear.tsx` | partial | Bulk actions on the list (data model exists) |
+| Field table | `fields/[year]/columns.tsx`, `ColumnConfigBar.tsx` | done (feat/parity-fieldtable) | Crop plan table (`/crops`): batch `crop-table/conditions` and `crop-table/evaluation`, the reference's columns and quick views, inline edit of crop, sowing date, expected yield and field groups, BBCH observations (`crop_cycle_bbch_calibrations`). Not ported: technology/template, crop rotation and field/sub-field name cells (edited on their own pages), row grouping (the reference has none on this table) |
+| Secondary crop, plan next year | `AddSecondaryCropDialog.tsx`, `PlanNextYear.tsx` | done (feat/parity-fieldtable) | — (row and bulk action "Nebenkultur hinzufügen", "In <Jahr> übernehmen", banner on an empty season) |
 | Boundary import | `_components/ImportFieldDialog/*` | partial | State + year, crop assignment, inline rotations, shapefile diagnostics |
 | Cadastral parcel selection (state WFS) | `SelectFieldsTab.tsx`, `lib/cadastral` | missing | Whole feature |
 | Edit boundary | `edit-boundary/*` | partial | Cut holes, simplify slider, snapping, reason; restore an earlier version |
