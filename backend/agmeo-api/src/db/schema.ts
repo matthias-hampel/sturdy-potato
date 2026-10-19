@@ -62,6 +62,29 @@ export interface BsaVarieties {
   synced_at: Generated<Timestamp>;
 }
 
+export interface BslVarieties {
+  breeder: string | null;
+  breeder_number: string | null;
+  bsa_variety_id: string | null;
+  bsl_id: number;
+  bsl_species: string;
+  bsl_subspecies: string;
+  hybrid: Generated<boolean>;
+  id: Generated<string>;
+  is_new: Generated<boolean>;
+  kenn_nummer: string | null;
+  name: string;
+  note: string | null;
+  properties: Generated<Json>;
+  quality: Generated<Json>;
+  registered_since: number | null;
+  registration_number: number | null;
+  species_code: string | null;
+  status: string | null;
+  synced_at: Generated<Timestamp>;
+  usage: string | null;
+}
+
 export interface CarbonReportNotes {
   harvest_year: number;
   notes: Generated<string>;
@@ -1643,6 +1666,7 @@ export interface DB {
   audit_events: AuditEvents;
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
+  bsl_varieties: BslVarieties;
   carbon_report_notes: CarbonReportNotes;
   carbon_settings: CarbonSettings;
   comments: Comments;

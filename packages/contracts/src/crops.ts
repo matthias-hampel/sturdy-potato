@@ -184,3 +184,66 @@ export type UpdateCropCycleInput = z.input<typeof UpdateCropCycleInput>;
 /** Colour per crop id; null resets a crop to its default colour. */
 export const CropColorsInput = z.object({ colors: z.record(id, z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable()) });
 export type CropColorsInput = z.input<typeof CropColorsInput>;
+
+// ---------------------------------------------------------------------------
+// Variety browser: Beschreibende Sortenliste (BSL) of the Bundessortenamt (agmeo app/varieties)
+// ---------------------------------------------------------------------------
+
+export const VARIETY_TRAITS = ['maturity', 'winterKill', 'lodging', 'yield', 'tkg'] as const;
+export type VarietyTrait = (typeof VARIETY_TRAITS)[number];
+
+/** A species of the list, keyed by its BSA species code (or the BSL species where it has none). */
+export interface VarietySpecies {
+  key: string;
+  speciesCode: string | null;
+  name: string;
+  count: number;
+  /** The organization's crops that use this species. */
+  crops: { id: string; name: string }[];
+}
+
+export interface VarietyRating {
+  disease: string;
+  /** 1 (very low) … 9 (very high susceptibility). */
+  susceptibility: number;
+}
+
+export interface VarietySummary {
+  id: string;
+  name: string;
+  kennNummer: string | null;
+  speciesCode: string | null;
+  speciesName: string;
+  /** BSL group, e.g. "Silonutzung früh", and its use. */
+  subspecies: string;
+  usage: string | null;
+  registeredSince: number | null;
+  breeder: string | null;
+  status: string | null;
+  hybrid: boolean;
+  isNew: boolean;
+  /** Approval in the BSA register: since, and until when it ended (null while approved). */
+  approval: { grantedOn: string | null; endedOn: string | null; marketableUntil: string | null } | null;
+  traits: Partial<Record<VarietyTrait, { value: number; source: string }>>;
+  ratings: VarietyRating[];
+  propertiesCount: number;
+  qualityCount: number;
+}
+
+export interface VarietyProperty {
+  name: string;
+  kind: 'property' | 'quality';
+  value: number | string;
+}
+
+export interface VarietyDetail extends VarietySummary {
+  note: string | null;
+  breederNumber: string | null;
+  properties: VarietyProperty[];
+}
+
+export interface VarietyResistance {
+  crop: string | null;
+  variety: string;
+  ratings: VarietyRating[];
+}

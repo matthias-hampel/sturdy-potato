@@ -7,6 +7,8 @@ import { DatabaseModule } from './db/database.js';
 import { CarbonController } from './modules/carbon/carbon.controller.js';
 import { CarbonService } from './modules/carbon/carbon.service.js';
 import { CarbonReportService } from './modules/carbon/report.service.js';
+import { VarietiesController } from './modules/varieties/varieties.controller.js';
+import { VarietiesService } from './modules/varieties/varieties.service.js';
 import { VoiceController } from './modules/voice/voice.controller.js';
 import { VoiceService } from './modules/voice/voice.service.js';
 import { ComplianceController } from './modules/compliance/compliance.controller.js';
@@ -138,6 +140,7 @@ export const DOMAIN_SERVICES = [
   CarbonService,
   CarbonReportService,
   VoiceService,
+  VarietiesService,
   YieldService,
   AnnotationsService,
   FieldDocumentsService,
@@ -191,6 +194,7 @@ export const DOMAIN_SERVICES = [
     RadarController,
     CarbonController,
     VoiceController,
+    VarietiesController,
     YieldController,
     AnnotationsController,
     FieldDocumentsController,
