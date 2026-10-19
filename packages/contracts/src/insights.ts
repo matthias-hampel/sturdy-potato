@@ -389,7 +389,9 @@ export type ConditionLevel = 0 | 1 | 2 | 3;
 export interface ConditionReason {
   /** Untranslated reason key of the model, e.g. "reason.wind". */
   key: string;
-  value: number | string | null;
+  value: number | null;
+  /** Unit dimension of the value (speed, temperature, length, hours, …), as in the units system. */
+  dimension: string | null;
 }
 
 export interface ConditionDay {

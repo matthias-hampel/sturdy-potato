@@ -47,6 +47,9 @@ interface Context {
   cycle: { id: string; cropCode: string | null; cropName: string; harvestYear: number; sowingDate: string | null; sowingSource: 'booked' | 'planned' | null } | null;
 }
 
+const toReasons = (rs: { key: string; value: number; dimension?: string }[] | undefined) =>
+  (rs ?? []).map((r) => ({ key: r.key, value: r.value ?? null, dimension: r.dimension ?? null }));
+
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 @Injectable()
@@ -100,7 +103,7 @@ export class FieldConditionsService {
         for (let i = 0; i < hourly.time.length && sprayHours.length < 48; i++) {
           if (instants[i] < from) continue;
           const s = computeHourlySpray(hourly, i);
-          sprayHours.push({ time: new Date(instants[i]).toISOString(), level: s.level, reasons: s.reasons.map((r) => ({ key: r.key, value: r.value ?? null })) });
+          sprayHours.push({ time: new Date(instants[i]).toISOString(), level: s.level, reasons: toReasons(s.reasons) });
         }
       }
 
@@ -111,10 +114,10 @@ export class FieldConditionsService {
         cropCycle: c.cycle ? { id: c.cycle.id, cropName: c.cycle.cropName, sowingDate: c.cycle.sowingDate, sowingSource: c.cycle.sowingSource } : null,
         soil: { texture: c.soilTexture, textureSource: c.soilTexture ? 'soil_class' : null },
         bars: {
-          spraying: bars.spraying.map((d) => ({ date: d.date, value: d.value, reasons: d.reasons ?? [] })),
-          sowing: bars.sowing.map((d) => ({ date: d.date, value: d.value, reasons: d.reasons ?? [] })),
-          weatherRisk: bars.weatherRisk.map((d) => ({ date: d.date, value: d.value, reasons: d.reasons ?? [] })),
-          trafficability: bars.trafficability?.map((d) => ({ date: d.date, value: d.value, reasons: d.reasons ?? [] })) ?? null,
+          spraying: bars.spraying.map((d) => ({ date: d.date, value: d.value, reasons: toReasons(d.reasons) })),
+          sowing: bars.sowing.map((d) => ({ date: d.date, value: d.value, reasons: toReasons(d.reasons) })),
+          weatherRisk: bars.weatherRisk.map((d) => ({ date: d.date, value: d.value, reasons: toReasons(d.reasons) })),
+          trafficability: bars.trafficability?.map((d) => ({ date: d.date, value: d.value, reasons: toReasons(d.reasons) })) ?? null,
         },
         sprayHours,
         phenology: phen
@@ -197,7 +200,10 @@ export class FieldConditionsService {
                WHERE ofl.crop_cycle_id = cc.id AND o.type = 'sowing' AND o.status = 'completed') AS booked
       FROM crop_cycles cc JOIN growing_seasons s ON s.id = cc.season_id JOIN crops c ON c.id = cc.crop_id
       WHERE cc.field_id = ${fieldId} AND cc.role = 'main' AND s.end_date >= current_date
-      ORDER BY s.start_date LIMIT 1`.execute(trx);
+      -- The season running today first, then the whole field's crop, then the one already growing.
+      ORDER BY (s.start_date <= current_date) DESC, s.start_date, (cc.field_part_id IS NULL) DESC,
+               array_position(ARRAY['active', 'planned', 'harvested', 'closed'], cc.status), cc.created_at
+      LIMIT 1`.execute(trx);
     const humus = await trx
       .selectFrom('soil_samples')
       .select('humus_pct')

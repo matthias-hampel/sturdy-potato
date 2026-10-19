@@ -22,6 +22,7 @@ import { OperationsTable } from '#/components/operations/OperationsTable'
 import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
+import { ConditionsTab } from '#/components/fields/ConditionsTab'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { costCategoryLabel } from '#/i18n/labels'
 import { Button, Link, buttonClass } from '#/ui/Button'
@@ -30,7 +31,7 @@ import { Badge, Card, DescriptionList, ErrorNotice, Loading, Notice, PageHeader,
 import { ConfirmButton, Menu, MenuItem, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
-const TABS = ['overview', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'boundary', 'costs', 'activity'] as const
+const TABS = ['overview', 'conditions', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'boundary', 'costs', 'activity'] as const
 
 export const Route = createFileRoute('/o/$orgId/fields/$fieldId')({
   validateSearch: z.object({
@@ -113,6 +114,7 @@ function FieldPage() {
       >
         <TabList aria-label={t('fieldPage.tabs.label')}>
           <Tab id="overview">{t('fieldPage.tabs.overview')}</Tab>
+          <Tab id="conditions">{t('fieldPage.tabs.conditions')}</Tab>
           <Tab id="parts">{t('fieldParts.tab')}</Tab>
           <Tab id="crops">{t('fieldPage.tabs.crops')}</Tab>
           <Tab id="soil">{t('fieldPage.tabs.soil')}</Tab>
@@ -140,6 +142,9 @@ function FieldPage() {
               />
             </Card>
           </div>
+        </TabPanel>
+        <TabPanel id="conditions">
+          <ConditionsTab fieldId={fieldId} />
         </TabPanel>
         <TabPanel id="parts">
           <FieldPartsTab field={f} />
