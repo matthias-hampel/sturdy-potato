@@ -1,7 +1,7 @@
 import { FIELD_PART_USAGE_COLORS, IMAGERY_LAYERS, type Farm, type Field, type FieldMonitoringSummary, type FieldPart, type ImageryLayer, type ImageryStretch } from '@agmeo/contracts'
 import type { FeatureCollection } from 'geojson'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, Download, Info, Map as MapIcon, Minus, Plus, Upload } from 'lucide-react'
+import { ArrowDown, ArrowUp, Info, Map as MapIcon, Minus, Plus } from 'lucide-react'
 import { type Ref, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -12,7 +12,6 @@ import { farmView } from '#/components/map/useMap'
 import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
 import { INDEX_INFO, indexColor, NO_DATA_COLOR, type ShownIndex } from '#/components/monitoring/indices'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
-import { api, saveBlob } from '#/lib/api'
 import { fmt } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
@@ -102,11 +101,6 @@ function FieldsPage() {
     return monitored.length ? monitored : undefined
   }, [layer, visible, latest])
 
-  const exportGeoJson = async () => {
-    const data = await api.get<unknown>(`/orgs/${orgId}/fields/export.geojson`, { farmId: farmId === ALL ? undefined : farmId })
-    saveBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/geo+json' }), 'fields.geojson')
-  }
-
   return (
     <>
       <PageHeader
@@ -117,21 +111,11 @@ function FieldsPage() {
             : t('fields.subtitle', { count: visible.length, area: fmt.ha(totalArea, 1) })
         }
         actions={
-          <>
-            <Button onPress={exportGeoJson} isDisabled={!visible.length}>
-              <Download /> {t('common.export')}
-            </Button>
-            {can('field.write') && (
-              <>
-                <Link to="/o/$orgId/fields/new" params={{ orgId }} search={{ mode: 'import' }} variant="secondary">
-                  <Upload /> {t('common.import')}
-                </Link>
-                <Link to="/o/$orgId/fields/new" params={{ orgId }} search={{}} variant="primary">
-                  <Plus /> {t('fields.addField')}
-                </Link>
-              </>
-            )}
-          </>
+          can('field.write') && (
+            <Link to="/o/$orgId/fields/new" params={{ orgId }} search={{}} variant="primary">
+              <Plus /> {t('fields.addField')}
+            </Link>
+          )
         }
       />
 

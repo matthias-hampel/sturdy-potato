@@ -68,7 +68,6 @@ export function ObservationsChart({
         )}
         <div className="flex justify-between gap-3 text-fg-2">{t('monitoring.observations.mean')} <span className="font-medium text-fg tabular">{idx(o.mean)}</span></div>
         <div className="flex justify-between gap-3 text-fg-2">P10–P90 <span className="text-fg tabular">{idx(o.p10)}–{idx(o.p90)}</span></div>
-        <div className="flex justify-between gap-3 text-fg-2">{t('monitoring.observations.validPixels')} <span className="text-fg tabular">{fmt.pct(o.validPixelPct)}</span></div>
       </div>
     ),
   }))
@@ -122,7 +121,6 @@ export function ObservationsChart({
           <Column isRowHeader>{t('monitoring.observations.acquired')}</Column>
           <Column align="end">{t('monitoring.observations.mean')}</Column>
           <Column align="end">P10–P90</Column>
-          <Column align="end">{t('monitoring.observations.validPixels')}</Column>
           <Column>{t('common.status')}</Column>
         </TableHeader>
         <TableBody items={[...list].reverse()}>
@@ -131,7 +129,6 @@ export function ObservationsChart({
               <Cell className="tabular">{fmt.date(o.observedOn)}</Cell>
               <Cell align="end">{idx(o.mean)}</Cell>
               <Cell align="end">{idx(o.p10)}–{idx(o.p90)}</Cell>
-              <Cell align="end">{fmt.pct(o.validPixelPct)}</Cell>
               <Cell>{o.status === 'valid' ? <Badge tone="success">{t('monitoring.observations.valid')}</Badge> : <Badge>{t('monitoring.observations.unavailable')}</Badge>}</Cell>
             </Row>
           )}

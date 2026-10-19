@@ -16,6 +16,7 @@ import { Route as OOrgIdRouteImport } from './routes/o.$orgId'
 import { Route as OOrgIdIndexRouteImport } from './routes/o.$orgId.index'
 import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
+import { Route as OOrgIdImportRouteImport } from './routes/o.$orgId.import'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
@@ -69,6 +70,11 @@ const OOrgIdCalendarRoute = OOrgIdCalendarRouteImport.update({
 const OOrgIdEconomicsRoute = OOrgIdEconomicsRouteImport.update({
   id: '/economics',
   path: '/economics',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdImportRoute = OOrgIdImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -262,6 +271,7 @@ export interface FileRouteTypes {
     | '/o/$orgId'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/settings'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/settings'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/o/$orgId'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/settings'
@@ -395,6 +407,13 @@ declare module '@tanstack/react-router' {
       path: '/economics'
       fullPath: '/o/$orgId/economics'
       preLoaderRoute: typeof OOrgIdEconomicsRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/import': {
+      id: '/o/$orgId/import'
+      path: '/import'
+      fullPath: '/o/$orgId/import'
+      preLoaderRoute: typeof OOrgIdImportRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/inventory': {
@@ -536,6 +555,7 @@ declare module '@tanstack/react-router' {
 interface OOrgIdRouteChildren {
   OOrgIdCalendarRoute: typeof OOrgIdCalendarRoute
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
+  OOrgIdImportRoute: typeof OOrgIdImportRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
@@ -561,6 +581,7 @@ interface OOrgIdRouteChildren {
 const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdCalendarRoute: OOrgIdCalendarRoute,
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
+  OOrgIdImportRoute: OOrgIdImportRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,

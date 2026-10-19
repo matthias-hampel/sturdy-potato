@@ -40,11 +40,6 @@ export class FieldsController {
     return this.fields.list(ctx, { farmId, seasonId, includeArchived: includeArchived === 'true' });
   }
 
-  @Get('export.geojson')
-  export(@OrgCtx() ctx: Ctx, @Query('farmId') farmId?: string) {
-    return this.fields.export(ctx, farmId);
-  }
-
   @Post('validate-geometry')
   validate(@OrgCtx() ctx: Ctx, @ZBody(ValidateGeometryInput) input: Out<typeof ValidateGeometryInput>) {
     return this.fields.validate(ctx, input.geometry, input.excludeFieldId);
