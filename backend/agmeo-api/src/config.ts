@@ -76,4 +76,40 @@ export const config = {
     /** Send our stored daily weather so the service fetches only the gaps. */
     supplyWeather: env('DMC_SUPPLY_CACHED_WEATHER', 'on') !== 'off',
   },
+  /**
+   * AGVOLUTION's model services. Each is off while its URL (and, where needed, its credentials)
+   * is empty: reads answer `configured: false`, requests that would call it answer 503
+   * `service_not_configured`, and its jobs skip themselves.
+   */
+  models: {
+    esm: {
+      /** Ecosystem model server (lvl0-models esm/endpoints), e.g. https://esm.agvolution.com. */
+      url: env('ESM_SERVER_URL', '').replace(/\/+$/, ''),
+      /** Bearer token the ESM accepts (it verifies tokens with the reference app's Clerk instance). */
+      token: env('ESM_API_TOKEN', ''),
+      /** Host the ESM worker posts its writeback to; "localhost" makes the ESM host skip it (results come in the sync response). */
+      writebackDomain: env('ESM_WRITEBACK_DOMAIN', 'localhost'),
+      /** A model run in sync mode; the ESM itself gives up after 300 s. */
+      runTimeoutMs: Number(env('ESM_RUN_TIMEOUT_MS', '330000')),
+      /** Result downloads (timeseries.json). */
+      timeoutMs: Number(env('ESM_TIMEOUT_MS', '30000')),
+    },
+    grassland: {
+      /** grassland-api, e.g. https://grassland.agmeo.com. */
+      url: env('GRASSLAND_API_URL', '').replace(/\/+$/, ''),
+      /** Optional; without it no Authorization header is sent. */
+      token: env('GRASSLAND_API_TOKEN', ''),
+      timeoutMs: Number(env('GRASSLAND_API_TIMEOUT_MS', '120000')),
+    },
+    isip: {
+      /** ISIP chart API and its Keycloak token endpoint (password grant), as agmeo-crawlers uses them. */
+      apiUrl: env('ISIP_API_URL', 'https://www.isip.de/charts/api').replace(/\/+$/, ''),
+      tokenUrl: env('ISIP_TOKEN_URL', 'https://login.isip.de/auth/realms/ams/protocol/openid-connect/token'),
+      username: env('ISIP_USERNAME', ''),
+      password: env('ISIP_PASSWORD', ''),
+      clientId: env('ISIP_CLIENT_ID', 'sso-api-client-extern'),
+      clientSecret: env('ISIP_CLIENT_SECRET', ''),
+      timeoutMs: Number(env('ISIP_TIMEOUT_MS', '60000')),
+    },
+  },
 };

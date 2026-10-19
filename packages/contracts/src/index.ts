@@ -24,3 +24,4 @@ export * from './yield.js';
 export * from './annotations.js';
 export * from './soil.js';
 export * from './maizeDmc.js';
+export * from './modelServices.js';

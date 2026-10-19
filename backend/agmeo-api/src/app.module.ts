@@ -74,6 +74,8 @@ import { MaizeDmcClient } from './modules/maize-dmc/client.js';
 import { MaizeDmcController } from './modules/maize-dmc/maize-dmc.controller.js';
 import { MaizeDmcService } from './modules/maize-dmc/maize-dmc.service.js';
 import { NewsController } from './modules/news/news.controller.js';
+import { ModelServicesController } from './modules/model-services/model-services.controller.js';
+import { ModelServicesService } from './modules/model-services/model-services.service.js';
 import { NewsService } from './modules/news/news.service.js';
 import { FieldDocumentsController } from './modules/documents/field-documents.controller.js';
 import { FieldDocumentsService } from './modules/documents/field-documents.service.js';
@@ -124,6 +126,7 @@ export const DOMAIN_SERVICES = [
   AnnotationsService,
   FieldDocumentsService,
   MaizeDmcService,
+  ModelServicesService,
 ];
 
 /**
@@ -169,6 +172,7 @@ export const DOMAIN_SERVICES = [
     AnnotationsController,
     FieldDocumentsController,
     MaizeDmcController,
+    ModelServicesController,
   ],
   providers: [
     TokenService,

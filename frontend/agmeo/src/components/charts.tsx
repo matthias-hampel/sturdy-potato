@@ -320,6 +320,107 @@ export function LineChart({
 }
 
 // ---------------------------------------------------------------------------
+// XY line chart: several series over a numeric x axis (e.g. N over BBCH).
+// ---------------------------------------------------------------------------
+
+export interface XYSeries extends Series {
+  points: { x: number; y: number }[]
+  dashed?: boolean
+}
+
+export function XYChart({
+  series,
+  formatX,
+  formatY,
+  xLabel,
+  height = 240,
+  ariaLabel,
+}: {
+  series: XYSeries[]
+  formatX: (v: number) => string
+  formatY: (v: number) => string
+  xLabel?: string
+  height?: number
+  ariaLabel: string
+}) {
+  const [ref, width] = useWidth<HTMLDivElement>()
+  const [hoverX, setHoverX] = useState<number | null>(null)
+  const pad = { top: 12, right: 12, bottom: xLabel ? 40 : 28, left: 52 }
+  const xs = series.flatMap((s) => s.points.map((p) => p.x))
+  const ys = series.flatMap((s) => s.points.map((p) => p.y))
+  const xTicks = niceTicks(Math.min(...xs), Math.max(...xs), 5)
+  const yTicks = niceTicks(Math.min(0, ...ys), Math.max(...ys))
+  const [x0, x1] = [xTicks[0], xTicks[xTicks.length - 1]]
+  const [y0, y1] = [yTicks[0], yTicks[yTicks.length - 1]]
+  const innerW = Math.max(0, width - pad.left - pad.right)
+  const innerH = height - pad.top - pad.bottom
+  const x = (v: number) => pad.left + ((v - x0) / (x1 - x0 || 1)) * innerW
+  const y = (v: number) => pad.top + innerH - ((v - y0) / (y1 - y0 || 1)) * innerH
+  const nearest = (s: XYSeries, v: number) => s.points.reduce<{ x: number; y: number } | null>((b, p) => (b == null || Math.abs(p.x - v) < Math.abs(b.x - v) ? p : b), null)
+
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const mx = e.clientX - e.currentTarget.getBoundingClientRect().left
+    setHoverX(x0 + ((mx - pad.left) / (innerW || 1)) * (x1 - x0))
+  }
+  const hovered = hoverX == null ? [] : series.map((s) => ({ s, p: nearest(s, hoverX) })).filter((h) => h.p)
+  return (
+    <div className="space-y-2">
+      <Legend series={series} />
+      <div ref={ref} className="relative" style={{ height }}>
+        {width > 0 && xs.length > 0 && (
+          <svg width={width} height={height} role="img" aria-label={ariaLabel} onMouseMove={onMove} onMouseLeave={() => setHoverX(null)}>
+            {yTicks.map((t) => (
+              <g key={t}>
+                <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke="var(--color-grid)" />
+                <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted text-[11px] tabular">
+                  {formatY(t)}
+                </text>
+              </g>
+            ))}
+            {xTicks.map((t) => (
+              <text key={t} x={x(t)} y={pad.top + innerH + 16} textAnchor="middle" className="fill-muted text-[11px] tabular">
+                {formatX(t)}
+              </text>
+            ))}
+            {xLabel && (
+              <text x={pad.left + innerW / 2} y={height - 4} textAnchor="middle" className="fill-muted text-[11px]">
+                {xLabel}
+              </text>
+            )}
+            {hovered[0] && <line x1={x(hovered[0].p!.x)} x2={x(hovered[0].p!.x)} y1={pad.top} y2={pad.top + innerH} stroke="var(--color-muted)" />}
+            {series.map((s) => (
+              <path
+                key={s.name}
+                d={s.points.map((p, i) => `${i ? 'L' : 'M'}${x(p.x)},${y(p.y)}`).join(' ')}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={2}
+                strokeDasharray={s.dashed ? '5 4' : undefined}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ))}
+            {hovered.map(({ s, p }) => (
+              <circle key={s.name} cx={x(p!.x)} cy={y(p!.y)} r={4} fill={s.color} stroke="var(--color-surface)" strokeWidth={2} />
+            ))}
+          </svg>
+        )}
+        {hovered[0] && (
+          <Tooltip x={x(hovered[0].p!.x)} y={y(Math.max(...hovered.map((h) => h.p!.y)))} width={width}>
+            <div className="text-muted">{formatX(hovered[0].p!.x)}</div>
+            {hovered.map(({ s, p }) => (
+              <div key={s.name} className="tabular">
+                <span style={{ color: s.color }}>●</span> {s.name}: <span className="font-medium text-fg">{formatY(p!.y)}</span>
+              </div>
+            ))}
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Horizontal bar list: label, bar, value. Identity is carried by the label.
 // ---------------------------------------------------------------------------
 

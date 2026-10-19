@@ -215,6 +215,54 @@ export interface CultivationTemplates {
   updated_at: Generated<Timestamp>;
 }
 
+export interface DiseaseRiskDays {
+  crop_cycle_id: string;
+  date: string;
+  disease: string;
+  level: number;
+  organization_id: string;
+}
+
+export interface DiseaseRiskState {
+  crop_cycle_id: string;
+  last_error: string | null;
+  last_error_at: Timestamp | null;
+  organization_id: string;
+  refreshed_at: Timestamp | null;
+  simulation_date: string | null;
+}
+
+export interface EsmRunZones {
+  area_fraction: Numeric;
+  area_ha: Numeric;
+  geometry: string;
+  n_crop_kg_ha: number | null;
+  n_loss_kg_ha: number;
+  n_min_kg_ha: number;
+  n_min_spring_kg_ha: number;
+  organization_id: string;
+  run_id: string;
+  soil_organic_carbon_pct: number | null;
+  soil_type_lufa: string | null;
+  yield_t_ha: number;
+  zone_no: number;
+}
+
+export interface EsmRuns {
+  crop_cycle_id: string;
+  error: string | null;
+  execution_id: string | null;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  organization_id: string;
+  request: Json;
+  requested_at: Generated<Timestamp>;
+  requested_by: string | null;
+  started_at: Timestamp | null;
+  status: Generated<string>;
+  zone_count: number;
+}
+
 export interface EmissionEntries {
   completion_seq: number;
   created_at: Generated<Timestamp>;
@@ -1504,9 +1552,13 @@ export interface DB {
   crop_varieties: CropVarieties;
   crops: Crops;
   cultivation_templates: CultivationTemplates;
+  disease_risk_days: DiseaseRiskDays;
+  disease_risk_state: DiseaseRiskState;
   emission_entries: EmissionEntries;
   employees: Employees;
   equipment: Equipment;
+  esm_run_zones: EsmRunZones;
+  esm_runs: EsmRuns;
   farm_overheads: FarmOverheads;
   farms: Farms;
   fertilizer_catalogue: FertilizerCatalogue;

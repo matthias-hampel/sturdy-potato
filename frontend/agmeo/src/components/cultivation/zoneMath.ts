@@ -4,6 +4,7 @@ import {
   roundRate,
   zoneRates,
   type BaseUnit,
+  type NitrogenCurvePoint,
   type Operation,
   type OperationInputLine,
   type OperationType,
@@ -13,6 +14,7 @@ import {
   type VraInputType,
   type VraMapSummary,
   type VraRateUnit,
+  type ZoneNitrogenModel,
 } from '@agmeo/contracts'
 
 /** Sub-tabs of the zone-specific optimization, in the order of the original agmeo category bar. */
@@ -136,4 +138,29 @@ export function availableNPerUnit(line: OperationInputLine, product: Product | u
   const organic = isOrganicFertilizer(product?.fertilizerType)
   const n = availableN(product?.fertilizerType, line.nutrients.n, line.nutrients.nh4N, organic)
   return n == null ? null : n / line.ratePerHa
+}
+
+/**
+ * N uptake and N supply of a zone over BBCH, after the reference's optimisation chart: the ESM
+ * curves scaled to the zone's N model (uptake = share of the uptake × crop N + loss + residual;
+ * supply = Nmin + share of the mineralisation × mineralisable N + the N applied up to that BBCH,
+ * the 1st, 2nd and later applications counted from BBCH 25, 37 and 51).
+ */
+export function nitrogenChart(
+  curve: NitrogenCurvePoint[],
+  zone: ZoneNitrogenModel,
+  applications: number[],
+): { uptake: { x: number; y: number }[]; supply: { x: number; y: number }[] } | null {
+  if (!curve.length || zone.nDemandKgHa == null) return null
+  const norm = (v: number, lo: number, hi: number) => (hi - lo === 0 ? 0 : (v - lo) / (hi - lo))
+  const us = curve.map((p) => p.uptake)
+  const ss = curve.map((p) => p.supply)
+  const [uLo, uHi, sLo, sHi] = [Math.min(...us), Math.max(...us), Math.min(...ss), Math.max(...ss)]
+  const nCrop = zone.nDemandKgHa + zone.nMinKgHa + zone.nMinSpringKgHa - zone.nLossKgHa - zone.nResidualKgHa
+  const fert = applications.map((n, i) => ({ bbch: i === 0 ? 25 : i === 1 ? 37 : 51, n }))
+  const applied = (bbch: number) => fert.reduce((s, f) => s + (bbch >= f.bbch ? f.n : 0), 0)
+  return {
+    uptake: curve.map((p) => ({ x: p.bbch, y: norm(p.uptake, uLo, uHi) * nCrop + zone.nLossKgHa + zone.nResidualKgHa })),
+    supply: curve.map((p) => ({ x: p.bbch, y: zone.nMinKgHa + norm(p.supply, sLo, sHi) * zone.nMinSpringKgHa + applied(p.bbch) })),
+  }
 }
