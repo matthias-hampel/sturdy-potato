@@ -23,7 +23,6 @@ import { Badge, Card, EmptyState, ErrorNotice, Loading, Notice } from '#/ui/Layo
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { ImageryProgress } from './MapControls'
 import { relativeGradient } from './indices'
-import { VraMaps } from './VraMaps'
 
 type View = 'zones' | 'map'
 
@@ -225,8 +224,6 @@ export function ProductivityZones({ field }: { field: Field }) {
           </div>
         </div>
       )}
-
-      {analysis?.status === 'finished' && <VraMaps field={field} zonings={analysis.zonings} zoneCount={count} />}
 
       {analysis && analysis.scenes.length > 0 && (
         <Card

@@ -97,6 +97,14 @@ export const api = {
     const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? filename
     saveBlob(await res.blob(), name)
   },
+  /** POSTs a JSON body and saves the file response (e.g. a batch export); returns the file name. */
+  async downloadPost(path: string, body: unknown, filename = 'export') {
+    const res = await authedFetch(url(path), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    if (!res.ok) throw new ApiRequestError(res.status, 'download_failed', t('apiError.download_failed'))
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? filename
+    saveBlob(await res.blob(), name)
+    return name
+  },
 }
 
 export function saveBlob(blob: Blob, filename: string) {

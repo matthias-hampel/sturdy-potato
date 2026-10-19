@@ -21,6 +21,7 @@ import { ObservationsChart } from '#/components/monitoring/ObservationsChart'
 import { SceneStats } from '#/components/monitoring/SceneStats'
 import { useSceneAnnotations } from '#/components/monitoring/SceneAnnotations'
 import { ProductivityZones } from '#/components/monitoring/ProductivityZones'
+import { ApplicationMaps } from '#/components/vra/ApplicationMaps'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
 import { OperationsTable } from '#/components/operations/OperationsTable'
 import { api } from '#/lib/api'
@@ -36,13 +37,15 @@ import { Badge, Card, DescriptionList, ErrorNotice, Loading, Notice, PageHeader,
 import { ConfirmButton, Menu, MenuItem, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
-const TABS = ['overview', 'conditions', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'yield', 'boundary', 'costs', 'carbon', 'activity'] as const
+const TABS = ['overview', 'conditions', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'maps', 'yield', 'boundary', 'costs', 'carbon', 'activity'] as const
 
 export const Route = createFileRoute('/o/$orgId/fields/$fieldId')({
   validateSearch: z.object({
     tab: z.enum(TABS).optional(),
     index: z.enum(IMAGERY_LAYERS).optional(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    /** Application map opened in the editor on the maps tab. */
+    map: z.uuid().optional(),
   }),
   component: FieldPage,
 })
@@ -126,6 +129,7 @@ function FieldPage() {
           <Tab id="operations">{t('fieldPage.tabs.operations')}</Tab>
           <Tab id="satellite">{t('fieldPage.tabs.satellite')}</Tab>
           <Tab id="zones">{t('fieldPage.tabs.zones')}</Tab>
+          <Tab id="maps">{t('fieldPage.tabs.maps')}</Tab>
           <Tab id="yield">{t('fieldPage.tabs.yield')}</Tab>
           <Tab id="boundary">{t('fieldPage.tabs.boundary')}</Tab>
           {can('finance.read') && <Tab id="costs">{t('fieldPage.tabs.costs')}</Tab>}
@@ -216,6 +220,9 @@ function FieldPage() {
         </TabPanel>
         <TabPanel id="zones">
           <ProductivityZones field={f} />
+        </TabPanel>
+        <TabPanel id="maps">
+          <ApplicationMaps field={f} openMapId={search.map} onOpened={() => navigateTab({ search: (prev) => ({ ...prev, map: undefined }), replace: true })} />
         </TabPanel>
         <TabPanel id="yield">
           <FieldYieldHistory field={f} />
