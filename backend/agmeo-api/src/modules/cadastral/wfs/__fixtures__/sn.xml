@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wfs:FeatureCollection timeStamp="2026-10-19T10:35:31.963+02:00" numberReturned="3" numberMatched="unknown" xmlns="http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0 https://geodienste.sachsen.de/aaa-suite_schema/guest/AAA-vereinfacht/2.0/schema/ALKIS-vereinfacht.xsd http://www.opengis.net/wfs/2.0 https://geodienste.sachsen.de/aaa-suite_schema/guest/ogc/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 https://geodienste.sachsen.de/aaa-suite_schema/guest/NAS/6.0.1/schema/gml/3.2.1/gml.xsd http://www.isotc211.org/2005/gco https://geodienste.sachsen.de/aaa-suite_schema/guest/NAS/6.0.1/schema/iso/19139/20070417/gco/gco.xsd http://www.isotc211.org/2005/gmd https://geodienste.sachsen.de/aaa-suite_schema/guest/NAS/6.0.1/schema/iso/19139/20070417/gmd/gmd.xsd">
+<wfs:boundedBy>
+<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25833" srsDimension="2">
+<gml:lowerCorner>307719.689 5680961.314</gml:lowerCorner>
+<gml:upperCorner>308586.458 5681787.908</gml:upperCorner>
+</gml:Envelope>
+</wfs:boundedBy>
+<wfs:member>
+<Flurstueck gml:id="DESNALK0BK0002nHFL">
+<gml:identifier codeSpace="urn:adv:oid:">urn:adv:oid:DESNALK0BK0002nHFL</gml:identifier>
+<idflurst>DESNALK0BK0002nH</idflurst>
+<flstkennz>145648___00037____00</flstkennz>
+<land>Freistaat Sachsen</land>
+<landschl>14</landschl>
+<gemarkung>Schkorlopp Flur 5</gemarkung>
+<gemaschl>145648</gemaschl>
+<flstnrzae>37</flstnrzae>
+<regbezirk>NUTS 2-Region Leipzig</regbezirk>
+<regbezschl>147</regbezschl>
+<kreis>Landkreis Leipzig</kreis>
+<kreisschl>14729</kreisschl>
+<gemeinde>Stadt Pegau</gemeinde>
+<gmdschl>14729350</gmdschl>
+<oid>DESNALK0BK0002nHFL</oid>
+<aktualit>2014-06-27Z</aktualit>
+<geometrie>
+<gml:MultiSurface gml:id="flurstueck.id.110281090.geometrie.Geom_0" srsName="urn:ogc:def:crs:EPSG::25833" srsDimension="2">
+<gml:surfaceMember>
+<gml:Polygon gml:id="flurstueck.id.110281090.geometrie.Geom_1">
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>308179.286 5681410.618 308289.799 5681069.455 308291.405 5681064.762 308337.863 5681084.226 308225.823 5681428.434 308179.286 5681410.618</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+</gml:MultiSurface>
+</geometrie>
+<flaeche>17720</flaeche>
+<abwrecht>Kein abweichender Rechtszustand</abwrecht>
+<lagebeztxt>ohne Lage</lagebeztxt>
+<tntxt>Landwirtschaft;17720</tntxt>
+</Flurstueck>
+</wfs:member>
+<wfs:member>
+<Flurstueck gml:id="DESNALK0BK0004ULFL">
+<gml:identifier codeSpace="urn:adv:oid:">urn:adv:oid:DESNALK0BK0004ULFL</gml:identifier>
+<idflurst>DESNALK0BK0004UL</idflurst>
+<flstkennz>145648___00032____00</flstkennz>
+<land>Freistaat Sachsen</land>
+<landschl>14</landschl>
+<gemarkung>Schkorlopp Flur 5</gemarkung>
+<gemaschl>145648</gemaschl>
+<flstnrzae>32</flstnrzae>
+<regbezirk>NUTS 2-Region Leipzig</regbezirk>
+<regbezschl>147</regbezschl>
+<kreis>Landkreis Leipzig</kreis>
+<kreisschl>14729</kreisschl>
+<gemeinde>Stadt Pegau</gemeinde>
+<gmdschl>14729350</gmdschl>
+<oid>DESNALK0BK0004ULFL</oid>
+<aktualit>2014-06-27Z</aktualit>
+<geometrie>
+<gml:MultiSurface gml:id="flurstueck.id.110284721.geometrie.Geom_0" srsName="urn:ogc:def:crs:EPSG::25833" srsDimension="2">
+<gml:surfaceMember>
+<gml:Polygon gml:id="flurstueck.id.110284721.geometrie.Geom_1">
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>307719.689 5681241.956 307724.419 5681235.617 307837.952 5681279.348 307890.725 5681299.675 307988.493 5681337.335 308024.359 5681351.145 308028.345 5681352.835 308117.182 5681386.843 308179.286 5681410.618 308225.823 5681428.434 308352.504 5681476.929 308419.103 5681503.338 308430.969 5681508.042 308454.02 5681517.202 308586.458 5681569.847 308551.503 5681634.363 308523.994 5681688.824 308504.259 5681732.449 308481.245 5681787.908 308474.773 5681787.819 308498.699 5681729.552 308519.178 5681687.053 308545.727 5681631.952 308566.374 5681595.249 308573.87 5681581.772 308571.634 5681572.356 308416.016 5681511.356 308339.105 5681481.251 308308.15 5681469.153 308186.658 5681421.739 308029.969 5681360.638 308025.975 5681359.872 308017.396 5681356.232 307888.89 5681306.877 307854.582 5681294.195 307835.342 5681286.544 307719.689 5681241.956</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+</gml:MultiSurface>
+</geometrie>
+<flaeche>8300</flaeche>
+<abwrecht>Kein abweichender Rechtszustand</abwrecht>
+<lagebeztxt>ohne Lage</lagebeztxt>
+<tntxt>Weg;8300</tntxt>
+</Flurstueck>
+</wfs:member>
+<wfs:member>
+<Flurstueck gml:id="DESNALK0BK00069UFL">
+<gml:identifier codeSpace="urn:adv:oid:">urn:adv:oid:DESNALK0BK00069UFL</gml:identifier>
+<idflurst>DESNALK0BK00069U</idflurst>
+<flstkennz>145648___00031000100</flstkennz>
+<land>Freistaat Sachsen</land>
+<landschl>14</landschl>
+<gemarkung>Schkorlopp Flur 5</gemarkung>
+<gemaschl>145648</gemaschl>
+<flstnrzae>31</flstnrzae>
+<flstnrnen>1</flstnrnen>
+<regbezirk>NUTS 2-Region Leipzig</regbezirk>
+<regbezschl>147</regbezschl>
+<kreis>Landkreis Leipzig</kreis>
+<kreisschl>14729</kreisschl>
+<gemeinde>Stadt Pegau</gemeinde>
+<gmdschl>14729350</gmdschl>
+<oid>DESNALK0BK00069UFL</oid>
+<aktualit>2014-06-27Z</aktualit>
+<geometrie>
+<gml:MultiSurface gml:id="flurstueck.id.110286620.geometrie.Geom_0" srsName="urn:ogc:def:crs:EPSG::25833" srsDimension="2">
+<gml:surfaceMember>
+<gml:Polygon gml:id="flurstueck.id.110286620.geometrie.Geom_1">
+<gml:exterior>
+<gml:LinearRing>
+<gml:posList>308028.345 5681352.835 308138.468 5681011.328 308227.556 5681045.546 308289.799 5681069.455 308179.286 5681410.618 308117.182 5681386.843 308028.345 5681352.835</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+</gml:MultiSurface>
+</geometrie>
+<flaeche>57486</flaeche>
+<abwrecht>Kein abweichender Rechtszustand</abwrecht>
+<lagebeztxt>ohne Lage</lagebeztxt>
+<tntxt>Landwirtschaft;57486</tntxt>
+</Flurstueck>
+</wfs:member>
+</wfs:FeatureCollection>

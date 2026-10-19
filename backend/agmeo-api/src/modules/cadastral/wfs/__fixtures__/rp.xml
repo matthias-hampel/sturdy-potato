@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding="UTF-8" ?>
+<wfs:FeatureCollection
+   xmlns:ave="http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0"
+   xmlns:gml="http://www.opengis.net/gml/3.2"
+   xmlns:wfs="http://www.opengis.net/wfs/2.0"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0 https://geo5.service24.rlp.de/wfs/alkis_rp.fcgi?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=DescribeFeatureType&amp;TYPENAME=ave:Flurstueck&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B%20version%3D3.2 http://www.opengis.net/wfs/2.0 http://repository.gdi-de.org/schemas/adv/wfs/1.0/WFS-basic.xsd http://schemas.opengis.net/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://repository.gdi-de.org/schemas/adv/wfs/1.0/WFS-basic.xsd http://schemas.opengis.net/gml/3.2.1/gml.xsd"
+   timeStamp="2026-10-19T10:35:34" numberMatched="1" numberReturned="1">
+      <wfs:boundedBy>
+      	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+      		<gml:lowerCorner>398978.804000 5527384.918000</gml:lowerCorner>
+      		<gml:upperCorner>400713.965000 5529078.775000</gml:upperCorner>
+      	</gml:Envelope>
+      </wfs:boundedBy>
+    <wfs:member>
+      <ave:Flurstueck gml:id="Flurstueck.4865087">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>398978.804000 5527384.918000</gml:lowerCorner>
+        		<gml:upperCorner>400713.965000 5529078.775000</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ave:geometrie>
+          <gml:Polygon gml:id="Flurstueck.4865087.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:exterior>
+              <gml:LinearRing>
+                <gml:posList srsDimension="2">399813.987000 5528798.529000 399667.637000 5528909.983000 399531.067000 5529046.517000 399499.358000 5529078.775000 399393.592000 5529017.313000 399317.645000 5528944.375000 399218.221000 5528830.914000 399208.491000 5528817.226000 399124.018000 5528694.977000 398981.555000 5528599.740000 398978.804000 5528592.145000 399119.041000 5528431.683000 399411.464000 5528098.426000 399498.905000 5527998.114000 399504.037000 5527836.699000 399644.949000 5527742.271000 399771.564000 5527398.243000 399776.278000 5527384.918000 400106.701000 5527614.962000 400340.598000 5527737.265000 400713.965000 5527932.892000 400713.674000 5527934.853000 400611.041000 5528133.535000 400515.950000 5528215.367000 400448.782000 5528257.848000 400315.779000 5528373.730000 400278.595000 5528395.038000 400203.203000 5528383.607000 400188.209000 5528389.986000 400152.833000 5528383.309000 400082.327000 5528381.610000 400064.535000 5528384.299000 400040.925000 5528393.404000 400024.440000 5528406.219000 400016.162000 5528429.478000 400023.230000 5528457.486000 400043.531000 5528515.671000 400052.983000 5528538.099000 400005.668000 5528596.593000 399854.052000 5528602.648000 399831.599000 5528609.575000 399817.643000 5528627.616000 399815.061000 5528662.549000 399821.792000 5528714.945000 399830.501000 5528794.331000 399813.987000 5528798.529000 </gml:posList>
+              </gml:LinearRing>
+            </gml:exterior>
+          </gml:Polygon>
+        </ave:geometrie>
+        <ave:oid>DERPLP020000h4u5FL</ave:oid>
+        <ave:aktualit gml:id="Flurstueck.4865087.aktualit"><gml:timePosition>2025-05-28</gml:timePosition></ave:aktualit>
+        <ave:idflurst>DERPLP020000h4u5</ave:idflurst>
+        <ave:flaeche>1282537</ave:flaeche>
+        <ave:flstkennz>072022013001420010__</ave:flstkennz>
+        <ave:land>Rheinland-Pfalz</ave:land>
+        <ave:landschl>07</ave:landschl>
+        <ave:gemarkung>Winterbach</ave:gemarkung>
+        <ave:gemaschl>072022</ave:gemaschl>
+        <ave:flur>Flur 13</ave:flur>
+        <ave:flurschl>072022013</ave:flurschl>
+        <ave:flstnrzae>142</ave:flstnrzae>
+        <ave:flstnrnen>10</ave:flstnrnen>
+        <ave:regbezirk></ave:regbezirk>
+        <ave:regbezschl></ave:regbezschl>
+        <ave:kreis>Bad Kreuznach</ave:kreis>
+        <ave:kreisschl>07133</ave:kreisschl>
+        <ave:gemeinde>Winterbach</ave:gemeinde>
+        <ave:gmdschl>07133115</ave:gmdschl>
+        <ave:abwrecht>Kein abweichender Rechtszustand</ave:abwrecht>
+        <ave:lagebeztxt>Flotzschlag; Grabenborn; Grabenborner Alter Schlag; Grabenborner Stangen; Im Grabenborn; Moosbruch</ave:lagebeztxt>
+        <ave:tntxt>Laub- und Nadelholz;769709|Laub- und Nadelholz;179499|Laub- und Nadelholz;137607|Laub- und Nadelholz;86794|Laub- und Nadelholz;50561|Grünland;18111|Fahrweg;12810|Grünland;12584|Grünland;7518|Laub- und Nadelholz;2872|Grünland;2036|Fahrweg;1663|Teich;772</ave:tntxt>
+        <ave:gid>4865087</ave:gid>
+      </ave:Flurstueck>
+    </wfs:member>
+</wfs:FeatureCollection>
+

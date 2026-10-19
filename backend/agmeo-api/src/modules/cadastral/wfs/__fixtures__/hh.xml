@@ -1,0 +1,269 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wfs:FeatureCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://schemas.opengis.net/gml/3.2.1/gml.xsd http://inspire.ec.europa.eu/schemas/cp/4.0 https://geodienste.hamburg.de/HH_WFS_INSPIRE_Flurstuecke?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=DescribeFeatureType&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;TYPENAME=cp:CadastralParcel&amp;NAMESPACES=xmlns(cp,http%3A%2F%2Finspire.ec.europa.eu%2Fschemas%2Fcp%2F4.0)" xmlns:wfs="http://www.opengis.net/wfs/2.0" timeStamp="2026-10-19T08:35:33Z" xmlns:gml="http://www.opengis.net/gml/3.2" numberMatched="unknown" numberReturned="2">
+  <!--NOTE: numberReturned attribute should be 'unknown' as well, but this would not validate against the current version of the WFS 2.0 schema (change upcoming). See change request (CR 144): https://portal.opengeospatial.org/files?artifact_id=43925.-->
+  <wfs:member>
+    <cp:CadastralParcel xmlns:cp="http://inspire.ec.europa.eu/schemas/cp/4.0" gml:id="CadastralParcel_020607___00200______">
+      <gml:identifier codeSpace="http://inspire.ec.europa.eu/ids">https://registry.gdi-de.org/id/de.hh/b7b0c1f4-6ce4-4179-95bb-8815f29355f4/CadastralParcel_020607___00200______</gml:identifier>
+      <cp:areaValue uom="m2">11206.0</cp:areaValue>
+      <cp:beginLifespanVersion>2018-11-09T10:33:31Z</cp:beginLifespanVersion>
+      <cp:endLifespanVersion nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:geometry>
+        <!--Inlined geometry 'DEHHALKAn0000Axt_G0'-->
+        <gml:Surface gml:id="DEHHALKAn0000Axt_G0" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:patches>
+            <gml:PolygonPatch>
+              <gml:exterior>
+                <gml:Ring>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G1" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576133.814 5922694.138 576147.700 5922684.905</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G2" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576147.700 5922684.905 576162.812 5922669.281</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G3" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576162.812 5922669.281 576196.164 5922710.528</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G4" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576196.164 5922710.528 576234.899 5922756.331</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G5" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576234.899 5922756.331 576273.094 5922802.581</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G6" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576273.094 5922802.581 576348.076 5922892.384</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G7" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576348.076 5922892.384 576317.912 5922917.370</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G8" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576317.912 5922917.370 576192.864 5922766.840</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G9" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576192.864 5922766.840 576154.942 5922720.366</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn0000Axt_G10" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576154.942 5922720.366 576133.814 5922694.138</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                </gml:Ring>
+              </gml:exterior>
+            </gml:PolygonPatch>
+          </gml:patches>
+        </gml:Surface>
+      </cp:geometry>
+      <cp:inspireId>
+        <base:Identifier xmlns:base="http://inspire.ec.europa.eu/schemas/base/3.3">
+          <base:localId>CadastralParcel_020607___00200______</base:localId>
+          <base:namespace>https://registry.gdi-de.org/id/de.hh/b7b0c1f4-6ce4-4179-95bb-8815f29355f4</base:namespace>
+        </base:Identifier>
+      </cp:inspireId>
+      <cp:label>200</cp:label>
+      <cp:nationalCadastralReference>020607___00200______</cp:nationalCadastralReference>
+      <cp:referencePoint>
+        <!--Inlined geometry 'GEOMETRY_64af8dc5-c310-411a-982f-46c471d3eb92'-->
+        <gml:Point gml:id="GEOMETRY_64af8dc5-c310-411a-982f-46c471d3eb92" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:pos>576233.023 5922784.711</gml:pos>
+        </gml:Point>
+      </cp:referencePoint>
+      <cp:validFrom>1599-12-31T23:00:00Z</cp:validFrom>
+      <cp:validTo nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:zoning xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://geodienste.hamburg.de/HH_WFS_INSPIRE_Flurstuecke?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=GetFeature&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;STOREDQUERY_ID=urn:ogc:def:query:OGC-WFS::GetFeatureById&amp;ID=CadastralZoning_020607#CadastralZoning_020607"/>
+    </cp:CadastralParcel>
+  </wfs:member>
+<wfs:member>
+    <cp:CadastralParcel xmlns:cp="http://inspire.ec.europa.eu/schemas/cp/4.0" gml:id="CadastralParcel_020607___00198______">
+      <gml:identifier codeSpace="http://inspire.ec.europa.eu/ids">https://registry.gdi-de.org/id/de.hh/b7b0c1f4-6ce4-4179-95bb-8815f29355f4/CadastralParcel_020607___00198______</gml:identifier>
+      <cp:areaValue uom="m2">11245.0</cp:areaValue>
+      <cp:beginLifespanVersion>2018-01-06T01:59:38Z</cp:beginLifespanVersion>
+      <cp:endLifespanVersion nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:geometry>
+        <!--Inlined geometry 'DEHHALKAn00009oh_G0'-->
+        <gml:Surface gml:id="DEHHALKAn00009oh_G0" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:patches>
+            <gml:PolygonPatch>
+              <gml:exterior>
+                <gml:Ring>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G1" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576142.610 5922823.019 576116.652 5922792.600</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G2" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576116.652 5922792.600 576072.076 5922736.835</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G3" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576072.076 5922736.835 576085.158 5922723.637</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G4" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576085.158 5922723.637 576100.652 5922713.112</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G5" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576100.652 5922713.112 576185.850 5922816.973</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G6" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576185.850 5922816.973 576236.725 5922878.679</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G7" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576236.725 5922878.679 576290.332 5922942.877</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G8" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576290.332 5922942.877 576289.569 5922943.556</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G9" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576289.569 5922943.556 576260.600 5922967.323</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G10" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576260.600 5922967.323 576180.752 5922869.332</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                  <gml:curveMember>
+                    <gml:Curve gml:id="DEHHALKAn00009oh_G11" srsName="urn:ogc:def:crs:EPSG::25832">
+                      <gml:segments>
+                        <gml:LineStringSegment interpolation="linear">
+                          <gml:posList>576180.752 5922869.332 576142.610 5922823.019</gml:posList>
+                        </gml:LineStringSegment>
+                      </gml:segments>
+                    </gml:Curve>
+                  </gml:curveMember>
+                </gml:Ring>
+              </gml:exterior>
+            </gml:PolygonPatch>
+          </gml:patches>
+        </gml:Surface>
+      </cp:geometry>
+      <cp:inspireId>
+        <base:Identifier xmlns:base="http://inspire.ec.europa.eu/schemas/base/3.3">
+          <base:localId>CadastralParcel_020607___00198______</base:localId>
+          <base:namespace>https://registry.gdi-de.org/id/de.hh/b7b0c1f4-6ce4-4179-95bb-8815f29355f4</base:namespace>
+        </base:Identifier>
+      </cp:inspireId>
+      <cp:label>198</cp:label>
+      <cp:nationalCadastralReference>020607___00198______</cp:nationalCadastralReference>
+      <cp:referencePoint>
+        <!--Inlined geometry 'GEOMETRY_814863a0-1f93-4b34-9d44-cb207d252a3d'-->
+        <gml:Point gml:id="GEOMETRY_814863a0-1f93-4b34-9d44-cb207d252a3d" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:pos>576185.804 5922846.175</gml:pos>
+        </gml:Point>
+      </cp:referencePoint>
+      <cp:validFrom>1599-12-31T23:00:00Z</cp:validFrom>
+      <cp:validTo nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:zoning xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://geodienste.hamburg.de/HH_WFS_INSPIRE_Flurstuecke?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=GetFeature&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;STOREDQUERY_ID=urn:ogc:def:query:OGC-WFS::GetFeatureById&amp;ID=CadastralZoning_020607#CadastralZoning_020607"/>
+    </cp:CadastralParcel>
+  </wfs:member>
+</wfs:FeatureCollection>

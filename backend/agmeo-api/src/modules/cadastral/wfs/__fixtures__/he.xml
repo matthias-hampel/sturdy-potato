@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wfs:FeatureCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://schemas.opengis.net/gml/3.2.1/gml.xsd http://inspire.ec.europa.eu/schemas/cp/4.0 https://inspire-hessen.de/ows/services/org.2.d66ec21e-39e7-45c4-bf68-438e8baea882_wfs?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=DescribeFeatureType&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;TYPENAME=cp:CadastralParcel&amp;NAMESPACES=xmlns(cp,http%3A%2F%2Finspire.ec.europa.eu%2Fschemas%2Fcp%2F4.0)" xmlns:wfs="http://www.opengis.net/wfs/2.0" timeStamp="2026-10-19T08:35:35Z" xmlns:gss="http://www.isotc211.org/2005/gss" xmlns:gn="http://inspire.ec.europa.eu/schemas/gn/4.0" xmlns:gsr="http://www.isotc211.org/2005/gsr" xmlns:gts="http://www.isotc211.org/2005/gts" xmlns:ogc="http://www.opengis.net/ogc" xmlns:cp="http://inspire.ec.europa.eu/schemas/cp/4.0" xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:au="http://inspire.ec.europa.eu/schemas/au/4.0" xmlns:base="http://inspire.ec.europa.eu/schemas/base/3.3" xmlns:gmd="http://www.isotc211.org/2005/gmd" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" numberMatched="unknown" numberReturned="2">
+  <!--NOTE: numberReturned attribute should be 'unknown' as well, but this would not validate against the current version of the WFS 2.0 schema (change upcoming). See change request (CR 144): https://portal.opengeospatial.org/files?artifact_id=43925.-->
+  <wfs:member>
+    <cp:CadastralParcel gml:id="CadastralParcel_06138901000419______">
+      <gml:identifier codeSpace="http://inspire.ec.europa.eu/ids">https://registry.gdi-de.org/id/de.he.0462.de7.cp.alkis/CadastralParcel_06138901000419______</gml:identifier>
+      <cp:areaValue uom="m2">7777.0</cp:areaValue>
+      <cp:beginLifespanVersion>2018-01-22T11:28:31Z</cp:beginLifespanVersion>
+      <cp:endLifespanVersion nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:geometry>
+        <!--Inlined geometry 'GEOMETRY_3265870e-7a18-49f8-9cd1-065b59318598'-->
+        <gml:Surface gml:id="GEOMETRY_3265870e-7a18-49f8-9cd1-065b59318598" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:patches>
+            <gml:PolygonPatch>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>492961.888 5605536.143 492975.865 5605538.621 493000.857 5605541.709 493024.531 5605547.447 493043.294 5605557.692 493077.715 5605588.409 493091.120 5605599.085 493153.501 5605648.750 493155.064 5605649.995 493167.132 5605662.270 493176.240 5605678.114 493187.569 5605705.824 493186.389 5605718.133 493183.294 5605750.726 493191.134 5605767.480 493222.058 5605789.662 493222.579 5605798.299 493235.819 5605841.343 493250.496 5605879.559 493277.509 5605897.382 493248.247 5605882.827 493238.499 5605864.214 493230.220 5605843.432 493216.690 5605799.539 493210.070 5605790.222 493186.085 5605772.858 493175.216 5605747.947 493177.503 5605718.459 493175.972 5605707.423 493171.612 5605688.790 493167.043 5605676.694 493159.354 5605664.119 493146.487 5605653.244 493135.699 5605644.226 493088.661 5605605.744 493073.325 5605593.197 493038.986 5605563.799 493022.021 5605554.004 492999.597 5605548.367 492966.178 5605543.640 492939.025 5605539.063 492921.280 5605531.838 492856.030 5605487.740 492845.395 5605478.614 492830.130 5605461.792 492826.255 5605457.521 492800.053 5605425.097 492790.850 5605414.618 492763.493 5605384.211 492750.206 5605365.473 492744.991 5605358.184 492723.660 5605330.049 492711.477 5605315.283 492696.454 5605299.348 492690.146 5605286.773 492680.004 5605240.766 492671.366 5605229.042 492662.217 5605224.165 492624.016 5605203.799 492603.032 5605136.862 492599.054 5605124.047 492594.236 5605108.583 492588.068 5605102.066 492603.046 5605096.741 492599.873 5605103.475 492602.636 5605112.363 492607.792 5605128.943 492620.895 5605171.089 492626.233 5605188.432 492638.253 5605202.208 492673.773 5605219.107 492680.981 5605224.834 492684.931 5605233.159 492696.083 5605283.714 492702.812 5605297.399 492721.193 5605316.772 492734.094 5605333.868 492740.968 5605342.917 492749.710 5605354.425 492768.132 5605380.382 492790.882 5605405.619 492801.354 5605417.238 492825.067 5605446.312 492834.333 5605456.970 492844.676 5605467.596 492864.549 5605485.159 492882.833 5605497.994 492940.905 5605532.346 492961.888 5605536.143</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:PolygonPatch>
+          </gml:patches>
+        </gml:Surface>
+      </cp:geometry>
+      <cp:inspireId>
+        <base:Identifier>
+          <base:localId>CadastralParcel_06138901000419______</base:localId>
+          <base:namespace>https://registry.gdi-de.org/id/de.he.0462.de7.cp.alkis</base:namespace>
+        </base:Identifier>
+      </cp:inspireId>
+      <cp:label>419</cp:label>
+      <cp:nationalCadastralReference>06138901000419______</cp:nationalCadastralReference>
+      <cp:referencePoint>
+        <!--Inlined geometry 'GEOMETRY_f5c5d7c4-8783-4cca-935a-e6503a966ca8'-->
+        <gml:Point gml:id="GEOMETRY_f5c5d7c4-8783-4cca-935a-e6503a966ca8" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:pos>492869.573 5605492.867</gml:pos>
+        </gml:Point>
+      </cp:referencePoint>
+      <cp:validFrom>2008-12-31T23:00:00Z</cp:validFrom>
+      <cp:validTo nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:zoning xlink:href="https://inspire-hessen.de/ows/services/org.2.d66ec21e-39e7-45c4-bf68-438e8baea882_wfs?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=GetFeature&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;STOREDQUERY_ID=urn:ogc:def:query:OGC-WFS::GetFeatureById&amp;ID=CadastralZoning_061389010#CadastralZoning_061389010"/>
+    </cp:CadastralParcel>
+  </wfs:member>
+<wfs:member>
+    <cp:CadastralParcel gml:id="CadastralParcel_06138901000424______">
+      <gml:identifier codeSpace="http://inspire.ec.europa.eu/ids">https://registry.gdi-de.org/id/de.he.0462.de7.cp.alkis/CadastralParcel_06138901000424______</gml:identifier>
+      <cp:areaValue uom="m2">6235.0</cp:areaValue>
+      <cp:beginLifespanVersion>2018-09-17T08:18:10Z</cp:beginLifespanVersion>
+      <cp:endLifespanVersion nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:geometry>
+        <!--Inlined geometry 'GEOMETRY_adeacfe7-effa-4763-ad62-c1edde78cfa0'-->
+        <gml:Surface gml:id="GEOMETRY_adeacfe7-effa-4763-ad62-c1edde78cfa0" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:patches>
+            <gml:PolygonPatch>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>492751.198 5605439.923 492797.708 5605478.059 492811.249 5605487.874 492837.053 5605506.577 492829.173 5605522.884 492822.005 5605527.474 492781.985 5605528.140 492735.787 5605504.764 492711.755 5605477.422 492720.506 5605460.317 492721.160 5605446.149 492730.028 5605440.781 492751.198 5605439.923</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:PolygonPatch>
+          </gml:patches>
+        </gml:Surface>
+      </cp:geometry>
+      <cp:inspireId>
+        <base:Identifier>
+          <base:localId>CadastralParcel_06138901000424______</base:localId>
+          <base:namespace>https://registry.gdi-de.org/id/de.he.0462.de7.cp.alkis</base:namespace>
+        </base:Identifier>
+      </cp:inspireId>
+      <cp:label>424</cp:label>
+      <cp:nationalCadastralReference>06138901000424______</cp:nationalCadastralReference>
+      <cp:referencePoint>
+        <!--Inlined geometry 'GEOMETRY_c3a8c21f-4558-466b-9a48-281be93d0e90'-->
+        <gml:Point gml:id="GEOMETRY_c3a8c21f-4558-466b-9a48-281be93d0e90" srsName="urn:ogc:def:crs:EPSG::25832">
+          <gml:pos>492760.553 5605482.967</gml:pos>
+        </gml:Point>
+      </cp:referencePoint>
+      <cp:validFrom>2008-12-31T23:00:00Z</cp:validFrom>
+      <cp:validTo nilReason="other:unpopulated" xsi:nil="true"/>
+      <cp:zoning xlink:href="https://inspire-hessen.de/ows/services/org.2.d66ec21e-39e7-45c4-bf68-438e8baea882_wfs?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=GetFeature&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B+version%3D3.2&amp;STOREDQUERY_ID=urn:ogc:def:query:OGC-WFS::GetFeatureById&amp;ID=CadastralZoning_061389010#CadastralZoning_061389010"/>
+    </cp:CadastralParcel>
+  </wfs:member>
+</wfs:FeatureCollection>
