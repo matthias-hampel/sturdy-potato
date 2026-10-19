@@ -1023,6 +1023,58 @@ export interface VraMaps {
   zoning_id: string;
 }
 
+export interface WeatherCells {
+  backfilled_from: string | null;
+  created_at: Generated<Timestamp>;
+  last_error: string | null;
+  last_error_at: Timestamp | null;
+  lat: Numeric;
+  lng: Numeric;
+  refreshed_at: Timestamp | null;
+  timezone: string | null;
+  utc_offset_seconds: number | null;
+}
+
+export interface WeatherDaily {
+  date: string;
+  dew_point_max: number | null;
+  dew_point_mean: number | null;
+  dew_point_min: number | null;
+  et0: number | null;
+  humidity_max: number | null;
+  humidity_mean: number | null;
+  humidity_min: number | null;
+  lat: Numeric;
+  lng: Numeric;
+  precipitation: number | null;
+  radiation_sum: number | null;
+  soil_moisture_0_7: number | null;
+  soil_moisture_7_28: number | null;
+  soil_temp_0_7: number | null;
+  soil_temp_7_28: number | null;
+  source: string;
+  temp_max: number | null;
+  temp_mean: number | null;
+  temp_min: number | null;
+  wind_gusts_max: number | null;
+  wind_gusts_mean: number | null;
+  wind_speed_max: number | null;
+  wind_speed_mean: number | null;
+}
+
+export interface WeatherHourly {
+  dew_point: number | null;
+  humidity: number | null;
+  lat: Numeric;
+  lng: Numeric;
+  precipitation: number | null;
+  precipitation_probability: number | null;
+  temp: number | null;
+  time: Timestamp;
+  wind_gusts: number | null;
+  wind_speed: number | null;
+}
+
 export interface Zonings {
   analysis_id: string | null;
   created_at: Generated<Timestamp>;
@@ -1112,6 +1164,9 @@ export interface DB {
   users: Users;
   vra_map_inputs: VraMapInputs;
   vra_maps: VraMaps;
+  weather_cells: WeatherCells;
+  weather_daily: WeatherDaily;
+  weather_hourly: WeatherHourly;
   zoning_zones: ZoningZones;
   zonings: Zonings;
 }

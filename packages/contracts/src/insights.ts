@@ -326,3 +326,55 @@ export interface Dashboard {
   complianceIssueCount: number;
   setup: { hasFarm: boolean; hasFields: boolean; hasSeason: boolean; hasCropCycles: boolean };
 }
+
+// ---------------------------------------------------------------------------
+// Stored weather per field (F5)
+// ---------------------------------------------------------------------------
+
+/** One day of stored weather of a field's grid cell. Wind in km/h, radiation in MJ/m², soil moisture in m³/m³. */
+export interface StoredWeatherDay {
+  date: string;
+  tempMin: number | null;
+  tempMax: number | null;
+  tempMean: number | null;
+  precipitation: number | null;
+  humidityMin: number | null;
+  humidityMax: number | null;
+  humidityMean: number | null;
+  dewPointMean: number | null;
+  windSpeedMax: number | null;
+  windSpeedMean: number | null;
+  windGustsMax: number | null;
+  et0: number | null;
+  radiationSum: number | null;
+  soilTemp0to7cm: number | null;
+  soilTemp7to28cm: number | null;
+  soilMoisture0to7cm: number | null;
+  soilMoisture7to28cm: number | null;
+  /** Archive days are final; forecast days are replaced by later refreshes. */
+  source: 'archive' | 'forecast';
+}
+
+export interface StoredWeatherHour {
+  /** ISO instant. */
+  time: string;
+  tempC: number | null;
+  humidityPct: number | null;
+  dewPointC: number | null;
+  precipitationMm: number | null;
+  precipitationProbabilityPct: number | null;
+  windKmh: number | null;
+  gustKmh: number | null;
+}
+
+export interface FieldWeather {
+  fieldId: string;
+  /** The 0.01° grid cell the field's weather comes from. */
+  cell: { lat: number; lng: number; timezone: string | null };
+  refreshedAt: string | null;
+  /** First stored day; null until the cell's first refresh. */
+  storedFrom: string | null;
+  daily: StoredWeatherDay[];
+  /** From the current hour on, at most 48 hours. */
+  hourly: StoredWeatherHour[];
+}

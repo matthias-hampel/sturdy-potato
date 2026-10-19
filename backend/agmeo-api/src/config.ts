@@ -57,5 +57,7 @@ export const config = {
   weather: {
     baseUrl: env('OPEN_METEO_URL', 'https://api.open-meteo.com/v1/forecast'),
     cacheMinutes: Number(env('WEATHER_CACHE_MINUTES', '30')),
+    /** Open-Meteo subscription key: customer endpoints and the ERA5 archive for season backfills. Without it the free API is used (development only). */
+    apiKey: env('OPEN_METEO_API_KEY', ''),
   },
 };
