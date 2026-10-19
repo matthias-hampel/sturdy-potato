@@ -395,7 +395,7 @@ async function seedPlanningAndCompliance(app: Awaited<ReturnType<typeof NestFact
     { cropId: crop('winter_rapeseed'), pricePerT: 480, notes: null }, { cropId: crop('sugar_beet'), pricePerT: 42, notes: null }, { cropId: crop('grain_maize'), pricePerT: 190, notes: null },
   ] })
   for (const s of [s2026, s2027]) {
-    await econ.saveOverheads(ctx, { seasonId: s.id, leasePerHa: 180, landTaxPerHa: 25, insurancePerHa: 35, buildingsPerHa: 60, accountingPerHa: 20, otherPerHa: 30, basicPaymentPerHa: 156, redistributive1PerHa: 69, redistributive2PerHa: 41, ecoSchemesPerHa: 40, otherPaymentsPerHa: 0 })
+    await econ.saveOverheads(ctx, { seasonId: s.id, leasePerHa: 180, landTaxPerHa: 25, insurancePerHa: 35, buildingsPerHa: 60, accountingPerHa: 20, otherPerHa: 30, basicPaymentPerHa: 156, redistributive1PerHa: 69, redistributive2PerHa: 41, ecoSchemesPerHa: 40, otherPaymentsPerHa: 0, accidentInsurancePerHa: 8, rightsPerHa: 0, salaryPerHour: 22, agriEnvPerHa: 0, youngFarmersPerHa: 0 })
   }
   await app.get(OperationsService).recordMissingEmissions(ctx)
 

@@ -200,7 +200,8 @@ export class OperationsService {
           WHERE oi.operation_id = ${id}
           GROUP BY 1
           UNION ALL
-          SELECT 'labor', sum(l.hours * coalesce(l.hourly_rate, e.hourly_rate, 0))
+          -- Employees without their own rate cost the season's salary per hour (farm economics).
+          SELECT 'labor', sum(l.hours * coalesce(l.hourly_rate, e.hourly_rate, (SELECT fo.salary_per_hour FROM farm_overheads fo WHERE fo.season_id = ${season?.id ?? null}), 0))
           FROM operation_labor l JOIN employees e ON e.id = l.employee_id
           WHERE l.operation_id = ${id}
           UNION ALL

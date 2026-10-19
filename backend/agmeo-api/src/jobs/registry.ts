@@ -2,6 +2,7 @@ import { sql, type Kysely } from 'kysely';
 import type { DB } from '../db/schema.js';
 import { SEND_EMAIL, sendEmailHandler } from '../mail/mail.js';
 import { PURGE_OBJECTS } from '../modules/files/files.service.js';
+import { FETCH_MARKET_PRICES, fetchMarketPricesHandler } from '../modules/economics/market-prices.js';
 import { WEATHER_CELL, WEATHER_SCAN, weatherCellHandler, weatherScanHandler } from '../modules/weather/weather-store.js';
 import { createStorageDriver } from '../storage/object-storage.js';
 import type { JobHandler } from './runner.js';
@@ -15,6 +16,7 @@ export function jobHandlers(db: Kysely<DB>): Record<string, JobHandler> {
   return {
     [SEND_EMAIL]: sendEmailHandler(),
     [WEATHER_SCAN]: weatherScanHandler(db),
+    [FETCH_MARKET_PRICES]: fetchMarketPricesHandler(db),
     [WEATHER_CELL]: weatherCellHandler(db),
     // Objects of files deleted from the trash; deleting a missing object is not an error.
     [PURGE_OBJECTS]: async (job) => {
@@ -40,4 +42,6 @@ export const schedules: Schedule[] = [
   { kind: CLEANUP_JOBS, everyMinutes: 24 * 60, offsetMinutes: 3 * 60 },
   // At :30 like the reference's crawler, so each morning slot (04:30–05:30 local) is hit once.
   { kind: WEATHER_SCAN, everyMinutes: 60, offsetMinutes: 30 },
+  // Daily: the feed publishes weekly but on varying days; the upsert keeps it idempotent.
+  { kind: FETCH_MARKET_PRICES, everyMinutes: 24 * 60, offsetMinutes: 7 * 60 },
 ];

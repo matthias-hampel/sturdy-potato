@@ -157,11 +157,11 @@ export interface CropEconomics {
 /** From contribution margins to an indicative farm result (all amounts for the season). */
 export interface FarmResult {
   db2: number;
-  overheads: { lease: number; landTax: number; insurance: number; buildings: number; accounting: number; other: number; total: number };
+  overheads: { lease: number; landTax: number; accidentInsurance: number; insurance: number; buildings: number; rights: number; accounting: number; other: number; total: number };
   /** Season costs entered without a crop (manual entries). */
   unallocatedCosts: number;
   resultBeforePayments: number;
-  payments: { basic: number; redistributive: number; ecoSchemes: number; other: number; total: number };
+  payments: { basic: number; redistributive: number; ecoSchemes: number; agriEnv: number; youngFarmers: number; other: number; total: number };
   result: number;
   resultPerHa: number;
 }
@@ -200,6 +200,14 @@ export const FarmOverheadsInput = z.object({
   redistributive2PerHa: amount.default(0),
   ecoSchemesPerHa: amount.default(0),
   otherPaymentsPerHa: amount.default(0),
+  accidentInsurancePerHa: amount.default(0),
+  rightsPerHa: amount.default(0),
+  /** Labour rate for hours of employees without their own rate. */
+  salaryPerHour: amount.default(0),
+  agriEnvPerHa: amount.default(0),
+  youngFarmersPerHa: amount.default(0),
+  /** Area the redistributive payment is computed on; defaults to the cropped area. */
+  totalHaForRedistribution: amount.nullish(),
 });
 export type FarmOverheadsInput = z.input<typeof FarmOverheadsInput>;
 export type FarmOverheads = Omit<z.output<typeof FarmOverheadsInput>, never>;
@@ -217,3 +225,134 @@ export const CropPricesInput = z.object({
   prices: z.array(z.object({ cropId: id, pricePerT: amount.nullable(), notes: shortText })).max(200),
 });
 export type CropPricesInput = z.input<typeof CropPricesInput>;
+
+// ---------------------------------------------------------------------------
+// Profitability per field (reference: lib/economics/farmProfitability.ts)
+// ---------------------------------------------------------------------------
+
+/** One crop on one field with its result per hectare, from revenue down to the farm result. */
+export interface FieldProfitability {
+  cropCycleId: string;
+  fieldId: string;
+  fieldName: string;
+  cropId: string;
+  cropName: string;
+  cropColor: string;
+  areaHa: number;
+  groups: { id: string; name: string; color: string }[];
+  revenueBasis: RevenueBasis;
+  // Per hectare, in the organization's currency.
+  revenue: number;
+  seedCost: number;
+  fertilizerCost: number;
+  protectionCost: number;
+  otherDirectCost: number;
+  directCosts: number;
+  dfl: number;
+  /** Machine hours, fuel and contractors (the rewrite has no split into variable and fixed machine costs). */
+  machineryCosts: number;
+  db1: number;
+  laborCosts: number;
+  db2: number;
+  buildingCosts: number;
+  leasePerHa: number;
+  /** Lease, land tax and accident insurance. */
+  landCosts: number;
+  rightsCosts: number;
+  /** Einzelkostenfreie Leistung: DB II minus buildings, land and rights. */
+  singleCostFreeMargin: number;
+  /** Insurance, accounting and other overheads. */
+  overhead: number;
+  resultBeforeSubsidies: number;
+  subsidiesPerHa: number;
+  farmResult: number;
+  // Physical, per hectare.
+  dieselLHa: number;
+  hoursHa: number;
+  yieldTHa: number | null;
+  nKgHa: number;
+  /** Completed operations on the crop. */
+  passes: number;
+}
+
+export interface ProfitabilityCoverage {
+  documentedOps: number;
+  totalOps: number;
+  pricedProducts: number;
+  totalProducts: number;
+  fieldsWithCrop: number;
+  totalFields: number;
+  templateCycles: number;
+  totalCycles: number;
+  /** Planned or running operations of the season (not yet documented). */
+  undocumentedOps: { operationId: string; title: string; type: string; fieldName: string; cropName: string }[];
+  /** Products used in the season without any price. */
+  unpricedProducts: { id: string; name: string }[];
+}
+
+export interface FarmProfitability {
+  seasonId: string;
+  seasonName: string;
+  harvestYear: number;
+  currency: string;
+  totalHa: number;
+  fields: FieldProfitability[];
+  overheads: FarmOverheads | null;
+  subsidies: { totalEur: number; perHa: number };
+  coverage: ProfitabilityCoverage;
+}
+
+// ---------------------------------------------------------------------------
+// Benchmarks and market prices
+// ---------------------------------------------------------------------------
+
+export const CropBenchmarkInput = z.object({
+  cropId: id,
+  name: z.string().trim().min(1).max(200),
+  yieldTHa: z.number().min(0).max(1000).nullish(),
+  revenuePerHa: z.number().finite().nullish(),
+  directCostsPerHa: z.number().finite().nullish(),
+  variableCostsPerHa: z.number().finite().nullish(),
+  db1PerHa: z.number().finite().nullish(),
+  db2PerHa: z.number().finite().nullish(),
+  source: z.string().trim().max(500).nullish(),
+});
+export type CropBenchmarkInput = z.input<typeof CropBenchmarkInput>;
+
+export interface CropBenchmark {
+  id: string;
+  cropId: string;
+  cropName: string;
+  name: string;
+  yieldTHa: number | null;
+  revenuePerHa: number | null;
+  directCostsPerHa: number | null;
+  variableCostsPerHa: number | null;
+  db1PerHa: number | null;
+  db2PerHa: number | null;
+  source: string | null;
+}
+
+export const MARKET_COMMODITIES = [
+  'WHEAT_BREAD', 'WHEAT_FEED', 'WHEAT_DURUM', 'BARLEY_FEED', 'BARLEY_MALTING', 'RYE_BREAD', 'MAIZE_GRAIN',
+  'OATS_FEED', 'TRITICALE', 'RAPESEED', 'SUNFLOWER', 'SOYBEAN', 'PEAS_FEED',
+] as const;
+export type MarketCommodity = (typeof MARKET_COMMODITIES)[number];
+
+export interface MarketQuote {
+  commodity: MarketCommodity;
+  country: string;
+  quoteDate: string;
+  /** EUR per tonne. */
+  price: number;
+}
+
+/** The market quotes that fit one crop, latest first, with the farm's own price for comparison. */
+export interface CropMarketPrices {
+  cropId: string;
+  cropName: string;
+  commodities: MarketCommodity[];
+  latest: MarketQuote[];
+  series: MarketQuote[];
+  ownPricePerT: number | null;
+}

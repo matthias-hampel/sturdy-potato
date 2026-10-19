@@ -12,6 +12,8 @@ import { DashboardController } from './modules/dashboard/dashboard.controller.js
 import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { EconomicsController } from './modules/economics/economics.controller.js';
 import { EconomicsService } from './modules/economics/economics.service.js';
+import { EconomicsInsightsController } from './modules/economics/insights.controller.js';
+import { ProfitabilityService } from './modules/economics/profitability.service.js';
 import { FarmsController } from './modules/farms/farms.controller.js';
 import { FilesController } from './modules/files/files.controller.js';
 import { FilesService } from './modules/files/files.service.js';
@@ -26,6 +28,8 @@ import { IdentityController } from './modules/identity/identity.controller.js';
 import { IdentityService } from './modules/identity/identity.service.js';
 import { InventoryController } from './modules/inventory/inventory.controller.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
+import { KtblController } from './modules/ktbl/ktbl.controller.js';
+import { KtblService } from './modules/ktbl/ktbl.service.js';
 import { MonitoringController } from './modules/monitoring/monitoring.controller.js';
 import { MonitoringService } from './modules/monitoring/monitoring.service.js';
 import { ProductivityController } from './modules/productivity/productivity.controller.js';
@@ -70,6 +74,7 @@ export const DOMAIN_SERVICES = [
   CropsService,
   InventoryService,
   TeamService,
+  KtblService,
   OperationsService,
   TasksService,
   PlanningService,
@@ -78,6 +83,7 @@ export const DOMAIN_SERVICES = [
   NutrientsService,
   RegulatoryService,
   EconomicsService,
+  ProfitabilityService,
   ComplianceService,
   WeatherService,
   MonitoringService,
@@ -107,6 +113,7 @@ export const DOMAIN_SERVICES = [
     CropsController,
     InventoryController,
     TeamController,
+    KtblController,
     OperationsController,
     TasksController,
     PlanningController,
@@ -115,6 +122,7 @@ export const DOMAIN_SERVICES = [
     NutrientsController,
     RegulatoryController,
     EconomicsController,
+    EconomicsInsightsController,
     ComplianceController,
     WeatherController,
     MonitoringController,

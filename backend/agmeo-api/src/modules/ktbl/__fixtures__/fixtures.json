@@ -1,0 +1,724 @@
+{
+ "fixtures": [
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 0.5,
+   "distanceKm": 1,
+   "expected": {
+    "hours": 2.21,
+    "diesel": 21.14,
+    "depreciation": 23.48,
+    "interest": 6.76,
+    "miscellaneous": 3.23,
+    "repairs": 28.58,
+    "materials": 17.97,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 1,
+   "distanceKm": 2,
+   "expected": {
+    "hours": 1.61,
+    "diesel": 18.75,
+    "depreciation": 19.66,
+    "interest": 5.73,
+    "miscellaneous": 2.67,
+    "repairs": 24.1,
+    "materials": 15.94,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 2,
+   "distanceKm": 3,
+   "expected": {
+    "hours": 1.28,
+    "diesel": 17.34,
+    "depreciation": 17.54,
+    "interest": 5.15,
+    "miscellaneous": 2.36,
+    "repairs": 21.61,
+    "materials": 14.74,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 5,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 1.04,
+    "diesel": 16.29,
+    "depreciation": 16.01,
+    "interest": 4.74,
+    "miscellaneous": 2.14,
+    "repairs": 19.83,
+    "materials": 13.85,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 10,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 1.04,
+    "diesel": 16.18,
+    "depreciation": 16.02,
+    "interest": 4.75,
+    "miscellaneous": 2.14,
+    "repairs": 19.83,
+    "materials": 13.75,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 20,
+   "distanceKm": 10,
+   "expected": {
+    "hours": 1.08,
+    "diesel": 16.32,
+    "depreciation": 16.25,
+    "interest": 4.81,
+    "miscellaneous": 2.17,
+    "repairs": 20.11,
+    "materials": 13.87,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 40,
+   "distanceKm": 15,
+   "expected": {
+    "hours": 1.14,
+    "diesel": 16.59,
+    "depreciation": 16.62,
+    "interest": 4.91,
+    "miscellaneous": 2.23,
+    "repairs": 20.54,
+    "materials": 14.1,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "PLOWING__RPS7_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 80,
+   "distanceKm": 30,
+   "expected": {
+    "hours": 1.53,
+    "diesel": 18.55,
+    "depreciation": 19.12,
+    "interest": 5.58,
+    "miscellaneous": 2.59,
+    "repairs": 23.47,
+    "materials": 15.77,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 0.5,
+   "distanceKm": 1,
+   "expected": {
+    "hours": 1.46,
+    "diesel": 18.09,
+    "depreciation": 24.14,
+    "interest": 6.7,
+    "miscellaneous": 2.66,
+    "repairs": 23.89,
+    "materials": 15.38,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 1,
+   "distanceKm": 2,
+   "expected": {
+    "hours": 1.05,
+    "diesel": 15.39,
+    "depreciation": 19.87,
+    "interest": 5.55,
+    "miscellaneous": 2.14,
+    "repairs": 19.99,
+    "materials": 13.08,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 2,
+   "distanceKm": 3,
+   "expected": {
+    "hours": 0.83,
+    "diesel": 13.85,
+    "depreciation": 17.54,
+    "interest": 4.92,
+    "miscellaneous": 1.85,
+    "repairs": 17.86,
+    "materials": 11.77,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 5,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.69,
+    "diesel": 13.04,
+    "depreciation": 16.11,
+    "interest": 4.54,
+    "miscellaneous": 1.67,
+    "repairs": 16.56,
+    "materials": 11.08,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 10,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.66,
+    "diesel": 12.64,
+    "depreciation": 15.77,
+    "interest": 4.44,
+    "miscellaneous": 1.63,
+    "repairs": 16.25,
+    "materials": 10.74,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 20,
+   "distanceKm": 10,
+   "expected": {
+    "hours": 0.66,
+    "diesel": 12.75,
+    "depreciation": 15.81,
+    "interest": 4.45,
+    "miscellaneous": 1.64,
+    "repairs": 16.28,
+    "materials": 10.84,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 40,
+   "distanceKm": 15,
+   "expected": {
+    "hours": 0.67,
+    "diesel": 12.77,
+    "depreciation": 15.9,
+    "interest": 4.48,
+    "miscellaneous": 1.65,
+    "repairs": 16.36,
+    "materials": 10.85,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SH40_2000",
+   "mechKw": 120,
+   "fieldSizeHa": 80,
+   "distanceKm": 30,
+   "expected": {
+    "hours": 0.79,
+    "diesel": 13.7,
+    "depreciation": 17.13,
+    "interest": 4.81,
+    "miscellaneous": 1.8,
+    "repairs": 17.49,
+    "materials": 11.65,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 83,
+   "fieldSizeHa": 0.5,
+   "distanceKm": 1,
+   "expected": {
+    "hours": 1,
+    "diesel": 7.29,
+    "depreciation": 14.99,
+    "interest": 4.05,
+    "miscellaneous": 1.08,
+    "repairs": 10.53,
+    "materials": 6.2,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 83,
+   "fieldSizeHa": 1,
+   "distanceKm": 2,
+   "expected": {
+    "hours": 0.72,
+    "diesel": 6.13,
+    "depreciation": 13.5,
+    "interest": 3.65,
+    "miscellaneous": 0.86,
+    "repairs": 8.67,
+    "materials": 5.21,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 83,
+   "fieldSizeHa": 2,
+   "distanceKm": 3,
+   "expected": {
+    "hours": 0.6,
+    "diesel": 5.76,
+    "depreciation": 12.88,
+    "interest": 3.48,
+    "miscellaneous": 0.77,
+    "repairs": 7.9,
+    "materials": 4.9,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 83,
+   "fieldSizeHa": 5,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.49,
+    "diesel": 5.36,
+    "depreciation": 12.34,
+    "interest": 3.33,
+    "miscellaneous": 0.69,
+    "repairs": 7.22,
+    "materials": 4.56,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 83,
+   "fieldSizeHa": 10,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.44,
+    "diesel": 5.08,
+    "depreciation": 12.06,
+    "interest": 3.26,
+    "miscellaneous": 0.65,
+    "repairs": 6.87,
+    "materials": 4.32,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 83,
+   "fieldSizeHa": 20,
+   "distanceKm": 10,
+   "expected": {
+    "hours": 0.46,
+    "diesel": 5.17,
+    "depreciation": 12.17,
+    "interest": 3.29,
+    "miscellaneous": 0.66,
+    "repairs": 7.01,
+    "materials": 4.39,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 83,
+   "fieldSizeHa": 40,
+   "distanceKm": 15,
+   "expected": {
+    "hours": 0.48,
+    "diesel": 5.22,
+    "depreciation": 12.24,
+    "interest": 3.31,
+    "miscellaneous": 0.67,
+    "repairs": 7.1,
+    "materials": 4.44,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 102,
+   "fieldSizeHa": 0.5,
+   "distanceKm": 1,
+   "expected": {
+    "hours": 1,
+    "diesel": 7.29,
+    "depreciation": 14.99,
+    "interest": 4.05,
+    "miscellaneous": 1.08,
+    "repairs": 10.53,
+    "materials": 6.2,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 102,
+   "fieldSizeHa": 1,
+   "distanceKm": 2,
+   "expected": {
+    "hours": 0.72,
+    "diesel": 6.13,
+    "depreciation": 13.5,
+    "interest": 3.65,
+    "miscellaneous": 0.86,
+    "repairs": 8.67,
+    "materials": 5.21,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 102,
+   "fieldSizeHa": 2,
+   "distanceKm": 3,
+   "expected": {
+    "hours": 0.6,
+    "diesel": 5.76,
+    "depreciation": 12.88,
+    "interest": 3.48,
+    "miscellaneous": 0.77,
+    "repairs": 7.9,
+    "materials": 4.9,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 102,
+   "fieldSizeHa": 5,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.49,
+    "diesel": 5.36,
+    "depreciation": 12.34,
+    "interest": 3.33,
+    "miscellaneous": 0.69,
+    "repairs": 7.22,
+    "materials": 4.56,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 102,
+   "fieldSizeHa": 10,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.44,
+    "diesel": 5.08,
+    "depreciation": 12.06,
+    "interest": 3.26,
+    "miscellaneous": 0.65,
+    "repairs": 6.87,
+    "materials": 4.32,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 102,
+   "fieldSizeHa": 20,
+   "distanceKm": 10,
+   "expected": {
+    "hours": 0.46,
+    "diesel": 5.17,
+    "depreciation": 12.17,
+    "interest": 3.29,
+    "miscellaneous": 0.66,
+    "repairs": 7.01,
+    "materials": 4.39,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SOWING__SM45_1000",
+   "mechKw": 102,
+   "fieldSizeHa": 40,
+   "distanceKm": 15,
+   "expected": {
+    "hours": 0.48,
+    "diesel": 5.22,
+    "depreciation": 12.24,
+    "interest": 3.31,
+    "miscellaneous": 0.67,
+    "repairs": 7.1,
+    "materials": 4.44,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SPRAYING__PST24_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 0.5,
+   "distanceKm": 1,
+   "expected": {
+    "hours": 0.45,
+    "diesel": 2.34,
+    "depreciation": 5.4,
+    "interest": 1.32,
+    "miscellaneous": 0.56,
+    "repairs": 3.52,
+    "materials": 1.99,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SPRAYING__PST24_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 1,
+   "distanceKm": 2,
+   "expected": {
+    "hours": 0.26,
+    "diesel": 1.46,
+    "depreciation": 4.41,
+    "interest": 1.05,
+    "miscellaneous": 0.41,
+    "repairs": 2.28,
+    "materials": 1.24,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SPRAYING__PST24_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 2,
+   "distanceKm": 3,
+   "expected": {
+    "hours": 0.2,
+    "diesel": 1.28,
+    "depreciation": 4.1,
+    "interest": 0.97,
+    "miscellaneous": 0.37,
+    "repairs": 1.89,
+    "materials": 1.09,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SPRAYING__PST24_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 5,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.14,
+    "diesel": 0.98,
+    "depreciation": 3.77,
+    "interest": 0.88,
+    "miscellaneous": 0.32,
+    "repairs": 1.49,
+    "materials": 0.83,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SPRAYING__PST24_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 10,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 0.12,
+    "diesel": 0.89,
+    "depreciation": 3.65,
+    "interest": 0.85,
+    "miscellaneous": 0.3,
+    "repairs": 1.34,
+    "materials": 0.76,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SPRAYING__PST24_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 20,
+   "distanceKm": 10,
+   "expected": {
+    "hours": 0.11,
+    "diesel": 0.85,
+    "depreciation": 3.61,
+    "interest": 0.84,
+    "miscellaneous": 0.29,
+    "repairs": 1.29,
+    "materials": 0.72,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SPRAYING__PST24_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 40,
+   "distanceKm": 15,
+   "expected": {
+    "hours": 0.1,
+    "diesel": 0.8,
+    "depreciation": 3.56,
+    "interest": 0.82,
+    "miscellaneous": 0.29,
+    "repairs": 1.22,
+    "materials": 0.68,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 0.5,
+   "distanceKm": 1,
+   "expected": {
+    "hours": 2.46,
+    "diesel": 31.62,
+    "depreciation": 70.12,
+    "interest": 16.48,
+    "miscellaneous": 3.82,
+    "repairs": 68.42,
+    "materials": 26.88,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 1,
+   "distanceKm": 2,
+   "expected": {
+    "hours": 2.13,
+    "diesel": 31,
+    "depreciation": 68.03,
+    "interest": 15.92,
+    "miscellaneous": 3.51,
+    "repairs": 65.98,
+    "materials": 26.35,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 2,
+   "distanceKm": 3,
+   "expected": {
+    "hours": 1.91,
+    "diesel": 30.07,
+    "depreciation": 66.6,
+    "interest": 15.53,
+    "miscellaneous": 3.3,
+    "repairs": 64.29,
+    "materials": 25.56,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 5,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 1.85,
+    "diesel": 29.85,
+    "depreciation": 66.27,
+    "interest": 15.44,
+    "miscellaneous": 3.26,
+    "repairs": 63.91,
+    "materials": 25.37,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 10,
+   "distanceKm": 5,
+   "expected": {
+    "hours": 1.79,
+    "diesel": 29.66,
+    "depreciation": 65.88,
+    "interest": 15.34,
+    "miscellaneous": 3.2,
+    "repairs": 63.45,
+    "materials": 25.21,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 20,
+   "distanceKm": 10,
+   "expected": {
+    "hours": 1.86,
+    "diesel": 30.17,
+    "depreciation": 66.31,
+    "interest": 15.46,
+    "miscellaneous": 3.26,
+    "repairs": 63.96,
+    "materials": 25.64,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 40,
+   "distanceKm": 15,
+   "expected": {
+    "hours": 1.93,
+    "diesel": 30.63,
+    "depreciation": 66.72,
+    "interest": 15.57,
+    "miscellaneous": 3.32,
+    "repairs": 64.44,
+    "materials": 26.04,
+    "services": 0
+   }
+  },
+  {
+   "fqn": "SEEDBED_PREPARATION__SEP2_1000",
+   "mechKw": 120,
+   "fieldSizeHa": 80,
+   "distanceKm": 30,
+   "expected": {
+    "hours": 2.28,
+    "diesel": 33,
+    "depreciation": 68.99,
+    "interest": 16.18,
+    "miscellaneous": 3.65,
+    "repairs": 67.1,
+    "materials": 28.05,
+    "services": 0
+   }
+  }
+ ]
+}
