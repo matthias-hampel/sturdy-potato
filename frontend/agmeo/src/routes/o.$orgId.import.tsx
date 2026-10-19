@@ -22,6 +22,7 @@ import {
   isoxmlRows,
   matchCrop,
   propertyKeys,
+  repeatedRows,
   shapeRows,
 } from '#/components/import/rows'
 import { readShapefiles, type ShapeLayer } from '#/components/import/shapefile'
@@ -195,9 +196,11 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   }, [parsed, layer])
 
   const duplicates = useMemo(() => new Map(rows.map((r) => [r.key, existingField(r, fields, farmId)])), [rows, fields, farmId])
+  const repeated = useMemo(() => repeatedRows(rows), [rows])
   const invalid = useMemo(() => new Set(rows.filter((r) => !r.geometry).map((r) => r.key)), [rows])
-  // By default, rows that already exist on the farm are left out.
-  const skip = excluded ?? new Set(rows.filter((r) => duplicates.get(r.key)).map((r) => r.key))
+  const severalFiles = new Set(rows.map((r) => r.file)).size > 1
+  // By default, rows that already exist on the farm or come again in a later file are left out.
+  const skip = excluded ?? new Set(rows.filter((r) => duplicates.get(r.key) || repeated.has(r.key)).map((r) => r.key))
   const selected = rows.filter((r) => !skip.has(r.key) && !invalid.has(r.key))
 
   const cropKeys = useMemo(() => {
@@ -233,7 +236,9 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     setCrsOverride(null)
     setCropChoice({})
     try {
-      setFiles({ label: list.map((f) => f.name).join(', '), files: await collectFiles(list) })
+      // Name order puts the export of a later year after the earlier one (see repeatedRows).
+      const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+      setFiles({ label: sorted.map((f) => f.name).join(', '), files: await collectFiles(sorted) })
     } catch (e) {
       setParseError(errorMessage(e))
     }
@@ -288,6 +293,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   <Column>{t('fields.identifier')}</Column>
                   {cropKeys.length > 0 && <Column>{t('import.rows.crop')}</Column>}
                   {source === 'isoxml' && <Column>{t('import.rows.origin')}</Column>}
+                  {severalFiles && <Column>{t('import.rows.file')}</Column>}
                   <Column align="end">{t('import.rows.area')}</Column>
                 </TableHeader>
                 <TableBody items={rows}>
@@ -314,8 +320,10 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                             )}
                             {!r.geometry ? (
                               <Badge tone="danger">{t('import.rows.noBoundary')}</Badge>
+                            ) : dup ? (
+                              <Badge tone="warning">{t('import.rows.exists', { name: dup.name })}</Badge>
                             ) : (
-                              dup && <Badge tone="warning">{t('import.rows.exists', { name: dup.name })}</Badge>
+                              repeated.has(r.key) && <Badge tone="warning">{t('import.rows.repeated', { file: repeated.get(r.key)!.file ?? '' })}</Badge>
                             )}
                           </span>
                         </Cell>
@@ -330,6 +338,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                           </Cell>
                         )}
                         {source === 'isoxml' && <Cell className="text-muted">{r.origin}</Cell>}
+                        {severalFiles && <Cell className="text-muted max-w-48 truncate">{r.file}</Cell>}
                         <Cell align="end">{r.areaHa != null ? fmt.ha(r.areaHa, 2) : '–'}</Cell>
                       </Row>
                     )
