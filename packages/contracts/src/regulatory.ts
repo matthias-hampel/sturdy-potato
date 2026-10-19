@@ -279,9 +279,9 @@ export interface RegulatoryCodeOption {
   name: string;
 }
 
-/** GET regulatory/code-lists: the authority code lists the farm-data forms and overrides choose from. */
+/** GET regulatory/code-lists: the authority code lists the farm-data forms and overrides choose from (ENNI/ENDO: crops only). */
 export interface RegulatoryCodeLists {
-  format: 'besyd' | 'st';
+  format: FederalExportFormat;
   /** BESyD Tabelle 4, filtered by `state` when given. */
   bodenklimaraum: (RegulatoryCodeOption & { states: FederalState[] })[];
   /** BESyD Tabelle 2 (Sachsen). */

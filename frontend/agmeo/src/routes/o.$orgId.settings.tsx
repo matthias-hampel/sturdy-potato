@@ -1,7 +1,7 @@
 import { MEASUREMENT_SETTINGS, type Farm, type LatLng, type MeasurementSetting, type Organization, type Season } from '@agmeo/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRight, FileCheck2, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Form } from 'react-aria-components'
 import { LocationPicker } from '#/components/map/LocationPicker'
@@ -10,7 +10,7 @@ import { api } from '#/lib/api'
 import { fmt } from '#/lib/format'
 import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
-import { Button } from '#/ui/Button'
+import { Button, Link } from '#/ui/Button'
 import { DatePicker, Option, Select, TextField } from '#/ui/Field'
 import { Badge, Card, PageHeader } from '#/ui/Layout'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
@@ -32,8 +32,32 @@ function Settings() {
         <div className="xl:col-span-2">
           <FarmsCard />
         </div>
+        {org.country === 'DE' && (
+          <div className="xl:col-span-2">
+            <FertilizerReportsLinkCard />
+          </div>
+        )}
       </div>
     </>
+  )
+}
+
+/** The German fertilizer reports are built in the compliance area; this card points there. */
+function FertilizerReportsLinkCard() {
+  const { orgId } = useOrg()
+  return (
+    <Card
+      title={
+        <span className="inline-flex items-center gap-2">
+          <FileCheck2 className="size-4 text-muted" aria-hidden /> {t('fertilizerReports.linkCard.title')}
+        </span>
+      }
+      description={t('fertilizerReports.linkCard.body')}
+    >
+      <Link to="/o/$orgId/compliance" params={{ orgId }} search={{ tab: 'reports' }} variant="secondary">
+        {t('fertilizerReports.linkCard.cta')} <ArrowRight />
+      </Link>
+    </Card>
   )
 }
 

@@ -271,9 +271,12 @@ Done:
   year's weighted receipt average, else the latest earlier year, else the product default
   (`app.product_price`); operations and economics value inputs with it. Products gain humus C,
   N effectiveness, website and datasheet. Read-only calculation parameters (emission factors).
+- **Fertilizer-report wizard** (no migration): compliance tab "Düngemeldungen" with the reference's four
+  steps (Bundesland and formats with deadlines, readiness with fix links, farm data per format with crop
+  code overrides and 170 N, download with upload guide and export history); Agrarantrag and land-use codes
+  moved to their own tab; code lists also serve the ENNI and ENDO-SH Fruchtart catalogues.
 
-Open in phase 1: fertilizer-report wizard UI (region, formats, deadlines, readiness, BESyD/ST farm data,
-upload guide, export history), machinery details (machine vs implement, SCI and irrigation data,
+Open in phase 1: machinery details (machine vs implement, SCI and irrigation data,
 purchase and depreciation), operator details, operation action catalogue (diesel and hours per ha),
 field-table column configuration, PSM record after EU 2023/564.
 
@@ -281,3 +284,7 @@ Differences from the reference:
 - BESyD/ST: grazing is not modelled (IMPWEIDE stays empty); ST Phosphorgebiet is always false as in the
   reference; no Regierungsbezirk or centroid fallback for the federal state.
 - Expiry of stock on hand assumes first in, first out, since outflows carry no lot.
+- Fertilizer-report wizard: the Bundesland override is the farm's stored state (no org-level setting);
+  no "request a format" button for unsupported states; the Düngebericht PDF is the printable
+  Düngedokumentation; one farm address serves as Ansprechpartner and Betriebsstätte; Boden-Klima-Raum and
+  Naturraum get no preselected default; 170 N data are saved by their own editor.

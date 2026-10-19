@@ -1,9 +1,7 @@
 import type { NutrientGroup, NutrientGroupTotals, PreflightIssue } from '@agmeo/contracts'
-import { AlertTriangle, Info, OctagonAlert } from 'lucide-react'
 import { LOCALE, t } from '#/i18n'
 import { fmt, today } from '#/lib/format'
 import { useSeason } from '#/lib/org'
-import { Badge } from '#/ui/Layout'
 import { cx } from '#/ui/utils'
 
 /** The working season's harvest year, else the current calendar year. */
@@ -25,29 +23,6 @@ export const monthLabel = (index: number) => new Date(2000, index, 1).toLocaleDa
  */
 export function preflightText(issue: PreflightIssue) {
   return t(`regulatory.preflight.${issue.code}`, { defaultValue: issue.message, ...issue.params })
-}
-
-export function PreflightSeverityBadge({ severity }: { severity: PreflightIssue['severity'] }) {
-  if (severity === 'blocking')
-    return (
-      <Badge tone="danger">
-        <OctagonAlert className="size-3" aria-hidden />
-        {t('regulatory.severity.blocking')}
-      </Badge>
-    )
-  if (severity === 'warning')
-    return (
-      <Badge tone="warning">
-        <AlertTriangle className="size-3" aria-hidden />
-        {t('regulatory.severity.warning')}
-      </Badge>
-    )
-  return (
-    <Badge tone="info">
-      <Info className="size-3" aria-hidden />
-      {t('regulatory.severity.info')}
-    </Badge>
-  )
 }
 
 /** kg/ha (or kg) as a whole number; a dash for missing values and a muted zero. */

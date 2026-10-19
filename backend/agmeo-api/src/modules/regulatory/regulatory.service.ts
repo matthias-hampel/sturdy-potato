@@ -50,6 +50,8 @@ import {
   cropKeyForCode,
   detectBundeslandFromBnr,
   type DuevDbeResult,
+  FRUCHTART_CATALOGUE,
+  FRUCHTART_CATALOGUE_SH,
   type ExportData,
   generateExportFileName,
   MINERAL_FERTILIZER_GROUP_CODES,
@@ -609,9 +611,25 @@ export class RegulatoryService {
     });
   }
 
-  /** Authority code lists for the BESyD / Sachsen-Anhalt farm data and code overrides. */
-  codeLists(format: 'besyd' | 'st', state?: FederalState): RegulatoryCodeLists {
+  /** Authority code lists for the farm data and crop code overrides of a format (ENNI/ENDO: the Fruchtart catalogue only). */
+  codeLists(format: FederalExportFormat, state?: FederalState): RegulatoryCodeLists {
     const land = state ? BESYD_LAND[state] : undefined;
+    if (format === 'enni' || format === 'endo') {
+      // ENDO-SH has its own Stammdaten; the ENNI codes are not accepted there.
+      const crops =
+        format === 'enni'
+          ? FRUCHTART_CATALOGUE.map((f) => ({ code: f.code, name: f.bezeichnung, category: '' }))
+          : FRUCHTART_CATALOGUE_SH.map((f) => ({ code: f.code, name: f.bezeichnung, category: f.gruppe }));
+      return {
+        format,
+        bodenklimaraum: [],
+        amt: [],
+        kreise: [],
+        crops,
+        organicFertilizers: [],
+        mineralFertilizerGroups: [],
+      };
+    }
     if (format === 'st') {
       return {
         format,
