@@ -1,9 +1,13 @@
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon, Position } from 'geojson'
 import { type CrsId, crsProj, guessCrs } from './crs'
-import { decode, extension, type SourceFile, stem } from './files'
+import { decode, extension, type SourceFile, stem, upload } from './files'
 
 export interface ShapeLayer {
+  /** Unique within an import: the .shp path without its extension. */
+  id: string
   name: string
+  /** The uploaded file the layer came from. */
+  file: string
   features: Feature<Polygon | MultiPolygon>[]
   /** Features that are not polygons (points, lines, empty geometries). */
   skipped: number
@@ -52,7 +56,7 @@ export async function readShapefiles(files: SourceFile[], crsOverride: CrsId | n
     if (ext === 'shp' || ext === 'dbf' || ext === 'prj' || ext === 'cpg') parts.set(stem(f), { ...parts.get(stem(f)), [ext]: f })
   }
   const layers: ShapeLayer[] = []
-  for (const p of parts.values()) {
+  for (const [key, p] of parts) {
     if (!p.shp) continue
     const base = { shp: own(p.shp.data), dbf: p.dbf && own(p.dbf.data), cpg: p.cpg && decode(p.cpg.data).trim() }
     let fc: FeatureCollection
@@ -70,7 +74,7 @@ export async function readShapefiles(files: SourceFile[], crsOverride: CrsId | n
     }
     const { features, skipped } = polygonFeatures(fc)
     if (!isLonLat(firstPosition(features[0]?.geometry ?? null)) && features.length) crs = { ...crs, source: 'unknown', certain: false }
-    layers.push({ name: p.shp.name.replace(/\.shp$/i, ''), features, skipped, crs })
+    layers.push({ id: key, name: p.shp.name.replace(/\.shp$/i, ''), file: upload(p.shp), features, skipped, crs })
   }
   return layers
 }

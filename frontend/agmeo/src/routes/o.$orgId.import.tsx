@@ -115,6 +115,15 @@ function DataImportPage() {
 
 type Parsed = { kind: 'shape'; layers: ShapeLayer[] } | { kind: 'isoxml'; rows: ImportRow[] }
 
+/**
+ * The layer of an uploaded file to read by default: for application data one with land-use codes
+ * (portal exports also carry landscape elements), otherwise the one with the most polygons.
+ */
+function defaultLayer(layers: ShapeLayer[], source: ImportSource, knownCodes: Set<string>) {
+  const largest = [...layers].sort((a, b) => b.features.length - a.features.length)
+  return (source === 'antrag' && largest.find((l) => detectAntragColumns(l.features, knownCodes).code)) || largest[0]
+}
+
 function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: Farm[]; fields: Field[] }) {
   const { t } = useTranslation()
   const { orgId, can } = useOrg()
@@ -129,7 +138,8 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   const [parsed, setParsed] = useState<Parsed | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
-  const [layerName, setLayerName] = useState<string | null>(null)
+  // The layer read from each uploaded file, by file; otherwise the default from `defaultLayer`.
+  const [layerChoice, setLayerChoice] = useState<Record<string, string>>({})
   const [antragMapping, setAntragMapping] = useState<AntragMapping | null>(null)
   const [shapeMapping, setShapeMapping] = useState<ShapeMapping | null>(null)
   const [excluded, setExcluded] = useState<Set<number> | null>(null)
@@ -169,31 +179,46 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     }
   }, [files, crsOverride, source, t])
 
-  const layers = parsed?.kind === 'shape' ? parsed.layers : []
-  const layer = layers.find((l) => l.name === layerName) ?? layers[0] ?? null
+  const layers = useMemo(() => (parsed?.kind === 'shape' ? parsed.layers : []), [parsed])
+  const layersByFile = useMemo(() => {
+    const byFile = new Map<string, ShapeLayer[]>()
+    for (const l of layers) byFile.set(l.file, [...(byFile.get(l.file) ?? []), l])
+    return byFile
+  }, [layers])
+  // One layer per uploaded file; all of them make up the import.
+  const chosen = useMemo(
+    () => [...layersByFile.values()].map((ls) => ls.find((l) => l.id === layerChoice[ls[0].file]) ?? defaultLayer(ls, source, knownCodes)),
+    [layersByFile, layerChoice, source, knownCodes],
+  )
+  const usable = useMemo(() => chosen.filter((l) => l.crs.source !== 'unknown'), [chosen])
+  const chosenKey = chosen.map((l) => l.id).join('|')
 
-  // Column mappings are detected once per layer and can then be changed by the user.
+  // Column mappings are detected once per set of layers and can then be changed by the user.
   useEffect(() => {
-    if (!layer) return
-    if (source === 'antrag') setAntragMapping(detectAntragColumns(layer.features, knownCodes))
-    else setShapeMapping(guessShapeMapping(layer.features))
+    if (!chosen.length) return
+    const features = chosen.flatMap((l) => l.features)
+    if (source === 'antrag') setAntragMapping(detectAntragColumns(features, knownCodes))
+    else setShapeMapping(guessShapeMapping(features))
     setExcluded(null)
-  }, [layer, source, knownCodes])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosenKey, parsed, source, knownCodes])
 
   const rows: ImportRow[] = useMemo(() => {
     if (parsed?.kind === 'isoxml') return parsed.rows
-    if (!layer || layer.crs.source === 'unknown') return []
-    if (source === 'antrag') return antragMapping ? antragRows(layer.features, antragMapping) : []
-    return shapeMapping ? shapeRows(layer.features, shapeMapping) : []
-  }, [parsed, layer, source, antragMapping, shapeMapping])
+    const mapping = source === 'antrag' ? antragMapping : shapeMapping
+    if (!mapping) return []
+    let next = 0
+    return usable.flatMap((l) =>
+      (source === 'antrag' ? antragRows(l.features, antragMapping!) : shapeRows(l.features, shapeMapping!)).map((r) => ({ ...r, key: next++, file: l.file })),
+    )
+  }, [parsed, usable, source, antragMapping, shapeMapping])
 
-  // A new file, layer or reference system frames all its fields; a changed column mapping keeps the camera.
+  // New files, layers or a reference system frame all their fields; a changed column mapping keeps the camera.
   useEffect(() => {
-    const geometries =
-      parsed?.kind === 'isoxml' ? parsed.rows.flatMap((r) => (r.geometry ? [r.geometry] : [])) : layer && layer.crs.source !== 'unknown' ? layer.features.map((f) => f.geometry) : []
+    const geometries = parsed?.kind === 'isoxml' ? parsed.rows.flatMap((r) => (r.geometry ? [r.geometry] : [])) : usable.flatMap((l) => l.features.map((f) => f.geometry))
     const features = geometries.map((geometry) => ({ type: 'Feature' as const, geometry, properties: {} }))
     setFocus(features.length ? { type: 'FeatureCollection', features } : null)
-  }, [parsed, layer])
+  }, [parsed, usable])
 
   const duplicates = useMemo(() => new Map(rows.map((r) => [r.key, existingField(r, fields, farmId)])), [rows, fields, farmId])
   const repeated = useMemo(() => repeatedRows(rows), [rows])
@@ -232,7 +257,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     if (!list.length) return
     setResult(null)
     setParsed(null)
-    setLayerName(null)
+    setLayerChoice({})
     setCrsOverride(null)
     setCropChoice({})
     try {
@@ -254,7 +279,8 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     type: 'FeatureCollection',
     features: selected.map((r) => ({ type: 'Feature', geometry: r.geometry!, properties: {} })),
   }
-  const keys = layer ? propertyKeys(layer.features) : []
+  const keys = propertyKeys(chosen.flatMap((l) => l.features))
+  const withoutPrj = chosen.filter((l) => l.crs.source !== 'prj')
   const keyItems = [{ id: '__none', name: t('fields.import.noAttribute') }, ...keys.map((k) => ({ id: k, name: k }))]
   const totalHa = selected.reduce((s, r) => s + (r.areaHa ?? 0), 0)
 
@@ -373,28 +399,41 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
               <strong>{files.label}</strong> ·{' '}
               {parsed.kind === 'isoxml'
                 ? t('import.isoxml.partfields', { count: parsed.rows.length })
-                : layer && (layer.skipped ? t('fields.import.polygonsSkipped', { count: layer.features.length, skipped: layer.skipped }) : t('fields.import.polygons', { count: layer.features.length }))}
+                : (() => {
+                    const count = chosen.reduce((n, l) => n + l.features.length, 0)
+                    const skipped = chosen.reduce((n, l) => n + l.skipped, 0)
+                    return skipped ? t('fields.import.polygonsSkipped', { count, skipped }) : t('fields.import.polygons', { count })
+                  })()}
             </p>
           )}
         </Card>
 
-        {layer && !result && (
+        {chosen.length > 0 && !result && (
           <Card title={t('import.mapping.title')} description={source === 'antrag' ? t('import.mapping.antragHint') : undefined}>
             <div className="space-y-4">
-              {layers.length > 1 && (
-                <Select label={t('import.mapping.layer')} items={layers.map((l) => ({ id: l.name, name: `${l.name} (${l.features.length})` }))} value={layer.name} onChange={(v) => setLayerName(v ? String(v) : null)}>
-                  {(l) => <Option id={l.id}>{l.name}</Option>}
-                </Select>
+              {[...layersByFile].map(
+                ([file, ls]) =>
+                  ls.length > 1 && (
+                    <Select
+                      key={file}
+                      label={layersByFile.size > 1 ? `${t('import.mapping.layer')} · ${file}` : t('import.mapping.layer')}
+                      items={ls.map((l) => ({ id: l.id, name: `${l.name} (${l.features.length})` }))}
+                      value={chosen.find((l) => l.file === file)?.id ?? null}
+                      onChange={(v) => v && setLayerChoice({ ...layerChoice, [file]: String(v) })}
+                    >
+                      {(l) => <Option id={l.id}>{l.name}</Option>}
+                    </Select>
+                  ),
               )}
-              {layer.crs.source !== 'prj' && (
+              {withoutPrj.length > 0 && (
                 <>
-                  {layer.crs.source === 'unknown' && <Notice tone="danger" icon={AlertTriangle}>{t('import.crs.unknown')}</Notice>}
-                  {layer.crs.source === 'guessed' && !layer.crs.certain && <Notice tone="warning" icon={AlertTriangle}>{t('import.crs.uncertain')}</Notice>}
+                  {withoutPrj.some((l) => l.crs.source === 'unknown') && <Notice tone="danger" icon={AlertTriangle}>{t('import.crs.unknown')}</Notice>}
+                  {withoutPrj.some((l) => l.crs.source === 'guessed' && !l.crs.certain) && <Notice tone="warning" icon={AlertTriangle}>{t('import.crs.uncertain')}</Notice>}
                   <Select
                     label={t('import.crs.label')}
                     description={t('import.crs.description')}
                     items={CRS_OPTIONS.map((c) => ({ id: c.id, name: c.label }))}
-                    value={crsOverride ?? layer.crs.id}
+                    value={crsOverride ?? withoutPrj[0].crs.id}
                     onChange={(v) => setCrsOverride(v ? (String(v) as CrsId) : null)}
                   >
                     {(c) => <Option id={c.id}>{c.name}</Option>}
