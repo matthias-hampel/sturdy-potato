@@ -128,8 +128,8 @@ rework:
 | Benchmarks | `economic-analysis/[year]/benchmark` | missing | Whole feature |
 | Market prices (EU portal cron, compare modal) | `cron/market-prices`, `MarketPricesModal.tsx` | missing | Whole feature |
 | Overview (cultivation-group table, scope 2) | `overview/[year]` | missing | Whole feature |
-| CO2 analysis | `analysis/[year]`, `lib/co2calculator` | partial | By operation, FM/DM, land-use change, removals, residues, humus, NUTS2 reference, year/farm comparison, projects, Excel export |
-| RothC carbon tab | `[cultivationId]/carbon` | missing | Whole feature |
+| CO2 analysis | `analysis/[year]`, `lib/co2calculator` | done (phase 4, carbon) | Report text/PDF summary; projects are the user's own organizations |
+| RothC carbon tab | `[cultivationId]/carbon` | done (phase 4, carbon) | Needs `THUENEN_API_KEY` |
 | Yield research | `yield-research/[year]` | missing | Whole feature (internal) |
 | News feed + staff announcements | `news/[year]`, `lib/news`, `src/app/team/news` | missing | Whole feature |
 | Predictions API (yield, DMC, BBCH, GDD, LAI, nFK, grassland) | `predictions/*` | missing | Whole feature |
@@ -302,3 +302,35 @@ Differences from the reference:
   water sources, tyre history, telemetry or John Deere sync (integrations are out of scope).
 - Crop table: data columns of later phases (BBCH, GDD, weather windows, NDVI/LAI, rain) are not there yet;
   field groups are a column with a filter rather than row grouping.
+
+### Phase 4 — carbon (built 2026-10-19, branch feat/parity-carbon)
+
+- **BEK calculator** ported from `lib/co2calculator` with its cited parameters and crop tests
+  (`backend/agmeo-api/src/modules/carbon/bek`); agmeo crop codes map onto its crops in `carbon/crops.ts`.
+  Completed operations write the emission ledger by BEK source (pf/pb/pn) per treated field with the
+  field's crop; reopening reverses it. Crop-cycle terms are computed when read: the crop's humus effect and
+  10 % of last season's organic N once the crop is sown, residues with their humus and nutrient credits
+  once it is harvested. Ledger rows of the simplified calculator map onto BEK sources.
+- **CO2 analysis** (`/carbon`, migration 000070): crop, template or field level; total, per ha, per t FM or
+  DM; yearly comparison with the NUTS 2 reference (EU 2024/2666), by operation type, farm overview,
+  emission sources (detail, PF/PB/PN, GHG Protocol), without credits; table with Excel export; farm
+  comparison across the user's organizations with the reference's multi-sheet workbook.
+- **Scope 2** (000071): kWh of electricity and heat per harvest year with BAFA/UBA factors.
+- **RothC carbon tab** on the field: topsoil values with attachment, rotation and comparison, Thünen
+  simulation over five weather windows, yearly table with CSV/Excel export and the SOC band chart.
+- Calculation parameters list every factor with its citation; crop parameters as a matrix.
+
+Differences from the reference:
+- Crops without model data still get their crop-independent emissions (diesel, fertilizer, crop
+  protection); the reference computes nothing for them.
+- Acidifying fertilizers (negative lime value) release no lime CO2; the reference counts the absolute value.
+- Organic fertilizer contents are per tonne of fresh mass (the reference: per m³); NH3 factors by type and
+  incorporation time, not by application technique, as in the reference. N efficiency defaults to the DüV
+  minimum when the product has none.
+- HVO and biodiesel are recognised by the fuel product's name. No per-product N production factor
+  ("carbon light" fertilizers) and no blue urea categories.
+- Rotation CO2e per entry has no diesel (templates carry no machine data yet); RothC years use the crops'
+  default sowing and harvest months, the entry's expected yield (else the DüV reference yield) and leave
+  residues on the field.
+- "Projects" are not stored: the comparison picks among the organizations the user belongs to.
+- No PDF report with summary text and notes (the reference's third view).
