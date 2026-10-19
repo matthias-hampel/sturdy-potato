@@ -541,6 +541,7 @@ export interface Harvests {
   quality: string | null;
   quantity_t: Numeric;
   updated_at: Generated<Timestamp>;
+  yield_raster_id: string | null;
 }
 
 export interface Jobs {
@@ -1075,21 +1076,125 @@ export interface WeatherHourly {
   wind_speed: number | null;
 }
 
+export interface YieldMapSources {
+  attempts: Generated<number>;
+  attribute: string | null;
+  basis: string | null;
+  bbox: number[] | null;
+  covered_ha: number | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  crop_cycle_id: string;
+  crs: string | null;
+  error: string | null;
+  excluded_reason: string | null;
+  field_id: string;
+  file_id: string | null;
+  file_name: string | null;
+  fingerprint: string | null;
+  format: string | null;
+  harvested_from: Timestamp | null;
+  harvested_to: Timestamp | null;
+  id: Generated<string>;
+  included_in_merge: Generated<boolean>;
+  kind: Generated<string>;
+  machine_label: string | null;
+  mean_rate_t_ha: number | null;
+  organization_id: string;
+  parsed_at: Timestamp | null;
+  pixel_mean_t_ha: number | null;
+  point_count: number | null;
+  provider: Generated<string>;
+  provider_operation_id: string | null;
+  quality: Json | null;
+  status: Generated<string>;
+  storage_key: string | null;
+  total_features: number | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface YieldRasters {
+  area_ha: number | null;
+  attribute: string | null;
+  basis: string | null;
+  boundary_hash: string;
+  build_ms: number | null;
+  built_at: Generated<Timestamp>;
+  cleaning: Json | null;
+  contributions: Json | null;
+  covered_pixels: number | null;
+  crop_cycle_id: string;
+  data: Buffer;
+  event_from: Timestamp | null;
+  event_to: Timestamp | null;
+  field_coverage: number | null;
+  field_id: string;
+  filled_pixels: number | null;
+  format: string | null;
+  grid_epsg: number;
+  grid_height: number;
+  grid_origin_x: number;
+  grid_origin_y: number;
+  grid_resolution: number;
+  grid_width: number;
+  harvest_event_key: string;
+  harvested_ha: number | null;
+  histogram: Json | null;
+  id: Generated<string>;
+  max_t_ha: number | null;
+  mean_t_ha: number | null;
+  median_t_ha: number | null;
+  min_t_ha: number | null;
+  organization_id: string;
+  p05_t_ha: number | null;
+  p95_t_ha: number | null;
+  q20_t_ha: number | null;
+  q80_t_ha: number | null;
+  quality: Json | null;
+  recipe_hash: string;
+  status: Generated<string>;
+  stddev_t_ha: number | null;
+  superseded_at: Timestamp | null;
+  target_moisture: number | null;
+  total_calibration_factor: number | null;
+  total_t: number | null;
+  unit: Generated<string>;
+  valid_pixels: number | null;
+  writeback_at: Timestamp | null;
+  writeback_harvest_id: string | null;
+  writeback_reason: string | null;
+  writeback_status: string | null;
+}
+
+export interface YieldZoneYields {
+  mean_t_ha: number | null;
+  organization_id: string;
+  pixels: number;
+  relative_yield: number | null;
+  yield_raster_id: string;
+  zone_no: number;
+  zoning_id: string;
+}
+
 export interface Zonings {
   analysis_id: string | null;
   created_at: Generated<Timestamp>;
+  crop_cycle_id: string | null;
   field_id: string;
   geometry_version_id: string;
   id: Generated<string>;
   is_custom: Generated<boolean>;
   organization_id: string;
+  params: Json | null;
   source: string;
+  yield_raster_id: string | null;
   zone_count: number;
 }
 
 export interface ZoningZones {
   area_ha: Numeric;
   geometry: string;
+  mean_yield_t_ha: Numeric | null;
   organization_id: string;
   relative_productivity: Numeric | null;
   zone_no: number;
@@ -1167,6 +1272,9 @@ export interface DB {
   weather_cells: WeatherCells;
   weather_daily: WeatherDaily;
   weather_hourly: WeatherHourly;
+  yield_map_sources: YieldMapSources;
+  yield_rasters: YieldRasters;
+  yield_zone_yields: YieldZoneYields;
   zoning_zones: ZoningZones;
   zonings: Zonings;
 }
