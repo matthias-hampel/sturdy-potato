@@ -46,6 +46,8 @@ import { BoardService } from './modules/operations/board.service.js';
 import { CommentsController } from './modules/comments/comments.controller.js';
 import { CommentsService } from './modules/comments/comments.service.js';
 import { OperationsService } from './modules/operations/operations.service.js';
+import { SoilController } from './modules/soil/soil.controller.js';
+import { SoilZonationService } from './modules/soil/zonation.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
 import { VraService } from './modules/vra/vra.service.js';
 import { TasksController } from './modules/tasks/tasks.controller.js';
@@ -78,6 +80,7 @@ export const DOMAIN_SERVICES = [
   MonitoringService,
   ProductivityService,
   VraService,
+  SoilZonationService,
   DashboardService,
   FilesService,
   BoardService,
@@ -112,6 +115,7 @@ export const DOMAIN_SERVICES = [
     MonitoringController,
     ProductivityController,
     VraController,
+    SoilController,
     DashboardController,
     FilesController,
     BoardController,

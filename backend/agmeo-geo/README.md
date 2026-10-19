@@ -77,6 +77,17 @@ correlation (≥ 0.6 stable, ≥ 0.4 partly); 1-D k-means into 3/5/7 zones, siev
 coverage-simplified and clipped. Analyses are queued by the API or automatically once a
 boundary's imagery history is loaded; the worker polls the queue every 10 s.
 
+## Soil sampling zones
+
+`soil_zonations` rows with status `queued` (requested by the API for one or many fields) are
+computed by the worker next to the productivity analyses (`agmeo_geo/soil.py`, algorithm in
+`agmeo_geo/zonation.py`, ported from the reference app's soil planner): the clearest NDVI/NDRE/NDMI
+field raster of the last year (or a chosen date) or the latest productivity map, feature-preserving
+smoothing, then fuzzy c-means, k-means, equal-area segments or the contiguous "probe" variants, an
+automatic zone count capped by field size, cleanup of small patches, vectorised and clipped. A
+finished run replaces the field's active zonation in the same transaction. `uv run agmeo-geo
+soil-zonations` computes the queue once.
+
 ## Database access
 
 The worker connects as `agmeo_geo_worker` (member of `agmeo_geo`, migrations 000006–8). It

@@ -367,6 +367,9 @@ importers:
       oidc-client-ts:
         specifier: ^3.5.0
         version: 3.5.0
+      polyclip-ts:
+        specifier: 0.16.8
+        version: 0.16.8
       react:
         specifier: ^19.2.0
         version: 19.3.1

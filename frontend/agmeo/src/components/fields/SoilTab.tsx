@@ -10,7 +10,7 @@ import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
-import { Button, SegmentedControl } from '#/ui/Button'
+import { Button, Link, SegmentedControl, buttonClass } from '#/ui/Button'
 import { DatePicker, NumberField, Option, Select, Switch, TextField, num } from '#/ui/Field'
 import { Badge, Card, EmptyState, Loading } from '#/ui/Layout'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
@@ -22,7 +22,7 @@ const P_METHOD_LABELS = { cal: 'CAL', dl: 'DL' } as const
 /** Soil of a field: site properties for the fertilization tables, lab results, fertilizer need. */
 export function SoilTab({ field }: { field: Field }) {
   const { t } = useTranslation()
-  const { can } = useOrg()
+  const { can, orgId } = useOrg()
   const samples = useOrgQuery<SoilSample[]>('/soil-samples', { fieldId: field.id })
   const [adding, setAdding] = useState(false)
   const [needOpen, setNeedOpen] = useState(false)
@@ -55,11 +55,16 @@ export function SoilTab({ field }: { field: Field }) {
         description={t('soil.samples.description')}
         padded={false}
         actions={
-          editable && (
-            <Button size="sm" onPress={() => setAdding(true)}>
-              <Plus /> {t('soil.sample.add')}
-            </Button>
-          )
+          <div className="flex flex-wrap gap-2">
+            <Link to="/o/$orgId/soil/$fieldId" params={{ orgId, fieldId: field.id }} className={buttonClass('secondary', 'sm')}>
+              <Layers /> {t('soil.field.openPlanner')}
+            </Link>
+            {editable && (
+              <Button size="sm" onPress={() => setAdding(true)}>
+                <Plus /> {t('soil.sample.add')}
+              </Button>
+            )}
+          </div>
         }
       >
         {samples.isLoading ? (

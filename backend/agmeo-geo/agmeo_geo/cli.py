@@ -4,7 +4,7 @@ import logging
 
 import uvicorn
 
-from . import history, productivity, worker
+from . import history, productivity, soil, worker
 from .config import load
 from .pipeline import compute, connect, reconcile, register_scenes
 from .tiles import create_app
@@ -22,6 +22,7 @@ def main():
     )
     backfill.add_argument("field_id", nargs="?")
     commands.add_parser("productivity", help="Compute queued productivity analyses (and queue missing ones)")
+    commands.add_parser("soil-zonations", help="Compute queued soil sampling zonations once")
     commands.add_parser("serve", help="Serve index map tiles (internal, behind the agmeo API)")
     args = parser.parse_args()
 
@@ -44,6 +45,8 @@ def main():
         print(f"{history.run_all(settings)} imagery jobs handled")
     elif args.command == "productivity":
         print(f"{productivity.run_queued(settings)} productivity analyses handled")
+    elif args.command == "soil-zonations":
+        print(f"{soil.run_queued(settings)} soil zonations handled")
     elif args.command == "serve":
         uvicorn.run(
             create_app(settings), host=settings.tiles_host, port=settings.tiles_port, log_level="info"

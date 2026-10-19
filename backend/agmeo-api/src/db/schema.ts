@@ -900,6 +900,44 @@ export interface SoilSamples {
   soil_texture: string | null;
 }
 
+export interface SoilZonations {
+  batch_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  error: string | null;
+  field_id: string;
+  finished_at: Timestamp | null;
+  geometry_version_id: string | null;
+  id: Generated<string>;
+  method: string;
+  organization_id: string;
+  params: Generated<Json>;
+  scene_date: string | null;
+  source: string;
+  status: Generated<string>;
+  status_code: string | null;
+  superseded_at: Timestamp | null;
+  zone_count: number | null;
+}
+
+export interface SoilZones {
+  area_ha: Numeric;
+  color: string;
+  geometry: string;
+  id: Generated<string>;
+  lab_extras: Json | null;
+  label: string;
+  mean_value: number | null;
+  organization_id: string;
+  probe_nr: number | null;
+  properties: Generated<Json>;
+  property_dates: Generated<Json>;
+  property_methods: Generated<Json>;
+  sample_point: string | null;
+  zonation_id: string;
+  zone_no: number;
+}
+
 export interface StockBalances {
   organization_id: string | null;
   product_id: string | null;
@@ -1155,6 +1193,8 @@ export interface DB {
   psm_uses: PsmUses;
   satellite_scenes: SatelliteScenes;
   soil_samples: SoilSamples;
+  soil_zonations: SoilZonations;
+  soil_zones: SoilZones;
   stock_balances: StockBalances;
   stock_movements: StockMovements;
   storage_locations: StorageLocations;
