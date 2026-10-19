@@ -18,6 +18,7 @@ import {
   type CropTableConditionsRow,
   type CycleWaterBalance,
   type CycleNitrogen,
+  type CycleBaseFertilization,
   type PsmFinding,
 } from '@agmeo/contracts'
 import { useNavigate } from '@tanstack/react-router'
@@ -27,6 +28,7 @@ import { Form, type Selection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { useCropTableMetrics } from '#/components/crops/cropTableMetrics'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
+import { BalanceCell, DeliveredCell, LimeCell, P2o5BalancePill, SoilValueCell, StrawCell } from '#/components/crops/BaseFertilization'
 import { ApplyStrategyDialog, DuevCell, NLossCell, NSupplyCell } from '#/components/crops/Nitrogen'
 import { FertilizerNeedDialog } from '#/components/nutrients/FertilizerNeedDialog'
 import { IrrigationInfoButton, IrrigationMapCard, RootDepthCell, SoilTypeCell, SoilWaterBadge, WaterBalanceDialog, WaterBalanceSparkline } from '#/components/crops/Irrigation'
@@ -92,6 +94,9 @@ export interface ColumnCtx {
   nitrogen: (cycle: CropCycle | null) => CycleNitrogen | undefined
   nitrogenLoading: boolean
   openNeed: (cropCycleId: string) => void
+  /** Base fertilization of a crop cycle (P2O5, K2O, MgO, lime). */
+  base: (cycle: CropCycle | null) => CycleBaseFertilization | undefined
+  baseLoading: boolean
 }
 
 interface TabConfig {
@@ -111,6 +116,8 @@ interface TabConfig {
   water?: boolean
   /** The tab shows the agmeo N balance and applies strategies (nitrogen). */
   nitrogen?: boolean
+  /** The tab shows soil, need and balance of P2O5, K2O and MgO (base fertilization). */
+  base?: boolean
   /** Columns shown before the viewer picks their own; all when not set. */
   defaults?: string[]
   edits?: () => DetailEdit[]
@@ -332,6 +339,42 @@ const nitrogenColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
   nColumn('duev', tt('nitrogen.col.duev'), ctx, (n) => n.duevNeed, (n) => <DuevCell row={n} onOpen={() => ctx.openNeed(n.cropCycleId)} />),
 ]
 
+// ---- Base fertilization: soil, need, delivery and balance per field (reference base-fertilization page) ----
+
+const baseColumn = (id: string, label: string, ctx: ColumnCtx, render: (b: CycleBaseFertilization, r: GroupRow) => ReactNode, value?: (b: CycleBaseFertilization) => number | null, align?: 'end'): ColumnDef<GroupRow> => ({
+  id,
+  label,
+  align,
+  filter: 'number',
+  value: (r) => {
+    const b = r.first ? ctx.base(r.cycle) : undefined
+    return b && value ? value(b) : null
+  },
+  render: (r) => {
+    if (!r.first) return null
+    if (ctx.baseLoading) return <span className="text-muted">…</span>
+    const b = ctx.base(r.cycle)
+    return b ? render(b, r) : dash
+  },
+})
+const nutrientOf = (b: CycleBaseFertilization, k: 'p2o5' | 'k2o' | 'mgo') => b.nutrients.find((n) => n.nutrient === k)
+const baseColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
+  baseColumn('ph', 'pH', ctx, (b) => (b.soil.ph == null ? dash : <span className="tabular" title={b.soil.phMethod ?? undefined}>{fmt.num(b.soil.ph, 1)}</span>), (b) => b.soil.ph, 'end'),
+  baseColumn('humus', tt('baseFertilization.humus'), ctx, (b) => (b.soil.humusPct == null ? dash : <span className="tabular">{fmt.num(b.soil.humusPct, 1)} %</span>), (b) => b.soil.humusPct, 'end'),
+  baseColumn('yield', tt('baseFertilization.yield'), ctx, (b) => (b.yieldTHa == null ? dash : <span className={cx('tabular', b.yieldSource === 'expected' && 'text-muted')}>{fmt.num(b.yieldTHa, 1)} t/ha</span>), (b) => b.yieldTHa, 'end'),
+  baseColumn('straw', tt('baseFertilization.straw'), ctx, (b) => <StrawCell row={b} writable={ctx.writable} />),
+  baseColumn('lime', tt('baseFertilization.lime'), ctx, (b) => <LimeCell row={b} writable={ctx.writable} />, (b) => b.limeOverrideDtCaO ?? b.limeComputedDtCaO, 'end'),
+  ...(['p2o5', 'k2o', 'mgo'] as const).flatMap((k) => {
+    const name = k === 'p2o5' ? 'P₂O₅' : k === 'k2o' ? 'K₂O' : 'MgO'
+    return [
+      baseColumn(`${k}Soil`, `${name} ${tt('baseFertilization.soil.label')}`, ctx, (b) => <SoilValueCell n={nutrientOf(b, k)} />, (b) => nutrientOf(b, k)?.soilMg100g ?? null, 'end'),
+      baseColumn(`${k}Delivered`, `${name} ${tt('baseFertilization.delivered.label')}`, ctx, (b) => <DeliveredCell n={nutrientOf(b, k)} />, (b) => nutrientOf(b, k)?.delivered ?? null, 'end'),
+      baseColumn(`${k}Balance`, `${name} ${tt('baseFertilization.balance.label')}`, ctx, (b) => <BalanceCell n={nutrientOf(b, k)} />, (b) => nutrientOf(b, k)?.balance ?? null, 'end'),
+    ]
+  }),
+  baseColumn('p2o5Duev', tt('baseFertilization.p2o5Balance'), ctx, (b, r) => <P2o5BalancePill row={b} fieldName={r.field.name} />, (b) => b.p2o5Balance.ratioPct),
+]
+
 // ---- Plant protection: BBCH at the application date, products with mix and register info, findings ----
 
 /** The stage recorded on the operation, else the (calibrated) model's on its date. */
@@ -413,6 +456,9 @@ const TABS: Record<OperationTab, TabConfig> = {
   },
   base_fertilization: {
     type: 'fertilization',
+    base: true,
+    fieldColumns: baseColumns,
+    defaults: ['ph', 'yield', 'lime', 'p2o5Soil', 'p2o5Delivered', 'p2o5Balance', 'k2oBalance', 'mgoBalance', 'p2o5Duev', 'date', 'products', 'p2o5', 'k2o', 'mgo', 'cao'],
     include: hasBaseNutrients,
     columns: () => [
       dateColumn(),
@@ -556,10 +602,12 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   const nitrogen = useOrgQuery<CycleNitrogen[]>('/nitrogen', { seasonId }, { enabled: !!cfg.nitrogen && !!seasonId, staleTime: 5 * 60_000 })
   const [needDialog, setNeedDialog] = useState<string | null>(null)
   const [strategyFor, setStrategyFor] = useState<string[] | null>(null)
+  const base = useOrgQuery<CycleBaseFertilization[]>('/base-fertilization', { seasonId }, { enabled: !!cfg.base && !!seasonId, staleTime: 5 * 60_000 })
   const ctx = useMemo<ColumnCtx>(() => {
     const codes = new Map((crops.data ?? []).map((c) => [c.id, c.code]))
     const waterBy = new Map((water.data ?? []).map((w) => [w.cropCycleId, w]))
     const nitrogenBy = new Map((nitrogen.data ?? []).map((n) => [n.cropCycleId, n]))
+    const baseBy = new Map((base.data ?? []).map((b) => [b.cropCycleId, b]))
     const findings = new Map<string, PsmFinding[]>()
     for (const f of checks.data ?? []) findings.set(f.operationId, [...(findings.get(f.operationId) ?? []), f])
     return {
@@ -576,8 +624,10 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
       nitrogen: (c) => (c ? nitrogenBy.get(c.id) : undefined),
       nitrogenLoading: nitrogen.isLoading,
       openNeed: (id) => setNeedDialog(id),
+      base: (c) => (c ? baseBy.get(c.id) : undefined),
+      baseLoading: base.isLoading,
     }
-  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId, water.data, water.isLoading, can, nitrogen.data, nitrogen.isLoading])
+  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId, water.data, water.isLoading, can, nitrogen.data, nitrogen.isLoading, base.data, base.isLoading])
 
   const allColumns = useMemo<ColumnDef<GroupRow>[]>(
     () => [
