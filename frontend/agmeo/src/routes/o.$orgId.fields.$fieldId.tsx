@@ -27,6 +27,8 @@ import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
 import { ConditionsTab } from '#/components/fields/ConditionsTab'
+import { FieldDocuments } from '#/components/fields/FieldDocuments'
+import { FieldOverviewPrintButton } from '#/components/fields/FieldOverviewPrint'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { costCategoryLabel } from '#/i18n/labels'
 import { FieldYieldHistory } from '#/components/yield/FieldYieldHistory'
@@ -85,7 +87,9 @@ function FieldPage() {
         }
         subtitle={`${f.farmName} · ${fmt.ha(f.areaHa)}${f.identifier ? ` · ${f.identifier}` : ''}`}
         actions={
-          can('field.write') && (
+          <>
+            <FieldOverviewPrintButton field={f} cycles={cycles.data ?? []} operations={operations.data ?? []} />
+            {can('field.write') && (
             <>
               <Button onPress={() => setBoundaryOpen(true)}>
                 <Shapes /> {t('fieldPage.editBoundary')}
@@ -102,7 +106,8 @@ function FieldPage() {
                 </Menu>
               </MenuTrigger>
             </>
-          )
+            )}
+          </>
         }
       />
 
@@ -148,6 +153,9 @@ function FieldPage() {
                 ]}
               />
             </Card>
+          </div>
+          <div className="mt-6">
+            <FieldDocuments fieldId={f.id} />
           </div>
         </TabPanel>
         <TabPanel id="conditions">

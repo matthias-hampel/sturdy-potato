@@ -513,6 +513,15 @@ export interface FieldAnnotations {
   updated_at: Generated<Timestamp>;
 }
 
+export interface FieldDocuments {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  field_id: string;
+  file_id: string;
+  harvest_year: number | null;
+  organization_id: string;
+}
+
 export interface FieldCarbonSoil {
   bulk_density: Numeric;
   clay_pct: Numeric;
@@ -1410,6 +1419,7 @@ export interface DB {
   field_rasters: FieldRasters;
   field_annotations: FieldAnnotations;
   field_carbon_soil: FieldCarbonSoil;
+  field_documents: FieldDocuments;
   fields: Fields;
   file_folders: FileFolders;
   files: Files;

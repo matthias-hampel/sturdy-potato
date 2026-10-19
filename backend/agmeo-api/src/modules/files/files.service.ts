@@ -49,6 +49,7 @@ const SYSTEM_FOLDER_NAMES: Record<SystemFolder, { de: string; en: string; parent
   soilImports: { de: 'Bodenproben-Importe', en: 'Soil imports' },
   soilExports: { de: 'Bodenproben-Exporte', en: 'Soil exports' },
   yieldMaps: { de: 'Ertragskarten', en: 'Yield maps' },
+  fieldDocuments: { de: 'Schlagdokumente', en: 'Field documents' },
 };
 
 const tooLarge = (used: number, limit: number) =>
@@ -585,6 +586,12 @@ export class FilesService {
 
   private newKey(orgId: string) {
     return `orgs/${orgId}/files/${randomUUID()}`;
+  }
+
+  /** Live files by id, for modules that link files to their own records. */
+  async items(trx: Trx, ids: string[]): Promise<FileItem[]> {
+    if (!ids.length) return [];
+    return (await this.fileQuery(trx).where('f.id', 'in', ids).execute()).map(toFileItem);
   }
 
   private fileQuery(trx: Trx) {
