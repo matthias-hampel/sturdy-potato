@@ -4,7 +4,7 @@
  * Simplified: no crop residues, humus balance or scope 2. NH3 losses of organic fertilizers use
  * default shares of ammonium N by application technique instead of Thünen's full model.
  */
-import { type ApplicationTechnique, type BaseUnit, type FertilizerType, isOrganicFertilizer, nutrientKgPerHa, type NutrientContents } from '@agmeo/contracts';
+import { type ApplicationTechnique, type BaseUnit, type CalculationParameter, type FertilizerType, isOrganicFertilizer, nutrientKgPerHa, type NutrientContents } from '@agmeo/contracts';
 
 export const CO2E_FACTOR_SET = 'DE-BEK-simplified-2026.1';
 
@@ -44,6 +44,33 @@ const PESTICIDE_AI_SHARE = 0.35;
 const PESTICIDE_KG_PER_AI = 11.09;
 /** Seed production, kg CO2e per kg seed (generic; agmeo has per-crop values). */
 const SEED_KG_PER_KG = 0.5;
+
+/** The factors above, for display (read-only). Keys are stable; labels live in the frontend. */
+export function calculationParameters(): CalculationParameter[] {
+  const row = (group: CalculationParameter['group'], key: string, value: number, unit: string, variant?: string): CalculationParameter => ({ group, key, variant: variant ?? null, value, unit });
+  return [
+    row('general', 'gwp_n2o', GWP_N2O, 'kg CO₂e/kg N₂O'),
+    row('fuel', 'diesel_combustion', DIESEL_KG_PER_L, 'kg CO₂e/l'),
+    row('fuel', 'machinery', MACHINERY_KG_PER_L_DIESEL, 'kg CO₂e/l'),
+    row('nitrous_oxide', 'n2o_direct', EF_N2O_DIRECT, 'kg N₂O-N/kg N'),
+    row('nitrous_oxide', 'n2o_indirect', EF_N2O_INDIRECT, 'kg N₂O-N/kg NH₃-N'),
+    ...Object.entries(NH3_MINERAL).map(([type, v]) => row('ammonia', 'nh3_mineral', v!, 'kg NH₃-N/kg N', type)),
+    row('ammonia', 'nh3_mineral_default', NH3_MINERAL_DEFAULT, 'kg NH₃-N/kg N'),
+    ...Object.entries(NH3_LIQUID).map(([technique, v]) => row('ammonia', 'nh3_liquid', v, 'kg NH₃-N/kg NH₄-N', technique)),
+    row('ammonia', 'nh3_solid', NH3_SOLID, 'kg NH₃-N/kg NH₄-N'),
+    ...Object.entries(SUPPLY_N).map(([type, v]) => row('fertilizer_supply', 'supply_n', v!, 'kg CO₂e/kg N', type)),
+    row('fertilizer_supply', 'supply_n_default', SUPPLY_N_DEFAULT, 'kg CO₂e/kg N'),
+    row('fertilizer_supply', 'supply_p2o5', SUPPLY_P2O5, 'kg CO₂e/kg P₂O₅'),
+    row('fertilizer_supply', 'supply_k2o', SUPPLY_K2O, 'kg CO₂e/kg K₂O'),
+    row('fertilizer_supply', 'supply_cao', SUPPLY_CAO, 'kg CO₂e/kg CaO'),
+    row('fertilizer_supply', 'lime_co2', LIME_CO2_PER_CAO, 'kg CO₂/kg CaO'),
+    row('fertilizer_supply', 'urea_co2', UREA_CO2_PER_N, 'kg CO₂/kg N'),
+    row('fertilizer_supply', 'uan_urea_share', UAN_UREA_SHARE, '–'),
+    row('plant_protection', 'pesticide_ai_share', PESTICIDE_AI_SHARE, 'kg/kg'),
+    row('plant_protection', 'pesticide_per_ai', PESTICIDE_KG_PER_AI, 'kg CO₂e/kg'),
+    row('seed', 'seed_production', SEED_KG_PER_KG, 'kg CO₂e/kg'),
+  ];
+}
 
 export const EMISSION_SOURCES = [
   'diesel',

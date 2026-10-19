@@ -10,24 +10,31 @@ import type {
   Product,
   ProductCategory,
   ProductInput,
+  ProductPriceInput,
+  ProductPriceRow,
   StockBalance,
   StockMovement,
   StockMovementInput,
   StockMovementKind,
+  StocktakeInput,
   StorageLocation,
   StorageLocationInput,
 } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
+import { toCsv } from '../../core/csv.js';
 import { badRequest, notFound } from '../../core/errors.js';
 import { diff, record } from '../../core/events.js';
-import { iso, today } from '../../core/mappers.js';
+import { dateIn, iso, round, today } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
 
 /** A product is usable while approved, or after its approval ended until the use-up period lapses. */
 export const psmUsable = (approvalEndsOn: string | null, useUpUntil: string | null, on = today()) =>
   (approvalEndsOn == null || approvalEndsOn >= on) || (useUpUntil != null && useUpUntil >= on);
+
+const currentYear = () => Number(today().slice(0, 4));
+const yearOf = (d: Date) => Number(dateIn(d).slice(0, 4));
 
 /** BVL dose unit codes (Kodeliste 25) that map to a base unit of ours, per hectare. */
 const PSM_UNIT: Record<string, { baseUnit: 'l' | 'kg'; factor: number; label: string }> = {
@@ -59,14 +66,26 @@ export class InventoryService {
           .whereRef('m.product_id', '=', 'p.id')
           .as('stock'),
       )
+      .select(
+        sql<{ price: number; year: number; source: 'manual' | 'warehouse' } | null>`(
+          SELECT json_build_object('price', pp.price, 'year', pp.year, 'source', pp.source)
+          FROM product_prices pp WHERE pp.product_id = p.id AND pp.year <= ${currentYear()}
+          ORDER BY pp.year DESC LIMIT 1)`.as('price'),
+      )
       .orderBy('p.category')
       .orderBy('p.name');
     if (opts.ids) q = q.where('p.id', 'in', opts.ids.length ? opts.ids : ['00000000-0000-0000-0000-000000000000']);
     if (!opts.includeArchived) q = q.where('p.archived_at', 'is', null);
     if (opts.category) q = q.where('p.category', '=', opts.category);
     const rows = await q.execute();
+    const expiries = await this.nextExpiries(trx, rows.filter((r) => Number(r.stock ?? 0) > 0).map((r) => ({ id: r.id, stock: Number(r.stock) })));
     return rows.map((r) => {
       const stock = Number(r.stock ?? 0);
+      const currentPrice = r.price
+        ? { price: Number(r.price.price), year: r.price.year, source: r.price.source }
+        : r.unit_cost != null
+          ? { price: r.unit_cost, year: currentYear(), source: 'default' as const }
+          : null;
       return {
         id: r.id,
         category: r.category as ProductCategory,
@@ -91,12 +110,46 @@ export class InventoryService {
           ? { kennr: r.psm_kennr, approvalEndsOn: r.psm_approval_ends_on, useUpUntil: r.psm_use_up_until, usable: psmUsable(r.psm_approval_ends_on, r.psm_use_up_until) }
           : null,
         lowStockThreshold: r.low_stock_threshold,
+        humusCKgPerT: r.humus_c_kg_per_t,
+        nEffectivenessPct: r.n_effectiveness_pct,
+        website: r.website,
+        datasheetFileId: r.datasheet_file_id,
         notes: r.notes,
         archivedAt: iso(r.archived_at),
         stock,
         lowStock: r.low_stock_threshold != null && stock <= r.low_stock_threshold,
+        stockValue: currentPrice && stock > 0 ? round(stock * currentPrice.price, 2) : null,
+        nextExpiry: expiries.get(r.id) ?? null,
+        currentPrice,
       };
     });
+  }
+
+  /**
+   * Earliest expiry date of the stock on hand. Outflows carry no lot, so stock is assumed to be
+   * used first in, first out: what is left belongs to the latest receipts.
+   */
+  private async nextExpiries(trx: Trx, products: { id: string; stock: number }[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    if (!products.length) return out;
+    const receipts = await trx
+      .selectFrom('stock_movements as m')
+      .select(['m.product_id', 'm.quantity_delta', 'm.expiry_date'])
+      .where('m.product_id', 'in', products.map((p) => p.id))
+      .where('m.kind', '=', 'receipt')
+      .where((eb) => eb.not(eb.exists(eb.selectFrom('stock_movements as v').select('v.id').whereRef('v.voids_movement_id', '=', 'm.id'))))
+      .orderBy('m.occurred_at', 'desc')
+      .orderBy('m.created_at', 'desc')
+      .execute();
+    for (const p of products) {
+      let left = p.stock;
+      for (const r of receipts.filter((x) => x.product_id === p.id)) {
+        if (left <= 0) break;
+        if (r.expiry_date && (!out.has(p.id) || r.expiry_date < out.get(p.id)!)) out.set(p.id, r.expiry_date);
+        left -= r.quantity_delta;
+      }
+    }
+    return out;
   }
 
   private productValues(input: Out<typeof ProductInput>) {
@@ -119,6 +172,10 @@ export class InventoryService {
       density_t_m3: input.densityTM3 ?? null,
       fertilizer_type: input.fertilizerType ?? null,
       low_stock_threshold: input.lowStockThreshold ?? null,
+      humus_c_kg_per_t: input.humusCKgPerT ?? null,
+      n_effectiveness_pct: input.nEffectivenessPct ?? null,
+      website: input.website ?? null,
+      datasheet_file_id: input.datasheetFileId ?? null,
       notes: input.notes ?? null,
     };
   }
@@ -185,7 +242,7 @@ export class InventoryService {
     });
   }
 
-  movements(ctx: Ctx, opts: { productId?: string; operationId?: string; limit?: number }): Promise<StockMovement[]> {
+  movements(ctx: Ctx, opts: { productId?: string; operationId?: string; from?: string; to?: string; limit?: number }): Promise<StockMovement[]> {
     return this.db.run(ctx, async (trx) => {
       let q = trx
         .selectFrom('stock_movements as m')
@@ -206,6 +263,14 @@ export class InventoryService {
           'm.occurred_at',
           'm.operation_id',
           'o.title as operation_title',
+          'm.total_price',
+          'm.vat_rate',
+          'm.lot_number',
+          'm.expiry_date',
+          'm.counterparty',
+          'm.invoice_number',
+          'm.voids_movement_id',
+          (eb) => eb.selectFrom('stock_movements as v').select('v.id').whereRef('v.voids_movement_id', '=', 'm.id').as('voided_by'),
           'm.note',
           'u.display_name',
         ])
@@ -214,6 +279,8 @@ export class InventoryService {
         .limit(Math.min(opts.limit ?? 200, 1000));
       if (opts.productId) q = q.where('m.product_id', '=', opts.productId);
       if (opts.operationId) q = q.where('m.operation_id', '=', opts.operationId);
+      if (opts.from) q = q.where('m.occurred_at', '>=', new Date(opts.from));
+      if (opts.to) q = q.where('m.occurred_at', '<', new Date(new Date(opts.to).getTime() + 86_400_000));
       const rows = await q.execute();
       return rows.map((r) => ({
         id: r.id,
@@ -228,45 +295,300 @@ export class InventoryService {
         occurredAt: iso(r.occurred_at),
         operationId: r.operation_id,
         operationTitle: r.operation_title,
+        totalPrice: r.total_price,
+        vatRate: r.vat_rate,
+        lotNumber: r.lot_number,
+        expiryDate: r.expiry_date,
+        counterparty: r.counterparty,
+        invoiceNumber: r.invoice_number,
+        voidsMovementId: r.voids_movement_id,
+        voidedBy: r.voided_by,
         note: r.note,
         createdByName: r.display_name,
       }));
     });
   }
 
-  /** Manual receipts and stocktake adjustments. Consumption only comes from operations. */
+  /** Manual receipts, issues and adjustments. Consumption only comes from operations, harvest receipts from harvests. */
   createMovement(ctx: Ctx, input: Out<typeof StockMovementInput>): Promise<Product> {
     return this.db.run(ctx, async (trx) => {
-      const product = await trx.selectFrom('products').select(['id', 'unit_cost']).where('id', '=', input.productId).executeTakeFirst();
+      const product = await trx.selectFrom('products').select('id').where('id', '=', input.productId).executeTakeFirst();
       if (!product) throw notFound('Product');
-      const { id } = await trx
-        .insertInto('stock_movements')
-        .values({
-          organization_id: ctx.orgId,
-          product_id: input.productId,
-          storage_location_id: input.storageLocationId ?? null,
-          kind: input.kind,
-          quantity_delta: input.quantityDelta,
-          unit_cost: input.unitCost ?? null,
-          occurred_at: input.occurredAt ? new Date(input.occurredAt) : new Date(),
-          note: input.note ?? null,
-          created_by: ctx.userId,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      // A receipt with a price updates the default valuation for future applications.
-      if (input.kind === 'receipt' && input.unitCost != null) {
-        await trx.updateTable('products').set({ unit_cost: input.unitCost }).where('id', '=', input.productId).execute();
-      }
+      const occurredAt = input.occurredAt ? new Date(input.occurredAt) : new Date();
+      const quantity = Math.abs(input.quantityDelta);
+      const unitCost = input.unitCost ?? (input.totalPrice != null ? input.totalPrice / quantity : null);
+      const id = await this.insertMovement(trx, ctx, {
+        productId: input.productId,
+        storageLocationId: input.storageLocationId ?? null,
+        kind: input.kind,
+        quantityDelta: input.quantityDelta,
+        unitCost,
+        totalPrice: input.totalPrice ?? (input.unitCost != null && input.kind !== 'adjustment' ? round(input.unitCost * quantity, 2) : null),
+        vatRate: input.vatRate ?? null,
+        lotNumber: input.lotNumber ?? null,
+        expiryDate: input.expiryDate ?? null,
+        counterparty: input.counterparty ?? null,
+        invoiceNumber: input.invoiceNumber ?? null,
+        occurredAt,
+        note: input.note ?? null,
+      });
+      if (input.kind === 'receipt' && unitCost != null) await this.refreshWarehousePrice(trx, ctx, input.productId, yearOf(occurredAt));
       await record(trx, ctx, {
         entityType: 'product',
         entityId: input.productId,
-        action: input.kind === 'receipt' ? 'stock_received' : 'stock_adjusted',
+        action: input.kind === 'receipt' ? 'stock_received' : input.kind === 'issue' ? 'stock_issued' : 'stock_adjusted',
         changes: { movementId: id, quantityDelta: input.quantityDelta },
         event: { type: 'inventory.movement_recorded', payload: { productId: input.productId, movementId: id, kind: input.kind } },
       });
       return (await this.queryProducts(trx, { ids: [input.productId], includeArchived: true }))[0];
     });
+  }
+
+  async insertMovement(
+    trx: Trx,
+    ctx: Ctx,
+    m: {
+      productId: string;
+      storageLocationId: string | null;
+      kind: StockMovementKind;
+      quantityDelta: number;
+      unitCost: number | null;
+      totalPrice?: number | null;
+      vatRate?: number | null;
+      lotNumber?: string | null;
+      expiryDate?: string | null;
+      counterparty?: string | null;
+      invoiceNumber?: string | null;
+      voidsMovementId?: string | null;
+      harvestId?: string | null;
+      occurredAt: Date;
+      note: string | null;
+    },
+  ): Promise<string> {
+    const { id } = await trx
+      .insertInto('stock_movements')
+      .values({
+        organization_id: ctx.orgId,
+        product_id: m.productId,
+        storage_location_id: m.storageLocationId,
+        kind: m.kind,
+        quantity_delta: m.quantityDelta,
+        unit_cost: m.unitCost,
+        total_price: m.totalPrice ?? null,
+        vat_rate: m.vatRate ?? null,
+        lot_number: m.lotNumber ?? null,
+        expiry_date: m.expiryDate ?? null,
+        counterparty: m.counterparty ?? null,
+        invoice_number: m.invoiceNumber ?? null,
+        voids_movement_id: m.voidsMovementId ?? null,
+        harvest_id: m.harvestId ?? null,
+        occurred_at: m.occurredAt,
+        note: m.note,
+        created_by: ctx.userId,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    return id;
+  }
+
+  /** Cancels a manual booking with a compensating movement; the ledger itself is never changed. */
+  voidMovement(ctx: Ctx, id: string, reason: string): Promise<Product> {
+    return this.db.run(ctx, async (trx) => {
+      const m = await trx.selectFrom('stock_movements').selectAll().where('id', '=', id).executeTakeFirst();
+      if (!m) throw notFound('Stock movement');
+      if (!['receipt', 'issue', 'adjustment'].includes(m.kind) || m.harvest_id) {
+        throw badRequest('not_voidable', 'Only manual receipts, issues and adjustments can be voided; correct the operation or harvest instead');
+      }
+      const voided = await trx.selectFrom('stock_movements').select('id').where('voids_movement_id', '=', id).executeTakeFirst();
+      if (voided) throw badRequest('already_voided', 'This booking is already voided');
+      const voidId = await this.insertMovement(trx, ctx, {
+        productId: m.product_id,
+        storageLocationId: m.storage_location_id,
+        kind: 'void',
+        quantityDelta: -m.quantity_delta,
+        unitCost: m.unit_cost,
+        lotNumber: m.lot_number,
+        voidsMovementId: id,
+        occurredAt: new Date(),
+        note: reason,
+      });
+      if (m.kind === 'receipt' && m.unit_cost != null) await this.refreshWarehousePrice(trx, ctx, m.product_id, yearOf(new Date(m.occurred_at)));
+      await record(trx, ctx, {
+        entityType: 'product',
+        entityId: m.product_id,
+        action: 'stock_voided',
+        changes: { movementId: id, voidMovementId: voidId, reason },
+        event: { type: 'inventory.movement_recorded', payload: { productId: m.product_id, movementId: voidId, kind: 'void' } },
+      });
+      return (await this.queryProducts(trx, { ids: [m.product_id], includeArchived: true }))[0];
+    });
+  }
+
+  /** Books the difference between the counted and the recorded stock as an adjustment. */
+  stocktake(ctx: Ctx, input: Out<typeof StocktakeInput>): Promise<Product> {
+    return this.db.run(ctx, async (trx) => {
+      const product = await trx.selectFrom('products').select('id').where('id', '=', input.productId).executeTakeFirst();
+      if (!product) throw notFound('Product');
+      const location = input.storageLocationId ?? null;
+      const { q } = await trx
+        .selectFrom('stock_movements')
+        .select(sql<number>`coalesce(sum(quantity_delta), 0)`.as('q'))
+        .where('product_id', '=', input.productId)
+        .where(sql<boolean>`storage_location_id IS NOT DISTINCT FROM ${location}`)
+        .executeTakeFirstOrThrow();
+      const delta = Math.round((input.counted - Number(q)) * 1e6) / 1e6;
+      if (delta !== 0) {
+        const id = await this.insertMovement(trx, ctx, {
+          productId: input.productId,
+          storageLocationId: location,
+          kind: 'adjustment',
+          quantityDelta: delta,
+          unitCost: null,
+          occurredAt: input.occurredAt ? new Date(input.occurredAt) : new Date(),
+          note: input.note ?? 'Stocktake',
+        });
+        await record(trx, ctx, {
+          entityType: 'product',
+          entityId: input.productId,
+          action: 'stocktake',
+          changes: { movementId: id, recorded: Number(q), counted: input.counted },
+          event: { type: 'inventory.movement_recorded', payload: { productId: input.productId, movementId: id, kind: 'adjustment' } },
+        });
+      }
+      return (await this.queryProducts(trx, { ids: [input.productId], includeArchived: true }))[0];
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Prices per year
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The year's warehouse price is the weighted average of its priced receipts that are not voided.
+   * A manual price for the year is the farm's own and stays.
+   */
+  async refreshWarehousePrice(trx: Trx, ctx: Ctx, productId: string, year: number): Promise<void> {
+    const existing = await trx.selectFrom('product_prices').select('source').where('product_id', '=', productId).where('year', '=', year).executeTakeFirst();
+    if (existing?.source === 'manual') return;
+    const { qty, value } = await trx
+      .selectFrom('stock_movements as m')
+      .select([sql<number>`sum(m.quantity_delta)`.as('qty'), sql<number>`sum(m.quantity_delta * m.unit_cost)`.as('value')])
+      .where('m.product_id', '=', productId)
+      .where('m.kind', '=', 'receipt')
+      .where('m.unit_cost', 'is not', null)
+      .where(sql<boolean>`extract(year FROM m.occurred_at AT TIME ZONE 'Europe/Berlin') = ${year}`)
+      .where((eb) => eb.not(eb.exists(eb.selectFrom('stock_movements as v').select('v.id').whereRef('v.voids_movement_id', '=', 'm.id'))))
+      .executeTakeFirstOrThrow();
+    if (!qty || Number(qty) <= 0) {
+      await trx.deleteFrom('product_prices').where('product_id', '=', productId).where('year', '=', year).where('source', '=', 'warehouse').execute();
+      return;
+    }
+    const price = Math.round((Number(value) / Number(qty)) * 10_000) / 10_000;
+    await trx
+      .insertInto('product_prices')
+      .values({ organization_id: ctx.orgId, product_id: productId, year, price, source: 'warehouse' })
+      .onConflict((oc) => oc.columns(['organization_id', 'product_id', 'year']).doUpdateSet({ price, source: 'warehouse', updated_at: new Date() }))
+      .execute();
+  }
+
+  prices(ctx: Ctx, year: number): Promise<ProductPriceRow[]> {
+    return this.db.run(ctx, async (trx) => {
+      const rows = await trx
+        .selectFrom('products as p')
+        .leftJoin('product_prices as pp', (j) => j.onRef('pp.product_id', '=', 'p.id').on('pp.year', '=', year))
+        .select(['p.id', 'p.name', 'p.category', 'p.base_unit', 'p.unit_cost', 'pp.price', 'pp.source'])
+        .select(
+          sql<{ price: number; year: number } | null>`(
+            SELECT json_build_object('price', e.price, 'year', e.year) FROM product_prices e
+            WHERE e.product_id = p.id AND e.year < ${year} ORDER BY e.year DESC LIMIT 1)`.as('earlier'),
+        )
+        .where('p.archived_at', 'is', null)
+        .orderBy('p.category')
+        .orderBy('p.name')
+        .execute();
+      return rows.map((r) => ({
+        productId: r.id,
+        productName: r.name,
+        category: r.category as ProductCategory,
+        baseUnit: r.base_unit as BaseUnit,
+        price: r.price,
+        source: (r.source as 'manual' | 'warehouse' | null) ?? null,
+        carriedOver: r.price == null && r.earlier ? { price: Number(r.earlier.price), year: r.earlier.year } : null,
+        defaultPrice: r.unit_cost,
+      }));
+    });
+  }
+
+  /** Sets the farm's own prices for a year; clearing one falls back to the warehouse price. */
+  setPrices(ctx: Ctx, input: Out<typeof ProductPriceInput>): Promise<ProductPriceRow[]> {
+    return this.db
+      .run(ctx, async (trx) => {
+        const ids = [...new Set(input.prices.map((p) => p.productId))];
+        const known = await trx.selectFrom('products').select('id').where('id', 'in', ids).execute();
+        if (known.length !== ids.length) throw notFound('Product');
+        for (const p of input.prices) {
+          if (p.price == null) {
+            await trx.deleteFrom('product_prices').where('product_id', '=', p.productId).where('year', '=', input.year).execute();
+            await this.refreshWarehousePrice(trx, ctx, p.productId, input.year);
+          } else {
+            await trx
+              .insertInto('product_prices')
+              .values({ organization_id: ctx.orgId, product_id: p.productId, year: input.year, price: p.price, source: 'manual' })
+              .onConflict((oc) => oc.columns(['organization_id', 'product_id', 'year']).doUpdateSet({ price: p.price!, source: 'manual', updated_at: new Date() }))
+              .execute();
+          }
+        }
+        await record(trx, ctx, { entityType: 'product_prices', entityId: ctx.orgId, action: 'updated', changes: { year: input.year, count: input.prices.length } });
+      })
+      .then(() => this.prices(ctx, input.year));
+  }
+
+  // ---------------------------------------------------------------------------
+  // CSV exports
+  // ---------------------------------------------------------------------------
+
+  async balancesCsv(ctx: Ctx): Promise<{ filename: string; csv: string }> {
+    const [products, balances] = await Promise.all([this.products(ctx), this.balances(ctx)]);
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const rows = balances
+      .filter((b) => byId.has(b.productId) && b.quantity !== 0)
+      .map((b) => {
+        const p = byId.get(b.productId)!;
+        return [p.name, p.category, b.storageLocationName ?? '', b.quantity, p.baseUnit, p.currentPrice?.price ?? '', p.currentPrice ? round(b.quantity * p.currentPrice.price, 2) : '', p.nextExpiry ?? ''];
+      });
+    return {
+      filename: `stock-${today()}.csv`,
+      csv: toCsv(['Product', 'Category', 'Storage location', 'Quantity', 'Unit', 'Price per unit', 'Value', 'Next expiry'], rows),
+    };
+  }
+
+  async movementsCsv(ctx: Ctx, opts: { from?: string; to?: string; productId?: string }): Promise<{ filename: string; csv: string }> {
+    const list = await this.movements(ctx, { ...opts, limit: 100_000 });
+    const rows = list.map((m) => [
+      m.occurredAt ? dateIn(new Date(m.occurredAt)) : '',
+      m.productName,
+      m.kind,
+      m.quantityDelta,
+      m.baseUnit,
+      m.storageLocationName ?? '',
+      m.unitCost ?? '',
+      m.totalPrice ?? '',
+      m.vatRate ?? '',
+      m.lotNumber ?? '',
+      m.expiryDate ?? '',
+      m.counterparty ?? '',
+      m.invoiceNumber ?? '',
+      m.operationTitle ?? '',
+      m.voidedBy ? 'voided' : '',
+      m.note ?? '',
+    ]);
+    return {
+      filename: `stock-movements-${today()}.csv`,
+      csv: toCsv(
+        ['Date', 'Product', 'Kind', 'Quantity', 'Unit', 'Storage location', 'Price per unit', 'Total price', 'VAT %', 'Lot', 'Expiry', 'Supplier/buyer', 'Invoice', 'Operation', 'Status', 'Note'],
+        rows,
+      ),
+    };
   }
 
   // ---------------------------------------------------------------------------

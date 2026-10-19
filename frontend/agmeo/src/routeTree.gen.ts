@@ -20,6 +20,7 @@ import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics
 import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
+import { Route as OOrgIdPricesRouteImport } from './routes/o.$orgId.prices'
 import { Route as OOrgIdRotationsRouteImport } from './routes/o.$orgId.rotations'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
 import { Route as OOrgIdTasksRouteImport } from './routes/o.$orgId.tasks'
@@ -93,6 +94,11 @@ const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
 const OOrgIdNutrientsRoute = OOrgIdNutrientsRouteImport.update({
   id: '/nutrients',
   path: '/nutrients',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdPricesRoute = OOrgIdPricesRouteImport.update({
+  id: '/prices',
+  path: '/prices',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdRotationsRoute = OOrgIdRotationsRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
@@ -302,6 +311,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
@@ -365,6 +376,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
@@ -472,6 +484,13 @@ declare module '@tanstack/react-router' {
       path: '/nutrients'
       fullPath: '/o/$orgId/nutrients'
       preLoaderRoute: typeof OOrgIdNutrientsRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/prices': {
+      id: '/o/$orgId/prices'
+      path: '/prices'
+      fullPath: '/o/$orgId/prices'
+      preLoaderRoute: typeof OOrgIdPricesRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/rotations': {
@@ -616,6 +635,7 @@ interface OOrgIdRouteChildren {
   OOrgIdFilesRoute: typeof OOrgIdFilesRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
+  OOrgIdPricesRoute: typeof OOrgIdPricesRoute
   OOrgIdRotationsRoute: typeof OOrgIdRotationsRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
   OOrgIdTasksRoute: typeof OOrgIdTasksRoute
@@ -644,6 +664,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdFilesRoute: OOrgIdFilesRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
+  OOrgIdPricesRoute: OOrgIdPricesRoute,
   OOrgIdRotationsRoute: OOrgIdRotationsRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
   OOrgIdTasksRoute: OOrgIdTasksRoute,

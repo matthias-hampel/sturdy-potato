@@ -31,6 +31,9 @@ import { resolveSeason } from '../crops/seasons.js';
  * costs recorded in agmeo; they deliberately exclude overhead, financing and taxes and
  * must not be presented as farm profit.
  */
+/** Base units a harvested-goods product can be stocked in, per tonne. */
+const HARVEST_UNITS_PER_T: Record<string, number> = { t: 1, kg: 1000 };
+
 @Injectable()
 export class EconomicsService {
   constructor(private readonly db: Database) {}
@@ -68,6 +71,7 @@ export class EconomicsService {
         pricePerT: r.price_per_t,
         priceBasis: r.price_basis as Harvest['priceBasis'],
         revenue: price != null ? round(price * r.quantity_t) : null,
+        productId: r.product_id,
         notes: r.notes,
       };
     });
@@ -87,6 +91,14 @@ export class EconomicsService {
       if (input.priceBasis === 'actual' && input.pricePerT == null) {
         throw badRequest('price_required', 'Enter the sale price for an actual price');
       }
+      const product = input.productId
+        ? await trx.selectFrom('products').select(['id', 'category', 'base_unit']).where('id', '=', input.productId).executeTakeFirst()
+        : null;
+      if (input.productId && !product) throw notFound('Product');
+      const perT = product ? HARVEST_UNITS_PER_T[product.base_unit] : undefined;
+      if (product && (product.category !== 'harvest' || perT == null)) {
+        throw badRequest('invalid_harvest_product', 'Book harvests into a harvested-goods product measured in t or kg');
+      }
       const { id } = await trx
         .insertInto('harvests')
         .values({
@@ -99,11 +111,29 @@ export class EconomicsService {
           quality: input.quality ?? null,
           price_per_t: input.pricePerT ?? null,
           price_basis: input.priceBasis,
+          product_id: product?.id ?? null,
           notes: input.notes ?? null,
           created_by: ctx.userId,
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      if (product && perT != null) {
+        await trx
+          .insertInto('stock_movements')
+          .values({
+            organization_id: ctx.orgId,
+            product_id: product.id,
+            storage_location_id: input.storageLocationId ?? null,
+            kind: 'receipt',
+            quantity_delta: input.quantityT * perT,
+            unit_cost: null,
+            harvest_id: id,
+            occurred_at: new Date(`${input.harvestDate}T12:00:00Z`),
+            note: null,
+            created_by: ctx.userId,
+          })
+          .execute();
+      }
       if (cycle.status === 'planned' || cycle.status === 'active') {
         await trx.updateTable('crop_cycles').set({ status: 'harvested' }).where('id', '=', input.cropCycleId).execute();
       }
@@ -122,6 +152,31 @@ export class EconomicsService {
     return this.db.run(ctx, async (trx) => {
       const h = await trx.selectFrom('harvests').select(['crop_cycle_id', 'quantity_t']).where('id', '=', id).executeTakeFirst();
       if (!h) throw notFound('Harvest');
+      // A harvest booked into stock leaves the store again with its record.
+      const receipt = await trx
+        .selectFrom('stock_movements as m')
+        .selectAll('m')
+        .where('m.harvest_id', '=', id)
+        .where('m.kind', '=', 'receipt')
+        .where((eb) => eb.not(eb.exists(eb.selectFrom('stock_movements as v').select('v.id').whereRef('v.voids_movement_id', '=', 'm.id'))))
+        .executeTakeFirst();
+      if (receipt) {
+        await trx
+          .insertInto('stock_movements')
+          .values({
+            organization_id: ctx.orgId,
+            product_id: receipt.product_id,
+            storage_location_id: receipt.storage_location_id,
+            kind: 'void',
+            quantity_delta: -receipt.quantity_delta,
+            voids_movement_id: receipt.id,
+            harvest_id: id,
+            occurred_at: new Date(),
+            note: 'Harvest deleted',
+            created_by: ctx.userId,
+          })
+          .execute();
+      }
       await trx.deleteFrom('harvests').where('id', '=', id).execute();
       await record(trx, ctx, { entityType: 'harvest', entityId: id, action: 'deleted', changes: { cropCycleId: h.crop_cycle_id, quantityT: h.quantity_t } });
     });
@@ -251,8 +306,8 @@ export class EconomicsService {
         ), costs AS (
           SELECT oi.operation_id, CASE p.category WHEN 'fuel' THEN 'machinery' WHEN 'seed' THEN 'direct' WHEN 'fertilizer' THEN 'direct'
                    WHEN 'crop_protection' THEN 'direct' ELSE 'direct' END AS category,
-                 sum(oi.total_quantity * coalesce(oi.unit_cost, p.unit_cost, 0)) AS amount
-          FROM operation_inputs oi JOIN products p ON p.id = oi.product_id GROUP BY 1, 2
+                 sum(oi.total_quantity * coalesce(oi.unit_cost, app.product_price(oi.product_id, extract(year FROM coalesce(o.planned_on, current_date))::int), 0)) AS amount
+          FROM operation_inputs oi JOIN products p ON p.id = oi.product_id JOIN operations o ON o.id = oi.operation_id GROUP BY 1, 2
           UNION ALL
           SELECT l.operation_id, 'labor', sum(l.hours * coalesce(l.hourly_rate, e.hourly_rate, 0))
           FROM operation_labor l JOIN employees e ON e.id = l.employee_id GROUP BY 1

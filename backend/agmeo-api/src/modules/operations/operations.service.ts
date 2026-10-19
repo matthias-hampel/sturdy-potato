@@ -173,14 +173,13 @@ export class OperationsService {
               WHERE cur.id = ofl.crop_cycle_id AND ${dateIn(performedAt)}::date BETWEEN s.start_date AND s.end_date))`.execute(trx);
       }
 
-      // 1. Stock consumption, valued at the application's unit cost or the product default.
+      // 1. Stock consumption, valued at the application's unit cost or the product's price of the year.
       await sql`
         INSERT INTO stock_movements (organization_id, product_id, storage_location_id, kind, quantity_delta,
                                      unit_cost, occurred_at, operation_id, operation_input_id, completion_seq, created_by)
         SELECT oi.organization_id, oi.product_id, oi.storage_location_id, 'consumption', -oi.total_quantity,
-               coalesce(oi.unit_cost, p.unit_cost), ${performedAt}, oi.operation_id, oi.id, ${seq}, ${ctx.userId}
+               coalesce(oi.unit_cost, app.product_price(oi.product_id, ${Number(dateIn(performedAt).slice(0, 4))})), ${performedAt}, oi.operation_id, oi.id, ${seq}, ${ctx.userId}
         FROM operation_inputs oi
-        JOIN products p ON p.id = oi.product_id
         WHERE oi.operation_id = ${id}`.execute(trx);
 
       // 2. Direct costs, allocated to fields (and their crop cycles) by treated area.
@@ -196,7 +195,7 @@ export class OperationsService {
                    WHEN 'seed' THEN 'seed' WHEN 'fertilizer' THEN 'fertilizer'
                    WHEN 'crop_protection' THEN 'crop_protection' WHEN 'fuel' THEN 'fuel'
                    ELSE 'other_input' END AS category,
-                 sum(oi.total_quantity * coalesce(oi.unit_cost, p.unit_cost, 0)) AS amount
+                 sum(oi.total_quantity * coalesce(oi.unit_cost, app.product_price(oi.product_id, ${Number(dateIn(performedAt).slice(0, 4))}), 0)) AS amount
           FROM operation_inputs oi JOIN products p ON p.id = oi.product_id
           WHERE oi.operation_id = ${id}
           GROUP BY 1
@@ -676,7 +675,7 @@ export class OperationsService {
           'oi.storage_location_id',
           'oi.rate_per_ha',
           'oi.total_quantity',
-          sql<number | null>`coalesce(oi.unit_cost, p.unit_cost)`.as('unit_cost'),
+          sql<number | null>`coalesce(oi.unit_cost, app.product_price(oi.product_id, (SELECT extract(year FROM coalesce(o.performed_at::date, o.planned_on, current_date))::int FROM operations o WHERE o.id = oi.operation_id)))`.as('unit_cost'),
           (eb) =>
             eb
               .selectFrom('stock_movements as m')

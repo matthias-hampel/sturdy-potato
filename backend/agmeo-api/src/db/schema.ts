@@ -497,6 +497,7 @@ export interface Harvests {
   organization_id: string;
   price_basis: Generated<string>;
   price_per_t: Numeric | null;
+  product_id: string | null;
   quality: string | null;
   quantity_t: Numeric;
   updated_at: Generated<Timestamp>;
@@ -677,6 +678,15 @@ export interface OutboxEvents {
   published_at: Timestamp | null;
 }
 
+export interface ProductPrices {
+  organization_id: string;
+  price: Numeric;
+  product_id: string;
+  source: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  year: number;
+}
+
 export interface ProductivityAnalyses {
   algo_version: string | null;
   created_at: Generated<Timestamp>;
@@ -708,14 +718,17 @@ export interface Products {
   catalogue_entry_id: string | null;
   category: string;
   created_at: Generated<Timestamp>;
+  datasheet_file_id: string | null;
   density_t_m3: Numeric | null;
   dry_matter_pct: Numeric | null;
   fertilizer_type: string | null;
+  humus_c_kg_per_t: Numeric | null;
   id: Generated<string>;
   k2o_pct: Numeric | null;
   low_stock_threshold: Numeric | null;
   manufacturer: string | null;
   mgo_pct: Numeric | null;
+  n_effectiveness_pct: Numeric | null;
   n_pct: Numeric | null;
   name: string;
   nh4_n_pct: Numeric | null;
@@ -726,6 +739,7 @@ export interface Products {
   s_pct: Numeric | null;
   unit_cost: Numeric | null;
   updated_at: Generated<Timestamp>;
+  website: string | null;
 }
 
 export interface PsmCodes {
@@ -826,10 +840,15 @@ export interface StockBalances {
 
 export interface StockMovements {
   completion_seq: number | null;
+  counterparty: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  expiry_date: string | null;
+  harvest_id: string | null;
   id: Generated<string>;
+  invoice_number: string | null;
   kind: string;
+  lot_number: string | null;
   note: string | null;
   occurred_at: Generated<Timestamp>;
   operation_id: string | null;
@@ -838,7 +857,10 @@ export interface StockMovements {
   product_id: string;
   quantity_delta: Numeric;
   storage_location_id: string | null;
+  total_price: Numeric | null;
   unit_cost: Numeric | null;
+  vat_rate: Numeric | null;
+  voids_movement_id: string | null;
 }
 
 export interface StorageLocations {
@@ -1001,6 +1023,7 @@ export interface DB {
   org_crop_colors: OrgCropColors;
   organizations: Organizations;
   outbox_events: OutboxEvents;
+  product_prices: ProductPrices;
   productivity_analyses: ProductivityAnalyses;
   products: Products;
   psm_codes: PsmCodes;
