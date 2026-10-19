@@ -16,6 +16,7 @@ import {
   Grid2x2,
   Languages,
   LayoutDashboard,
+  Newspaper,
   ListChecks,
   LogOut,
   Map,
@@ -57,6 +58,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'nav.section.workspace',
     items: [
       { to: '/o/$orgId', label: 'nav.overview', icon: LayoutDashboard, exact: true },
+      { to: '/o/$orgId/news', label: 'nav.news', icon: Newspaper },
       { to: '/o/$orgId/fields', label: 'nav.fields', icon: Map },
       { to: '/o/$orgId/crops', label: 'nav.crops', icon: Sprout },
       { to: '/o/$orgId/nutrients', label: 'nav.nutrients', icon: FlaskConical },

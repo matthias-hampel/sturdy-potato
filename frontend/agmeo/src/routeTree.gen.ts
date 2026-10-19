@@ -19,6 +19,7 @@ import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
 import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
+import { Route as OOrgIdNewsRouteImport } from './routes/o.$orgId.news'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
 import { Route as OOrgIdPricesRouteImport } from './routes/o.$orgId.prices'
 import { Route as OOrgIdRotationsRouteImport } from './routes/o.$orgId.rotations'
@@ -90,6 +91,11 @@ const OOrgIdFilesRoute = OOrgIdFilesRouteImport.update({
 const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdNewsRoute = OOrgIdNewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdNutrientsRoute = OOrgIdNutrientsRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
+  '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
+  '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
+  '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
+    | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
+    | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
+    | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
@@ -490,6 +502,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/o/$orgId/inventory'
       preLoaderRoute: typeof OOrgIdInventoryRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/news': {
+      id: '/o/$orgId/news'
+      path: '/news'
+      fullPath: '/o/$orgId/news'
+      preLoaderRoute: typeof OOrgIdNewsRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/nutrients': {
@@ -654,6 +673,7 @@ interface OOrgIdRouteChildren {
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
   OOrgIdFilesRoute: typeof OOrgIdFilesRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
+  OOrgIdNewsRoute: typeof OOrgIdNewsRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
   OOrgIdPricesRoute: typeof OOrgIdPricesRoute
   OOrgIdRotationsRoute: typeof OOrgIdRotationsRoute
@@ -684,6 +704,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
   OOrgIdFilesRoute: OOrgIdFilesRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
+  OOrgIdNewsRoute: OOrgIdNewsRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
   OOrgIdPricesRoute: OOrgIdPricesRoute,
   OOrgIdRotationsRoute: OOrgIdRotationsRoute,

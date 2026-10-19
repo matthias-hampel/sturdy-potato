@@ -61,6 +61,8 @@ import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
+import { NewsController } from './modules/news/news.controller.js';
+import { NewsService } from './modules/news/news.service.js';
 
 export const DOMAIN_SERVICES = [
   IdentityService,
@@ -85,6 +87,7 @@ export const DOMAIN_SERVICES = [
   ComplianceService,
   WeatherService,
   FieldConditionsService,
+  NewsService,
   MonitoringService,
   ProductivityService,
   VraService,
@@ -120,6 +123,7 @@ export const DOMAIN_SERVICES = [
     RegulatoryController,
     EconomicsController,
     EconomicsInsightsController,
+    NewsController,
     ComplianceController,
     WeatherController,
     MonitoringController,

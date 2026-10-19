@@ -433,3 +433,25 @@ export interface FieldTrafficability {
   sciReady: boolean;
   days: { date: string; pf: number | null; precompressionKpa: number | null; stressAtDepthKpa: number | null; sci: number | null; band: string | null }[];
 }
+
+// ---------------------------------------------------------------------------
+// News feed (reference lib/news): computed per request, rendered by the client in its language
+// ---------------------------------------------------------------------------
+
+export const NEWS_CATEGORIES = ['weather', 'tasks', 'events', 'advisory'] as const;
+export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
+
+export interface NewsItem {
+  /** Stable per item and period (the reference's dedupe key without the language). */
+  id: string;
+  category: NewsCategory;
+  /** Which text template the client uses, e.g. "weather.heavyRain" or "advisory.meldung". */
+  headline: { key: string; params: Record<string, string | number> };
+  /** Paragraphs or bullet lines, each a template with parameters. */
+  body: { key: string; params: Record<string, string | number> }[];
+  priority: number;
+  validFrom: string;
+  validUntil: string | null;
+  /** In-app link target and its label template. */
+  cta: { to: 'tasks' | 'fertilizer-reports'; params?: Record<string, string | number>; labelKey: string } | null;
+}

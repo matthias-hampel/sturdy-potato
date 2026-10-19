@@ -16,6 +16,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
+import { NewsFeed } from '#/components/news/NewsFeed'
 import { BarList } from '#/components/charts'
 import { noticeMessage } from '#/components/insights/weather'
 import { OperationTypeLabel, TaskStatusBadge } from '#/components/labels'
@@ -101,6 +102,9 @@ function Overview() {
 
         <div className="space-y-6 min-w-0">
           {farms.data?.[0] && <WeatherCard farm={farms.data[0]} />}
+          <Card title={t('news.title')} actions={<Link to="/o/$orgId/news" params={{ orgId }} className="text-sm">{t('dashboard.allNews')}</Link>}>
+            <NewsFeed limit={3} compact />
+          </Card>
           <Card title={t('dashboard.crops')} description={season?.name}>
             {d.cropsByArea.length === 0 ? (
               <p className="text-sm text-muted">{t('dashboard.noCrops')}</p>
