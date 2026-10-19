@@ -98,7 +98,7 @@ def test_no_raster_gives_empty_tile(client):
 
 
 def test_unknown_layer_and_missing_organization(client):
-    assert client.get(f"/imagery/{DAY}/savi/{TILE}.png?organization=a").status_code == 404
+    assert client.get(f"/imagery/{DAY}/gndvi/{TILE}.png?organization=a").status_code == 404
     assert client.get(f"/imagery/{DAY}/ndvi/{TILE}.png").status_code == 422
     assert client.get(f"/imagery/{DAY}/ndvi/{TILE}.png?organization=a&stretch=x").status_code == 422
 

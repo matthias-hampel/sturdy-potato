@@ -33,7 +33,8 @@ from .stac import search
 log = logging.getLogger("agmeo_geo.history")
 
 # indices-2: EVI, BSI and NDTI added. indices-3: SCL 6 (water) no longer counts as clear.
-SCENE_VERSION = "es-c1/indices-3"
+# indices-4: SAVI and LAI added.
+SCENE_VERSION = "es-c1/indices-4"
 PROCESSING_VERSION = f"{SCENE_VERSION}/{OBS_VERSION}"
 # Late-arriving items: incremental runs look back this far before covered_until.
 LOOKBACK = timedelta(days=10)

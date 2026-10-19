@@ -76,7 +76,7 @@ export interface WeatherForecast {
 // ---------------------------------------------------------------------------
 
 /** Indices computed per field and acquisition (backend/agmeo-geo, agmeo_geo/sources.py INDICES). */
-export const VEGETATION_INDICES = ['ndvi', 'ndre', 'ndmi', 'evi', 'bsi', 'ndti'] as const;
+export const VEGETATION_INDICES = ['ndvi', 'ndre', 'ndmi', 'evi', 'bsi', 'ndti', 'savi', 'lai'] as const;
 export type VegetationIndex = (typeof VEGETATION_INDICES)[number];
 
 /**
@@ -126,6 +126,20 @@ export const INDEX_SCALES: Record<VegetationIndex, { label: string; description:
     min: 0,
     max: 0.3,
     stops: ['#f6f3e1', '#e6dba3', '#c8b25f', '#958033', '#5e5119'],
+  },
+  savi: {
+    label: 'SAVI',
+    description: 'Vigour, corrected for visible soil',
+    min: 0.1,
+    max: 0.7,
+    stops: ['#eef4e0', '#c3dfa5', '#86bd67', '#458f3c', '#1a5a1f'],
+  },
+  lai: {
+    label: 'LAI',
+    description: 'Leaf area per ground area (m²/m²)',
+    min: 0,
+    max: 6,
+    stops: ['#f3f6e4', '#cfe3a6', '#93c464', '#4f9a3a', '#1f6324'],
   },
 }
 
