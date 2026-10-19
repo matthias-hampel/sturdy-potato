@@ -260,6 +260,8 @@ export const OperationActionInput = z.object({
   implementId: id.nullish(),
   employeeId: id.nullish(),
   notes: longText,
+  /** KTBL action the values were taken from (see KtblAction). */
+  ktblFqn: z.string().trim().min(1).max(100).nullish(),
   archived: z.boolean().optional(),
 });
 export type OperationActionInput = z.input<typeof OperationActionInput>;
@@ -277,6 +279,7 @@ export interface OperationAction {
   employeeId: string | null;
   employeeName: string | null;
   notes: string | null;
+  ktblFqn: string | null;
   archivedAt: string | null;
   /** Operations planned from this action. */
   usageCount: number;

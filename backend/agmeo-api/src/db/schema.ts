@@ -624,6 +624,7 @@ export interface OperationActions {
   hours_per_ha: Numeric | null;
   id: Generated<string>;
   implement_id: string | null;
+  ktbl_fqn: string | null;
   machine_id: string | null;
   name: string;
   notes: string | null;

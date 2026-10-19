@@ -10,10 +10,11 @@ import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button } from '#/ui/Button'
 import { NumberField, Option, Select, TextField, num } from '#/ui/Field'
-import { Card, EmptyState, ErrorNotice, Loading } from '#/ui/Layout'
+import { Badge, Card, EmptyState, ErrorNotice, Loading } from '#/ui/Layout'
 import { ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { FormActions, NONE, keyOrNull, textOrNull } from './form'
+import { KtblLookup } from './ktbl'
 
 /**
  * The organization's actions (Maßnahmenkatalog): named passes with diesel and hours per hectare
@@ -71,7 +72,14 @@ export function ActionCatalogue() {
             <TableBody items={rows} dependencies={[canWrite]}>
               {(a) => (
                 <Row id={a.id}>
-                  <Cell className="font-medium">{a.name}</Cell>
+                  <Cell className="font-medium">
+                    {a.name}
+                    {a.ktblFqn && (
+                      <Badge tone="info" className="ml-2">
+                        {t('ktbl.badge')}
+                      </Badge>
+                    )}
+                  </Cell>
                   <Cell className="whitespace-nowrap">{operationTypeLabel(a.operationType)}</Cell>
                   <Cell align="end" className="tabular">{a.dieselLPerHa != null ? `${fmt.num(a.dieselLPerHa, 1)} l` : <span className="text-muted">—</span>}</Cell>
                   <Cell align="end" className="tabular">{a.hoursPerHa != null ? `${fmt.num(a.hoursPerHa, 2)} h` : <span className="text-muted">—</span>}</Cell>
@@ -124,6 +132,7 @@ function ActionForm({ action: a, close }: { action?: OperationAction; close: () 
   const [implementId, setImplementId] = useState<string>(a?.implementId ?? NONE)
   const [employeeId, setEmployeeId] = useState<string>(a?.employeeId ?? NONE)
   const [notes, setNotes] = useState(a?.notes ?? '')
+  const [ktblFqn, setKtblFqn] = useState<string | null>(a?.ktblFqn ?? null)
   const all = equipment.data ?? []
   const none = { id: NONE, name: t('actions.none') }
   const machines = [none, ...all.filter((e) => e.class === 'machine')]
@@ -149,6 +158,7 @@ function ActionForm({ action: a, close }: { action?: OperationAction; close: () 
           implementId: keyOrNull(implementId),
           employeeId: keyOrNull(employeeId),
           notes: textOrNull(notes),
+          ktblFqn,
         })
       }}
     >
@@ -161,6 +171,17 @@ function ActionForm({ action: a, close }: { action?: OperationAction; close: () 
       >
         {(x) => <Option id={x.id}>{x.name}</Option>}
       </Select>
+      <KtblLookup
+        operationType={operationType}
+        machinePowerKw={all.find((m) => m.id === machineId)?.powerKw ?? null}
+        linked={ktblFqn}
+        onApply={(v) => {
+          if (!name.trim()) setName(v.name)
+          setDieselLPerHa(v.dieselLPerHa)
+          setHoursPerHa(v.hoursPerHa)
+          setKtblFqn(v.fqn)
+        }}
+      />
       <NumberField label={t('actions.dieselPerHa')} unit="l/ha" value={dieselLPerHa} onChange={setDieselLPerHa} minValue={0} maxValue={1000} formatOptions={{ maximumFractionDigits: 2 }} description={t('actions.dieselHint')} />
       <NumberField label={t('actions.hoursPerHa')} unit="h/ha" value={hoursPerHa} onChange={setHoursPerHa} minValue={0} maxValue={100} formatOptions={{ maximumFractionDigits: 3 }} description={t('actions.hoursHint')} />
       <Select label={t('actions.machine')} items={machines} value={machineId} onChange={(v) => setMachineId(String(v ?? NONE))}>
