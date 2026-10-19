@@ -2,7 +2,7 @@ import type { Field } from '@agmeo/contracts'
 import bbox from '@turf/bbox'
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson'
 import { Layers, Map as MapIcon } from 'lucide-react'
-import type { GeoJSONSource, LngLatBoundsLike, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl'
+import type { GeoJSONSource, ImageSource, LngLatBoundsLike, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl'
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fmt } from '#/lib/format'
@@ -17,6 +17,14 @@ const SOURCE = `${OWN}fields`
 const HIGHLIGHT = `${OWN}highlight`
 const RASTER = `${OWN}raster`
 const OVERLAY = `${OWN}overlay`
+const IMAGE = `${OWN}image`
+
+/** A georeferenced image over the map, e.g. a radar frame; corners as [west, south, east, north]. */
+export interface MapImageOverlay {
+  url: string
+  bounds: [number, number, number, number]
+  opacity?: number
+}
 
 export interface FieldMapProps {
   fields: Field[]
@@ -41,6 +49,8 @@ export interface FieldMapProps {
   /** Polygons drawn below the field outlines, coloured by their `color` property (e.g. zones). */
   overlay?: FeatureCollection | null
   overlayOpacity?: number
+  /** Image drawn above the field fills and below their outlines, swapped in place when its URL changes (animation). */
+  image?: MapImageOverlay | null
   /** An overlay (e.g. a popup child) the selected field is centred clear of. */
   occludedBy?: RefObject<HTMLElement | null>
 }
@@ -62,6 +72,7 @@ export function FieldMap({
   raster,
   overlay,
   overlayOpacity = 0.85,
+  image,
   occludedBy,
 }: FieldMapProps) {
   const { t } = useTranslation()
@@ -136,6 +147,32 @@ export function FieldMap({
     ;(map.getSource(OVERLAY) as GeoJSONSource).setData(overlay ?? empty)
     map.setPaintProperty(`${OVERLAY}-fill`, 'fill-opacity', overlayOpacity)
   }, [map, overlay, overlayOpacity, styleVersion, data])
+
+  // Image overlay: the source is created once per style and its image replaced as the URL changes,
+  // so an animation swaps frames without rebuilding the layer.
+  const imageUrl = image?.url
+  const imageBounds = image?.bounds.join(',')
+  useEffect(() => {
+    if (!map || !map.getLayer(`${OWN}fields-outline`)) return
+    if (!image) {
+      if (map.getLayer(IMAGE)) map.removeLayer(IMAGE)
+      if (map.getSource(IMAGE)) map.removeSource(IMAGE)
+      return
+    }
+    const [w, s, e, n] = image.bounds
+    const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [[w, n], [e, n], [e, s], [w, s]]
+    const source = map.getSource(IMAGE) as ImageSource | undefined
+    if (source) source.updateImage({ url: image.url, coordinates })
+    else {
+      map.addSource(IMAGE, { type: 'image', url: image.url, coordinates })
+      map.addLayer({ id: IMAGE, type: 'raster', source: IMAGE, paint: { 'raster-opacity': image.opacity ?? 0.85, 'raster-fade-duration': 0 } }, `${OWN}fields-outline`)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, imageUrl, imageBounds, styleVersion])
+
+  useEffect(() => {
+    if (map?.getLayer(IMAGE) && image) map.setPaintProperty(IMAGE, 'raster-opacity', image.opacity ?? 0.85)
+  }, [map, image?.opacity])
 
   useEffect(() => {
     if (!map) return
