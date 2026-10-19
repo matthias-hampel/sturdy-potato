@@ -62,6 +62,13 @@ export interface BsaVarieties {
   synced_at: Generated<Timestamp>;
 }
 
+export interface CarbonSettings {
+  nuts2_code: string | null;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface Comments {
   author_name: string;
   author_user_id: string | null;
@@ -488,6 +495,20 @@ export interface FieldRasters {
   processing_version: string;
   scene_id: string;
   valid_pixel_pct: Numeric;
+}
+
+export interface FieldCarbonSoil {
+  bulk_density: Numeric;
+  clay_pct: Numeric;
+  depth_cm: Generated<number>;
+  field_id: string;
+  file_id: string | null;
+  organization_id: string;
+  sampled_on: string | null;
+  sand_pct: Numeric;
+  soc_pct: Numeric;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface Fields {
@@ -927,6 +948,18 @@ export interface SatelliteScenes {
   tile: string | null;
 }
 
+export interface Scope2Entries {
+  factor: Numeric;
+  harvest_year: number;
+  kg_co2e: Numeric;
+  kind: string;
+  kwh: Numeric;
+  organization_id: string;
+  parameter_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface SoilSamples {
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -1153,6 +1186,7 @@ export interface DB {
   audit_events: AuditEvents;
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
+  carbon_settings: CarbonSettings;
   comments: Comments;
   cost_entries: CostEntries;
   crop_benchmarks: CropBenchmarks;
@@ -1179,6 +1213,7 @@ export interface DB {
   field_observations: FieldObservations;
   field_parts: FieldParts;
   field_rasters: FieldRasters;
+  field_carbon_soil: FieldCarbonSoil;
   fields: Fields;
   file_folders: FileFolders;
   files: Files;
@@ -1211,6 +1246,7 @@ export interface DB {
   radar_frames: RadarFrames;
   radar_state: RadarState;
   satellite_scenes: SatelliteScenes;
+  scope2_entries: Scope2Entries;
   soil_samples: SoilSamples;
   stock_balances: StockBalances;
   stock_movements: StockMovements;

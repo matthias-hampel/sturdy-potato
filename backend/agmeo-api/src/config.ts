@@ -60,4 +60,9 @@ export const config = {
     /** Open-Meteo subscription key: customer endpoints and the ERA5 archive for season backfills. Without it the free API is used (development only). */
     apiKey: env('OPEN_METEO_API_KEY', ''),
   },
+  /** Thünen AgriGHG tool (RothC humus model) for the soil-carbon simulation; without a key the simulation is unavailable. */
+  thuenen: {
+    baseUrl: env('THUENEN_BASE_URL', 'https://agrighg-tool.thuenen.de/api/v1'),
+    apiKey: env('THUENEN_API_KEY', ''),
+  },
 };

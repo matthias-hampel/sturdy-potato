@@ -82,7 +82,7 @@ describe('warehouse', () => {
 
     const params = (await get(`${base}/calculation-parameters`).expect(200)).body
     expect(params.factorSet).toBeTruthy()
-    expect(params.parameters.find((x: { key: string }) => x.key === 'diesel_combustion')).toMatchObject({ group: 'fuel', value: 3.013 })
+    expect(params.parameters.find((x: { id: string }) => x.id === 'ef.diesel')).toMatchObject({ group: 'fuel', value: 3.013 })
 
     // CSV exports.
     const csv = await get(`${base}/stock/balances.csv`).expect(200)

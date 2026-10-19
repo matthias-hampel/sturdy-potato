@@ -16,6 +16,7 @@ import {
   Grid2x2,
   Languages,
   LayoutDashboard,
+  Leaf,
   Newspaper,
   ListChecks,
   LogOut,
@@ -84,6 +85,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { to: '/o/$orgId/weather', label: 'nav.weather', icon: CloudSun },
       { to: '/o/$orgId/economics', label: 'nav.economics', icon: BarChart3, permission: 'finance.read' },
+      { to: '/o/$orgId/carbon', label: 'nav.carbon', icon: Leaf },
       { to: '/o/$orgId/compliance', label: 'nav.compliance', icon: ShieldCheck },
     ],
   },
