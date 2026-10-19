@@ -19,6 +19,7 @@ import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
 import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
+import { Route as OOrgIdMaizeDmcRouteImport } from './routes/o.$orgId.maize-dmc'
 import { Route as OOrgIdNewsRouteImport } from './routes/o.$orgId.news'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
 import { Route as OOrgIdPricesRouteImport } from './routes/o.$orgId.prices'
@@ -91,6 +92,11 @@ const OOrgIdFilesRoute = OOrgIdFilesRouteImport.update({
 const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdMaizeDmcRoute = OOrgIdMaizeDmcRouteImport.update({
+  id: '/maize-dmc',
+  path: '/maize-dmc',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdNewsRoute = OOrgIdNewsRouteImport.update({
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
+  '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
+  '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
@@ -292,6 +300,7 @@ export interface FileRoutesById {
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
+  '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
+    | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/prices'
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
+    | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/prices'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
     | '/o/$orgId/inventory'
+    | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
     | '/o/$orgId/prices'
@@ -502,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/o/$orgId/inventory'
       preLoaderRoute: typeof OOrgIdInventoryRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/maize-dmc': {
+      id: '/o/$orgId/maize-dmc'
+      path: '/maize-dmc'
+      fullPath: '/o/$orgId/maize-dmc'
+      preLoaderRoute: typeof OOrgIdMaizeDmcRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/news': {
@@ -673,6 +692,7 @@ interface OOrgIdRouteChildren {
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
   OOrgIdFilesRoute: typeof OOrgIdFilesRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
+  OOrgIdMaizeDmcRoute: typeof OOrgIdMaizeDmcRoute
   OOrgIdNewsRoute: typeof OOrgIdNewsRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
   OOrgIdPricesRoute: typeof OOrgIdPricesRoute
@@ -704,6 +724,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
   OOrgIdFilesRoute: OOrgIdFilesRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
+  OOrgIdMaizeDmcRoute: OOrgIdMaizeDmcRoute,
   OOrgIdNewsRoute: OOrgIdNewsRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
   OOrgIdPricesRoute: OOrgIdPricesRoute,
@@ -743,13 +764,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

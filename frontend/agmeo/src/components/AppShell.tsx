@@ -28,6 +28,7 @@ import {
   Sprout,
   Tractor,
   Users,
+  Wheat,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -83,6 +84,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'nav.section.insights',
     items: [
       { to: '/o/$orgId/weather', label: 'nav.weather', icon: CloudSun },
+      { to: '/o/$orgId/maize-dmc', label: 'nav.maizeDmc', icon: Wheat },
       { to: '/o/$orgId/economics', label: 'nav.economics', icon: BarChart3, permission: 'finance.read' },
       { to: '/o/$orgId/compliance', label: 'nav.compliance', icon: ShieldCheck },
     ],
