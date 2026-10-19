@@ -10,6 +10,7 @@ import { type ApprovalFacts, type AppliedRecord, checkApplication, checkSeries, 
 
 interface UseRow {
   awg_id: string;
+  target_codes: string[];
   professional: boolean;
   crop_codes: string[];
   excluded_crop_codes: string[];
@@ -20,6 +21,21 @@ interface UseRow {
   dose_max: number | null;
   dose_unit: string | null;
   waiting_days: unknown;
+}
+
+/**
+ * The approved use one application line was made under, where it is determined: chosen on the
+ * operation (`details.psmUseId`) or the only professional use of the product for the crop. When
+ * several uses fit, which one applied is the farmer's statement, so there is none.
+ */
+export interface ResolvedPsmUse {
+  operationId: string;
+  productId: string;
+  fieldId: string;
+  cropCycleId: string | null;
+  awgId: string;
+  waitingDays: number | null;
+  targetCodes: string[];
 }
 
 /**
@@ -40,10 +56,11 @@ export class ProtectionService {
   }
 
   /** Findings for crop-protection operations among `operationIds` (other operations are ignored). */
-  async check(trx: Trx, operationIds: string[]): Promise<{ findings: PsmFinding[]; earliest: OperationChecks['earliestHarvest'] }> {
+  async check(trx: Trx, operationIds: string[]): Promise<{ findings: PsmFinding[]; earliest: OperationChecks['earliestHarvest']; uses: ResolvedPsmUse[] }> {
     const findings: PsmFinding[] = [];
     const earliest: OperationChecks['earliestHarvest'] = [];
-    if (!operationIds.length) return { findings, earliest };
+    const uses: ResolvedPsmUse[] = [];
+    if (!operationIds.length) return { findings, earliest, uses };
 
     // Application lines: one per operation, crop-protection product and treated crop cycle.
     const lines = await trx
@@ -64,6 +81,7 @@ export class ProtectionService {
         'p.base_unit',
         'p.registration_number',
         'oi.rate_per_ha',
+        'ofl.field_id',
         'f.name as field_name',
         'ofl.crop_cycle_id',
         'c.eppo_code',
@@ -74,7 +92,7 @@ export class ProtectionService {
       .where('o.status', '<>', 'canceled')
       .where('p.category', '=', 'crop_protection')
       .execute();
-    if (!lines.length) return { findings, earliest };
+    if (!lines.length) return { findings, earliest, uses };
 
     const kennrs = [...new Set(lines.map((l) => l.registration_number).filter((k): k is string => !!k))];
     const products = new Map(
@@ -138,7 +156,9 @@ export class ProtectionService {
         productId: l.product_id,
         productName: l.product_name,
         kennr: l.registration_number,
+        fieldId: l.field_id,
         fieldName: l.field_name,
+        cropCycleId: l.crop_cycle_id,
         cropName: l.crop_name,
         awgId,
         params: f.params,
@@ -172,6 +192,18 @@ export class ProtectionService {
         continue;
       }
       const candidates = typeof chosenId === 'string' ? professional.filter((u) => u.awg_id === chosenId) : forCrop;
+      if (candidates.length === 1) {
+        const use = candidates[0];
+        uses.push({
+          operationId: l.operation_id,
+          productId: l.product_id,
+          fieldId: l.field_id,
+          cropCycleId: l.crop_cycle_id,
+          awgId: use.awg_id,
+          waitingDays: this.facts(use, base, ancestors, l.base_unit).waitingDays,
+          targetCodes: use.target_codes,
+        });
+      }
       const harvest = l.crop_cycle_id ? harvestOf.get(l.crop_cycle_id) : undefined;
       const others = series
         .filter((s) => s.crop_cycle_id === l.crop_cycle_id && s.product_id === l.product_id)
@@ -195,7 +227,7 @@ export class ProtectionService {
         }
       }
     }
-    return { findings, earliest };
+    return { findings, earliest, uses };
   }
 
   private facts(use: UseRow, base: { approvalEndsOn: string | null; useUpUntil: string | null }, ancestors: string[], baseUnit: string): ApprovalFacts {

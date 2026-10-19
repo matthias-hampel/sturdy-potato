@@ -743,6 +743,17 @@ export interface Products {
   website: string | null;
 }
 
+export interface PsmAttestations {
+  certificate_holder: string | null;
+  certificate_number: string | null;
+  certificate_valid_until: string | null;
+  organization_id: string;
+  sprayer_inspected_on: string | null;
+  sprayer_inspection_number: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface PsmCodes {
   code: string;
   list: number;
@@ -1027,6 +1038,7 @@ export interface DB {
   product_prices: ProductPrices;
   productivity_analyses: ProductivityAnalyses;
   products: Products;
+  psm_attestations: PsmAttestations;
   psm_codes: PsmCodes;
   psm_crop_groups: PsmCropGroups;
   psm_products: PsmProducts;

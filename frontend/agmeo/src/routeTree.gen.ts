@@ -28,6 +28,7 @@ import { Route as OOrgIdTeamRouteImport } from './routes/o.$orgId.team'
 import { Route as OOrgIdTemplatesRouteImport } from './routes/o.$orgId.templates'
 import { Route as OOrgIdWeatherRouteImport } from './routes/o.$orgId.weather'
 import { Route as OOrgIdComplianceIndexRouteImport } from './routes/o.$orgId.compliance.index'
+import { Route as OOrgIdCompliancePsmRecordRouteImport } from './routes/o.$orgId.compliance.psm-record'
 import { Route as OOrgIdComplianceReportRouteImport } from './routes/o.$orgId.compliance.report'
 import { Route as OOrgIdCropsIndexRouteImport } from './routes/o.$orgId.crops.index'
 import { Route as OOrgIdCropsCropCycleIdRouteImport } from './routes/o.$orgId.crops.$cropCycleId'
@@ -136,6 +137,12 @@ const OOrgIdComplianceIndexRoute = OOrgIdComplianceIndexRouteImport.update({
   path: '/compliance/',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdCompliancePsmRecordRoute =
+  OOrgIdCompliancePsmRecordRouteImport.update({
+    id: '/compliance/psm-record',
+    path: '/compliance/psm-record',
+    getParentRoute: () => OOrgIdRoute,
+  } as any)
 const OOrgIdComplianceReportRoute = OOrgIdComplianceReportRouteImport.update({
   id: '/compliance/report',
   path: '/compliance/report',
@@ -218,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
+  '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
@@ -284,6 +293,7 @@ export interface FileRoutesById {
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
     | '/o/$orgId/'
+    | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
     | '/o/$orgId'
+    | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
@@ -384,6 +396,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
     | '/o/$orgId/'
+    | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
@@ -542,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdComplianceIndexRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/compliance/psm-record': {
+      id: '/o/$orgId/compliance/psm-record'
+      path: '/compliance/psm-record'
+      fullPath: '/o/$orgId/compliance/psm-record'
+      preLoaderRoute: typeof OOrgIdCompliancePsmRecordRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/compliance/report': {
       id: '/o/$orgId/compliance/report'
       path: '/compliance/report'
@@ -643,6 +663,7 @@ interface OOrgIdRouteChildren {
   OOrgIdTemplatesRoute: typeof OOrgIdTemplatesRoute
   OOrgIdWeatherRoute: typeof OOrgIdWeatherRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
+  OOrgIdCompliancePsmRecordRoute: typeof OOrgIdCompliancePsmRecordRoute
   OOrgIdComplianceReportRoute: typeof OOrgIdComplianceReportRoute
   OOrgIdCropsCropCycleIdRoute: typeof OOrgIdCropsCropCycleIdRoute
   OOrgIdFieldsFieldIdRoute: typeof OOrgIdFieldsFieldIdRoute
@@ -672,6 +693,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdTemplatesRoute: OOrgIdTemplatesRoute,
   OOrgIdWeatherRoute: OOrgIdWeatherRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,
+  OOrgIdCompliancePsmRecordRoute: OOrgIdCompliancePsmRecordRoute,
   OOrgIdComplianceReportRoute: OOrgIdComplianceReportRoute,
   OOrgIdCropsCropCycleIdRoute: OOrgIdCropsCropCycleIdRoute,
   OOrgIdFieldsFieldIdRoute: OOrgIdFieldsFieldIdRoute,
@@ -700,13 +722,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

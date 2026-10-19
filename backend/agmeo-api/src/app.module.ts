@@ -34,6 +34,8 @@ import { PlanningController } from './modules/planning/planning.controller.js';
 import { PlanningService } from './modules/planning/planning.service.js';
 import { ProtectionController } from './modules/protection/protection.controller.js';
 import { ProtectionService } from './modules/protection/protection.service.js';
+import { PsmRecordController } from './modules/protection/record/psm-record.controller.js';
+import { PsmRecordService } from './modules/protection/record/psm-record.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
 import { RegulatoryController } from './modules/regulatory/regulatory.controller.js';
@@ -67,6 +69,7 @@ export const DOMAIN_SERVICES = [
   TasksService,
   PlanningService,
   ProtectionService,
+  PsmRecordService,
   NutrientsService,
   RegulatoryService,
   EconomicsService,
@@ -100,6 +103,7 @@ export const DOMAIN_SERVICES = [
     TasksController,
     PlanningController,
     ProtectionController,
+    PsmRecordController,
     NutrientsController,
     RegulatoryController,
     EconomicsController,
