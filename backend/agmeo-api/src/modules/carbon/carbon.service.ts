@@ -15,7 +15,6 @@ import {
   type CarbonSoilInput,
   type CarbonSoilValues,
   type FertilizerType,
-  isOrganicFertilizer,
   ORGANIC_FERTILIZER_TYPES,
   type BaseUnit,
   nutrientKgPerHa,
