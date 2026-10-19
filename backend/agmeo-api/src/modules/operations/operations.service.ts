@@ -368,6 +368,7 @@ export class OperationsService {
       contractor_cost: input.contractorCost ?? null,
       action_id: input.actionId ?? null,
       diesel_l_per_ha: input.dieselLPerHa ?? null,
+      electricity_kwh_per_ha: input.electricityKWhPerHa ?? null,
       bbch_stage: input.bbchStage ?? null,
       target_organism: input.targetOrganism ?? null,
       weather_conditions: input.weatherConditions ?? null,
@@ -637,7 +638,7 @@ export class OperationsService {
       trx
         .selectFrom('operation_equipment as q')
         .innerJoin('equipment as eq', 'eq.id', 'q.equipment_id')
-        .select(['q.operation_id', 'q.equipment_id', 'eq.name', 'q.hours', 'q.hourly_cost'])
+        .select(['q.operation_id', 'q.equipment_id', 'eq.name', 'eq.class', 'q.hours', 'q.hourly_cost'])
         .where('q.operation_id', 'in', ids)
         .execute(),
       trx
@@ -690,6 +691,7 @@ export class OperationsService {
         contractorCost: o.contractor_cost,
         actionId: o.action_id,
         dieselLPerHa: o.diesel_l_per_ha,
+        electricityKWhPerHa: o.electricity_kwh_per_ha,
         bbchStage: o.bbch_stage,
         targetOrganism: o.target_organism,
         weatherConditions: o.weather_conditions,
@@ -725,7 +727,7 @@ export class OperationsService {
         nutrientTotals: withNutrients.length ? sumNutrients(withNutrients.map((x) => x.nutrients!)) : null,
         templateStepId: o.template_step_id,
         labor: (L.get(id) ?? []).map((l) => ({ employeeId: l.employee_id, employeeName: l.name, hours: l.hours, hourlyRate: l.hourly_rate })),
-        equipment: (E.get(id) ?? []).map((e) => ({ equipmentId: e.equipment_id, equipmentName: e.name, hours: e.hours, hourlyCost: e.hourly_cost })),
+        equipment: (E.get(id) ?? []).map((e) => ({ equipmentId: e.equipment_id, equipmentName: e.name, equipmentClass: e.class as 'machine' | 'implement', hours: e.hours, hourlyCost: e.hourly_cost })),
         costs: (C.get(id) ?? []).filter((c) => round(c.amount) !== 0).map((c) => ({ category: c.category, amount: round(c.amount) })),
         createdAt: iso(o.created_at),
         updatedAt: iso(o.updated_at),

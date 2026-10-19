@@ -60,6 +60,10 @@ import { RadarService } from './modules/radar/radar.service.js';
 import { PsmRecordService } from './modules/protection/record/psm-record.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
+import { NitrogenController } from './modules/nutrients/nitrogen.controller.js';
+import { NitrogenService } from './modules/nutrients/nitrogen.service.js';
+import { BaseFertilizationController } from './modules/nutrients/base-fertilization.controller.js';
+import { BaseFertilizationService } from './modules/nutrients/base-fertilization.service.js';
 import { ExplainerService } from './modules/recommendations/explainer.service.js';
 import { RecommendationsController } from './modules/recommendations/recommendations.controller.js';
 import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
@@ -92,8 +96,10 @@ import { TasksService } from './modules/tasks/tasks.service.js';
 import { TeamController } from './modules/team/team.controller.js';
 import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
+import { CropModelsController } from './modules/weather/crop-models.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
+import { CropModelsService } from './modules/weather/crop-models.service.js';
 import { MaizeDmcClient } from './modules/maize-dmc/client.js';
 import { MaizeDmcController } from './modules/maize-dmc/maize-dmc.controller.js';
 import { MaizeDmcService } from './modules/maize-dmc/maize-dmc.service.js';
@@ -127,12 +133,15 @@ export const DOMAIN_SERVICES = [
   ProtectionService,
   PsmRecordService,
   NutrientsService,
+  NitrogenService,
+  BaseFertilizationService,
   RegulatoryService,
   EconomicsService,
   ProfitabilityService,
   ComplianceService,
   WeatherService,
   FieldConditionsService,
+  CropModelsService,
   NewsService,
   MonitoringService,
   ProductivityService,
@@ -188,12 +197,15 @@ export const DOMAIN_SERVICES = [
     ProtectionController,
     PsmRecordController,
     NutrientsController,
+    NitrogenController,
+    BaseFertilizationController,
     RegulatoryController,
     EconomicsController,
     EconomicsInsightsController,
     NewsController,
     ComplianceController,
     WeatherController,
+    CropModelsController,
     CropTableController,
     MonitoringController,
     ProductivityController,

@@ -25,6 +25,10 @@ export interface CropTableConditionsRow {
   bbchCalibratable: boolean;
   /** The farmer's observation of today, if one was entered. */
   bbchObservedToday: number | null;
+  /** Daily BBCH from sowing to today (calibrated through the observations), for stages at operation dates. */
+  bbchByDate: Record<string, number> | null;
+  /** Days with a farmer's observation. */
+  bbchObservedDates: string[];
   /** Latest valid satellite value of the field. */
   ndvi: { value: number; observedOn: string } | null;
   lai: { value: number; observedOn: string } | null;

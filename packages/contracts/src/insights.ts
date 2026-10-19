@@ -1,6 +1,6 @@
 import type { MultiPolygon } from 'geojson';
 import { z } from 'zod';
-import type { LatLng } from './common.js';
+import { id, type LatLng } from './common.js';
 import type { FieldDiseaseRisk } from './modelServices.js';
 import type { OperationStatus, OperationType } from './operations.js';
 import type { Task } from './tasks.js';
@@ -454,6 +454,81 @@ export interface FieldConditions {
     days: { date: string; swcMm: number; deficitMm: number; etaMm: number; precipitationMm: number | null; forecast: boolean }[];
   } | null;
 }
+
+/** The ESM phenology of one crop cycle with the farmer's BBCH observations (reference BBCH dialog). */
+export interface CropPhenology {
+  cropCycleId: string;
+  cropName: string;
+  /** Whether the ESM model has parameters for the crop. */
+  supported: boolean;
+  sowingDate: string | null;
+  sowingSource: 'booked' | 'planned' | 'calendar' | null;
+  /** Calibrated BBCH today. */
+  currentBbch: number | null;
+  /** Uncalibrated model BBCH on the last modelled day. */
+  modelBbch: number | null;
+  /** Offset in biological days applied today; null without observations. */
+  bbchOffset: number | null;
+  /** Sowing to seven days past today. */
+  days: { date: string; bbch: number; modelBbch: number; vernalization: number; photoperiod: number; tempMean: number }[];
+  observations: { observedOn: string; observedBbch: number; modelBbch: number | null; bdOffset: number }[];
+  /** Model parameters: temperatures in °C, VDSAT in days, cpp in hours, stage durations in biological days. */
+  params: Record<string, number> | null;
+  stageDurations: Record<string, number> | null;
+}
+
+export type DeficitLevel = 'ok' | 'warning' | 'critical';
+
+export interface WaterBalanceSummary {
+  soilTypeKa5: string | null;
+  /** Volumetric water content (% vol) at field capacity and wilting point. */
+  thetaFc: number | null;
+  thetaPwp: number | null;
+  fcMm: number | null;
+  pwpMm: number | null;
+  awcMm: number | null;
+  /** Depth the balance runs over: the cycle's override, else the crop's FAO-56 default. */
+  rootDepthM: number;
+  rootDepthOverrideM: number | null;
+  cropRootDepthM: number;
+  currentDeficitMm: number | null;
+  deficitLevel: DeficitLevel | null;
+  /** Soil water today as % of the available water capacity. */
+  fillPct: number | null;
+  totalPrecipitationMm: number;
+  totalEtaMm: number;
+  totalIrrigationMm: number;
+  simulationStartDate: string;
+  sowingDate: string | null;
+  recommendation: Record<string, unknown>;
+}
+
+export interface WaterBalanceDay {
+  date: string;
+  swcMm: number;
+  precipitationMm: number;
+  irrigationMm: number;
+  etaMm: number;
+  drainageMm: number;
+  deficitMm: number;
+  forecast: boolean;
+}
+
+export const IRRIGATION_METHODS = ['sprinkler', 'drip', 'pivot'] as const;
+export type IrrigationMethod = (typeof IRRIGATION_METHODS)[number];
+
+/** Root-zone water balance of one crop cycle with its days and irrigation events (reference irrigation page). */
+export interface CycleWaterBalance extends WaterBalanceSummary {
+  fieldId: string;
+  cropCycleId: string;
+  days: WaterBalanceDay[];
+  events: { operationId: string; date: string; mm: number; method: IrrigationMethod | null; status: string }[];
+}
+
+export const RootDepthInput = z.object({
+  updates: z.array(z.object({ cropCycleId: id, rootDepthM: z.number().min(0.1).max(3).nullable() })).min(1).max(500),
+});
+export type RootDepthInput = z.input<typeof RootDepthInput>;
 
 export interface FieldTrafficability {
   fieldId: string;

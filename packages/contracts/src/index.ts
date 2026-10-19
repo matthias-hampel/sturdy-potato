@@ -29,6 +29,7 @@ export * from './modelServices.js';
 export * from './recommendations.js';
 export * from './search.js';
 export * from './geocoding.js';
+export * from './seeding.js';
 export * from './cropTable.js';
 export * from './cadastral.js';
 export * from './voice.js';

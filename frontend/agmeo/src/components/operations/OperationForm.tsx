@@ -1,5 +1,6 @@
 import {
   APPLICATION_TECHNIQUES,
+  IRRIGATION_METHODS,
   EQUIPMENT_GONE_STATUSES,
   NUTRIENT_KEYS,
   OPERATION_TYPES,
@@ -119,6 +120,7 @@ export interface OperationFormState {
   contractorCost: number
   actionId: string | null
   dieselLPerHa: number
+  electricityKWhPerHa: number
   bbchStage: string
   targetOrganism: string
   weatherConditions: string
@@ -152,6 +154,7 @@ export function initialState(opts: { farmId: string | null; fieldIds?: string[];
       contractorCost: op.contractorCost ?? NaN,
       actionId: op.actionId,
       dieselLPerHa: op.dieselLPerHa ?? NaN,
+      electricityKWhPerHa: op.electricityKWhPerHa ?? NaN,
       bbchStage: op.bbchStage ?? '',
       targetOrganism: op.targetOrganism ?? '',
       weatherConditions: op.weatherConditions ?? '',
@@ -178,6 +181,7 @@ export function initialState(opts: { farmId: string | null; fieldIds?: string[];
     contractorCost: NaN,
     actionId: null,
     dieselLPerHa: NaN,
+    electricityKWhPerHa: NaN,
     bbchStage: '',
     targetOrganism: '',
     weatherConditions: '',
@@ -239,6 +243,7 @@ export function toPayload(s: OperationFormState, fields: Field[], version?: numb
     contractorCost: num(s.contractorCost),
     actionId: s.actionId,
     dieselLPerHa: num(s.dieselLPerHa),
+    electricityKWhPerHa: num(s.electricityKWhPerHa),
     bbchStage: s.bbchStage.trim() || null,
     targetOrganism: s.targetOrganism.trim() || null,
     weatherConditions: s.weatherConditions.trim() || null,
@@ -537,6 +542,16 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
             onChange={(dieselLPerHa) => set({ dieselLPerHa })}
             description={!Number.isNaN(s.dieselLPerHa) && totalArea > 0 ? t('operations.form.dieselTotal', { litres: fmt.num(s.dieselLPerHa * totalArea, 1) }) : t('operations.form.dieselHint')}
           />
+          <NumberField
+            label={t('operations.form.electricityPerHa')}
+            unit="kWh/ha"
+            minValue={0}
+            maxValue={10000}
+            formatOptions={{ maximumFractionDigits: 2 }}
+            value={s.electricityKWhPerHa}
+            onChange={(electricityKWhPerHa) => set({ electricityKWhPerHa })}
+            description={!Number.isNaN(s.electricityKWhPerHa) && totalArea > 0 ? t('operations.form.electricityTotal', { kwh: fmt.num(s.electricityKWhPerHa * totalArea, 1) }) : t('operations.form.electricityHint')}
+          />
         </div>
       </Card>
 
@@ -561,6 +576,16 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
               items={[{ id: NONE, name: t('operations.form.notSpecified') }, ...enumItems(APPLICATION_TECHNIQUES, applicationTechniqueLabel.all())]}
               value={typeof s.details.applicationTechnique === 'string' ? s.details.applicationTechnique : NONE}
               onChange={(v) => setDetail('applicationTechnique', keyOrNull(v == null ? null : String(v)))}
+            >
+              {(i) => <Option id={i.id}>{i.name}</Option>}
+            </Select>
+          )}
+          {s.type === 'irrigation' && (
+            <Select
+              label={t('irrigation.method')}
+              items={[{ id: NONE, name: t('operations.form.notSpecified') }, ...IRRIGATION_METHODS.map((m) => ({ id: m, name: t(`irrigation.method.${m}`) }))]}
+              value={typeof s.details.method === 'string' ? s.details.method : NONE}
+              onChange={(v) => setDetail('method', keyOrNull(v == null ? null : String(v)))}
             >
               {(i) => <Option id={i.id}>{i.name}</Option>}
             </Select>

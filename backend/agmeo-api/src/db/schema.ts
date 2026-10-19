@@ -179,6 +179,18 @@ export interface CropCycleBbchCalibrations {
   organization_id: string;
 }
 
+export interface CropCycleNPlanning {
+  crop_cycle_id: string;
+  n_leaching: Numeric | null;
+  n_min: Numeric | null;
+  n_mineralization: Numeric | null;
+  n_residual: Numeric | null;
+  organization_id: string;
+  strategy_id: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface CropCycles {
   area_ha: Numeric | null;
   created_at: Generated<Timestamp>;
@@ -191,11 +203,13 @@ export interface CropCycles {
   film_or_fleece: Generated<boolean>;
   id: Generated<string>;
   land_use_code: string | null;
+  lime_requirement_dt_cao: Numeric | null;
   multiplication_generation: string | null;
   notes: string | null;
   organization_id: string;
   protein_pct: Numeric | null;
   role: Generated<string>;
+  root_depth_m: Numeric | null;
   season_id: string;
   seed_lot: string | null;
   sowing_date: string | null;
@@ -623,6 +637,16 @@ export interface FieldAnnotations {
   updated_at: Generated<Timestamp>;
 }
 
+export interface FertilizationStrategies {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  name: string;
+  organization_id: string | null;
+  product_ids: Generated<string[]>;
+  split_percentages: number[];
+}
+
 export interface FieldDocuments {
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -987,6 +1011,7 @@ export interface Operations {
   details: Generated<Json>;
   diesel_l_per_ha: Numeric | null;
   due_on: string | null;
+  electricity_kwh_per_ha: Numeric | null;
   farm_id: string;
   id: Generated<string>;
   notes: string | null;
@@ -1167,6 +1192,23 @@ export interface PsmProducts {
   sale_until: string | null;
   synced_at: Generated<Timestamp>;
   use_up_until: string | null;
+}
+
+export interface PsmRestrictionReductions {
+  auflagenr: string;
+  distance_m: Numeric | null;
+  reduction_pct: number;
+}
+
+export interface PsmRestrictions {
+  auflagenr: string;
+  awg_id: string | null;
+  code: string;
+  code_group: string | null;
+  drift_reduction_pct: number | null;
+  kennr: string | null;
+  text: string | null;
+  water_buffer_m: Numeric | null;
 }
 
 export interface PsmUses {
@@ -1752,6 +1794,7 @@ export interface DB {
   cost_entries: CostEntries;
   crop_benchmarks: CropBenchmarks;
   crop_cycle_bbch_calibrations: CropCycleBbchCalibrations;
+  crop_cycle_n_planning: CropCycleNPlanning;
   crop_cycles: CropCycles;
   crop_prices: CropPrices;
   crop_rotation_entries: CropRotationEntries;
@@ -1781,6 +1824,7 @@ export interface DB {
   field_rasters: FieldRasters;
   field_annotations: FieldAnnotations;
   field_carbon_soil: FieldCarbonSoil;
+  fertilization_strategies: FertilizationStrategies;
   field_documents: FieldDocuments;
   fields: Fields;
   file_folders: FileFolders;
@@ -1820,6 +1864,8 @@ export interface DB {
   psm_codes: PsmCodes;
   psm_crop_groups: PsmCropGroups;
   psm_products: PsmProducts;
+  psm_restriction_reductions: PsmRestrictionReductions;
+  psm_restrictions: PsmRestrictions;
   psm_uses: PsmUses;
   radar_frames: RadarFrames;
   radar_state: RadarState;

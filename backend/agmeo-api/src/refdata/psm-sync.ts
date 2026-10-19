@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '../db/schema.js';
-import { mapProducts, mapUses, type PsmClient } from './psm.js';
+import { mapProducts, mapRestrictions, mapUses, type PsmClient } from './psm.js';
 
 const BATCH = 1000;
 
@@ -10,6 +10,7 @@ export interface PsmSyncResult {
   uses: number;
   cropGroups: number;
   codes: number;
+  restrictions: number;
 }
 
 /**
@@ -39,6 +40,17 @@ export async function syncPsm(db: Kysely<DB>, client: PsmClient): Promise<PsmSyn
   ]);
   const uses = mapUses(awg, kultur, schadorg, aufwand, wartezeit, new Set(products.map((p) => p.kennr)));
   logger.log(`${uses.length} approved uses`);
+  const [auflagen, auflageRedu] = await Promise.all([client.all('auflagen'), client.all('auflage_redu')]);
+  const codeTexts = new Map<string, string>();
+  for (const c of codes) if (c.kodetext && !codeTexts.has(String(c.kode))) codeTexts.set(String(c.kode), String(c.kodetext).replace(/\s+/g, ' ').trim());
+  const { restrictions, reductions } = mapRestrictions(
+    auflagen,
+    auflageRedu,
+    (code) => codeTexts.get(code) ?? null,
+    new Set(uses.map((u) => u.awg_id)),
+    new Set(products.map((p) => p.kennr)),
+  );
+  logger.log(`${restrictions.length} approval conditions`);
 
   await db.transaction().execute(async (trx) => {
     for (let i = 0; i < products.length; i += BATCH) {
@@ -71,6 +83,12 @@ export async function syncPsm(db: Kysely<DB>, client: PsmClient): Promise<PsmSyn
     await trx.deleteFrom('psm_codes').execute();
     const texts = [...new Map(codes.filter((c) => c.kodetext).map((c) => [`${c.kode}|${c.kodeliste}`, { code: String(c.kode), list: Number(c.kodeliste), text: String(c.kodetext).replace(/\s+/g, ' ').trim() }])).values()];
     for (let i = 0; i < texts.length; i += BATCH) await trx.insertInto('psm_codes').values(texts.slice(i, i + BATCH)).execute();
+    // A sync that yields no Auflagen keeps the previous set rather than emptying the buffers.
+    if (restrictions.length) {
+      await trx.deleteFrom('psm_restrictions').execute();
+      for (let i = 0; i < restrictions.length; i += BATCH) await trx.insertInto('psm_restrictions').values(restrictions.slice(i, i + BATCH)).execute();
+      for (let i = 0; i < reductions.length; i += BATCH) await trx.insertInto('psm_restriction_reductions').values(reductions.slice(i, i + BATCH)).execute();
+    } else logger.warn('BVL returned no Auflagen; keeping the stored ones');
   });
-  return { products: products.length, uses: uses.length, cropGroups: groups.length, codes: codes.length };
+  return { products: products.length, uses: uses.length, cropGroups: groups.length, codes: codes.length, restrictions: restrictions.length };
 }

@@ -5,6 +5,7 @@ import {
   type Crop,
   type CropCycle,
   type CropCycleStatus,
+  type CultivationTemplate,
   type CropRole,
   type Field,
   type FieldGroup,
@@ -36,7 +37,7 @@ import { fmt, today } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button, Link, buttonClass } from '#/ui/Button'
-import { Checkbox, ComboBox, DatePicker, NumberField, Option, Select, num } from '#/ui/Field'
+import { Checkbox, ComboBox, DatePicker, NumberField, Option, Select, Switch, num } from '#/ui/Field'
 import { Card, EmptyState, Loading, Notice, PageHeader, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 import { ConfirmButton, Menu, MenuItem, MenuSeparator, MenuTrigger, ModalDialog, Tooltip } from '#/ui/Overlay'
 import { cx } from '#/ui/utils'
@@ -884,11 +885,15 @@ function AssignDialog({ season, fields, initialFieldIds, initialRole, onClose }:
   const resolveVariety = useVarietyResolver()
   const [fieldIds, setFieldIds] = useState<string[]>(initialFieldIds)
   const [form, setForm] = useState<CycleForm>({ ...EMPTY_CYCLE_FORM, role: initialRole ?? EMPTY_CYCLE_FORM.role })
+  const templates = useOrgQuery<CultivationTemplate[]>('/templates')
+  const [templateId, setTemplateId] = useState<string | null>(null)
+  const [strawRemoved, setStrawRemoved] = useState(false)
+  const cropTemplates = (templates.data ?? []).filter((tpl) => tpl.cropId === form.cropId)
   const area = fields.filter((f) => fieldIds.includes(f.id)).reduce((s, f) => s + f.areaHa, 0)
   const save = useOrgMutation(
     async (base, _: void) => {
       const varietyId = form.cropId ? await resolveVariety(base, form.cropId, form.varietyName) : null
-      return api.post<CropCycle[]>(`${base}/crop-cycles`, {
+      const created = await api.post<CropCycle[]>(`${base}/crop-cycles`, {
         seasonId: season.id,
         fieldIds: fieldIds.filter((k) => k.startsWith('f:')).map((k) => k.slice(2)),
         fieldPartIds: fieldIds.filter((k) => k.startsWith('p:')).map((k) => k.slice(2)),
@@ -904,6 +909,14 @@ function AssignDialog({ season, fields, initialFieldIds, initialRole, onClose }:
         ...seedPayload(form),
         notes: form.notes || null,
       })
+      // As in the reference's assignment on the operations map: the cultivation template's
+      // operations are planned and the straw (by-product) choice is kept on each new crop.
+      const template = cropTemplates.find((tpl) => tpl.id === templateId)
+      for (const c of created) {
+        if (template) await api.post(`${base}/crop-cycles/${c.id}/apply-template`, { templateId: template.id })
+        if (strawRemoved) await api.put(`${base}/crop-cycles/${c.id}/base-fertilization`, { strawRemoved: true })
+      }
+      return created
     },
     { success: (r) => t('crops.assign.success', { count: r.length }), onSuccess: onClose },
   )
@@ -927,6 +940,23 @@ function AssignDialog({ season, fields, initialFieldIds, initialRole, onClose }:
         </div>
         <div className="space-y-4">
           <CycleFields value={form} onChange={setForm} crops={crops.data ?? []} showArea={fieldIds.length === 1} />
+          {(!initialRole || initialRole === 'main') && (
+            <div className="grid sm:grid-cols-2 gap-4 items-end">
+              <Select
+                label={t('crops.assign.template')}
+                items={[{ id: '__none', name: t('crops.assign.noTemplate') }, ...cropTemplates]}
+                value={templateId ?? '__none'}
+                onChange={(v) => setTemplateId(v && v !== '__none' ? String(v) : null)}
+                isDisabled={!form.cropId}
+                description={t('crops.assign.templateHint')}
+              >
+                {(tpl) => <Option id={tpl.id}>{tpl.name}</Option>}
+              </Select>
+              <Switch isSelected={strawRemoved} onChange={setStrawRemoved}>
+                {t('crops.assign.strawRemoved')}
+              </Switch>
+            </div>
+          )}
           {initialRole && initialRole !== 'main' && <Notice tone="info">{t('cropTable.secondary.hint')}</Notice>}
           {(!initialRole || initialRole === 'main') && fields.some((f) => fieldIds.includes(f.id) && f.currentCrop) && (
             <Notice tone="info">{t('crops.assign.additionalCycle')}</Notice>

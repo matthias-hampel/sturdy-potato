@@ -204,6 +204,8 @@ export class FieldConditionsService {
           bbchCalibrated: false,
           bbchCalibratable: bbchCalibratable(r.code),
           bbchObservedToday: own.find((x) => x.observedOn === today)?.observedBbch ?? null,
+          bbchByDate: null,
+          bbchObservedDates: own.map((x) => x.observedOn),
           ndvi: satelliteOf(r.field_id, 'ndvi'),
           lai: satelliteOf(r.field_id, 'lai'),
           precipitation: { seasonMm: null, last24hMm: null, last7dMm: null, next24hMm: null, next7dMm: null },
@@ -226,6 +228,7 @@ export class FieldConditionsService {
           bbch: phen?.currentBbch ?? null,
           bbchSource: phen?.bbchSource ?? null,
           bbchCalibrated: phen?.calibrated ?? false,
+          bbchByDate: phen?.dailyBbch ? Object.fromEntries(phen.dailyBbch) : null,
           precipitation: {
             // Since sowing only: before it, the sum says little about the crop.
             seasonMm: sowingDate ? precip.season : null,
