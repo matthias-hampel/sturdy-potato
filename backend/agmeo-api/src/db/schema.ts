@@ -602,6 +602,109 @@ export interface MaintenanceRecords {
   performed_on: string;
 }
 
+export interface MaizeDmcCalibrations {
+  created_at: Generated<Timestamp>;
+  crop_cycle_id: string;
+  dm_offset: number | null;
+  field_id: string;
+  harvest_year: number;
+  id: Generated<string>;
+  measured_dm: number;
+  measurement_date: string;
+  model_dm_at_measurement: number | null;
+  notes: string | null;
+  observed_by: string | null;
+  organization_id: string;
+  samples: Json | null;
+  source: Generated<string>;
+  superseded_at: Timestamp | null;
+  variety_id: string | null;
+}
+
+export interface MaizeDmcCycleSettings {
+  crop_cycle_id: string;
+  fao_maturity: number | null;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface MaizeDmcHarvestDetections {
+  confirm_date: string | null;
+  confirmed_at: Timestamp | null;
+  crop_cycle_id: string;
+  evidence: Generated<Json>;
+  field_id: string;
+  harvest_year: number;
+  organization_id: string;
+  rejected_reason: string | null;
+  status: string;
+  trust: string;
+  updated_at: Generated<Timestamp>;
+  window_end: string;
+  window_start: string;
+}
+
+export interface MaizeDmcRuns {
+  accumulated_gdd: number | null;
+  calibration_hash: string | null;
+  calibration_source: string | null;
+  created_at: Generated<Timestamp>;
+  crop_cycle_id: string;
+  execution_id: string;
+  fao_maturity: number | null;
+  field_id: string;
+  harvest_year: number;
+  id: Generated<string>;
+  mode: string;
+  model_version: string | null;
+  organization_id: string;
+  pred_from_date: string | null;
+  pred_medians: number[] | null;
+  pred_p10: number[] | null;
+  pred_p90: number[] | null;
+  resolution: string;
+  response: Json;
+  run_date: string;
+  sowing_date: string | null;
+  variety_id: string | null;
+}
+
+export interface MaizeDmcSatelliteStatus {
+  crop_cycle_id: string;
+  field_id: string;
+  harvest_year: number;
+  latest_clear_date: string;
+  latest_clear_ndvi: number;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface MaizeDmcVarietyMaturities {
+  fao_maturity: number;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  variety_id: string;
+}
+
+export interface MaizeDmcVarietyOffsets {
+  applied_at: Generated<Timestamp>;
+  applied_by: string | null;
+  basis_calibration_ids: Generated<string[]>;
+  basis_count: Generated<number>;
+  basis_from: string | null;
+  basis_to: string | null;
+  comment: string | null;
+  dm_offset: number;
+  harvest_year: number;
+  id: Generated<string>;
+  organization_id: string;
+  superseded_at: Timestamp | null;
+  suggested_offset: number | null;
+  variety_id: string;
+}
+
 export interface MarketQuotes {
   commodity: string;
   country: string;
@@ -1185,6 +1288,13 @@ export interface DB {
   jobs: Jobs;
   land_use_codes: LandUseCodes;
   maintenance_records: MaintenanceRecords;
+  maize_dmc_calibrations: MaizeDmcCalibrations;
+  maize_dmc_cycle_settings: MaizeDmcCycleSettings;
+  maize_dmc_harvest_detections: MaizeDmcHarvestDetections;
+  maize_dmc_runs: MaizeDmcRuns;
+  maize_dmc_satellite_status: MaizeDmcSatelliteStatus;
+  maize_dmc_variety_maturities: MaizeDmcVarietyMaturities;
+  maize_dmc_variety_offsets: MaizeDmcVarietyOffsets;
   market_quotes: MarketQuotes;
   memberships: Memberships;
   n170_inputs: N170Inputs;

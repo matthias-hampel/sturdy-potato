@@ -2,6 +2,7 @@ import { sql, type Kysely } from 'kysely';
 import type { DB } from '../db/schema.js';
 import { SEND_EMAIL, sendEmailHandler } from '../mail/mail.js';
 import { PURGE_OBJECTS } from '../modules/files/files.service.js';
+import { MAIZE_DMC_HARVEST_DETECTION, harvestDetectionHandler } from '../modules/maize-dmc/harvest-detection.job.js';
 import { FETCH_MARKET_PRICES, fetchMarketPricesHandler } from '../modules/economics/market-prices.js';
 import { RADAR_REFRESH, radarRefreshHandler } from '../modules/radar/radar-store.js';
 import { WEATHER_CELL, WEATHER_SCAN, weatherCellHandler, weatherScanHandler } from '../modules/weather/weather-store.js';
@@ -20,6 +21,7 @@ export function jobHandlers(db: Kysely<DB>): Record<string, JobHandler> {
     [FETCH_MARKET_PRICES]: fetchMarketPricesHandler(db),
     [WEATHER_CELL]: weatherCellHandler(db),
     [RADAR_REFRESH]: radarRefreshHandler(db, storage),
+    [MAIZE_DMC_HARVEST_DETECTION]: harvestDetectionHandler(db),
     // Objects of files deleted from the trash; deleting a missing object is not an error.
     [PURGE_OBJECTS]: async (job) => {
       for (const key of (job.payload.keys as string[] | undefined) ?? []) await storage.delete(key);
@@ -48,4 +50,6 @@ export const schedules: Schedule[] = [
   { kind: FETCH_MARKET_PRICES, everyMinutes: 24 * 60, offsetMinutes: 7 * 60 },
   // DWD publishes a radar frame every 5 minutes; the job skips itself while nobody looks at the radar.
   { kind: RADAR_REFRESH, everyMinutes: 5 },
+  // Daily at 06:30 UTC like the reference's cron, after the morning satellite run; skips itself without maize-dmc-api.
+  { kind: MAIZE_DMC_HARVEST_DETECTION, everyMinutes: 24 * 60, offsetMinutes: 6 * 60 + 30 },
 ];
