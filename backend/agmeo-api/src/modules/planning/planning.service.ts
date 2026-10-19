@@ -22,6 +22,10 @@ import {
   type RotationInput,
   type TemplateAnchor,
   type TemplateInput,
+  type CopyTemplateInput,
+  type CopyTemplateResult,
+  type SaveAsTemplateInput,
+  type SharedTemplates,
 } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
@@ -63,18 +67,9 @@ export class PlanningService {
   }
 
   createTemplate(ctx: Ctx, input: Out<typeof TemplateInput>): Promise<CultivationTemplate> {
-    return this.db.run(ctx, async (trx) => {
-      await this.assertCrop(trx, input.cropId);
-      const { id } = await trx
-        .insertInto('cultivation_templates')
-        .values({ organization_id: ctx.orgId, crop_id: input.cropId, name: input.name, notes: input.notes ?? null, created_by: ctx.userId })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      await this.writeSteps(trx, ctx, id, input);
-      await record(trx, ctx, { entityType: 'template', entityId: id, action: 'created', changes: { name: input.name, steps: input.steps.length } });
-      return (await this.loadTemplates(trx, id))[0];
-    });
+    return this.db.run(ctx, (trx) => this.createIn(trx, ctx, input));
   }
+
 
   /**
    * Replaces a template's steps. Planned operations already created from removed steps keep their
@@ -85,6 +80,7 @@ export class PlanningService {
       const before = await trx.selectFrom('cultivation_templates').select(['id', 'name']).where('id', '=', id).forUpdate().executeTakeFirst();
       if (!before) throw notFound('Template');
       await this.assertCrop(trx, input.cropId);
+      await this.assertUniqueName(trx, input.cropId, input.name, id);
       const used = await trx.selectFrom('crop_cycles').select('crop_id').where('template_id', '=', id).where('crop_id', '<>', input.cropId).limit(1).executeTakeFirst();
       if (used) throw badRequest('template_in_use', 'The template is applied to crops of another kind; create a new template instead');
       await trx.updateTable('cultivation_templates').set({ crop_id: input.cropId, name: input.name, notes: input.notes ?? null }).where('id', '=', id).execute();
@@ -96,10 +92,147 @@ export class PlanningService {
 
   deleteTemplate(ctx: Ctx, id: string): Promise<void> {
     return this.db.run(ctx, async (trx) => {
+      // As in the reference: a template crops were planned from stays (it documents their plan).
+      const used = await trx.selectFrom('crop_cycles').select('id').where('template_id', '=', id).limit(1).executeTakeFirst();
+      if (used) throw conflict('template_in_use', 'The template is used by crops and cannot be deleted');
       const res = await trx.deleteFrom('cultivation_templates').where('id', '=', id).executeTakeFirst();
       if (!res.numDeletedRows) throw notFound('Template');
       await record(trx, ctx, { entityType: 'template', entityId: id, action: 'deleted' });
     });
+  }
+
+  /** Templates of the other organizations the user is an active member of, read-only. */
+  async sharedTemplates(ctx: Ctx): Promise<SharedTemplates[]> {
+    const orgs = await this.db.run({ userId: ctx.userId }, (trx) =>
+      trx
+        .selectFrom('memberships as m')
+        .innerJoin('organizations as o', 'o.id', 'm.organization_id')
+        .select(['o.id', 'o.name'])
+        .where('m.user_id', '=', ctx.userId)
+        .where('m.status', '=', 'active')
+        .where('o.id', '<>', ctx.orgId)
+        .orderBy('o.name')
+        .execute(),
+    );
+    const out: SharedTemplates[] = [];
+    for (const org of orgs) {
+      const templates = await this.db.run({ userId: ctx.userId, orgId: org.id }, (trx) => this.loadTemplates(trx));
+      if (templates.length) out.push({ organization: { id: org.id, name: org.name }, templates });
+    }
+    return out;
+  }
+
+  /**
+   * Copies a template into this organization (reference duplicateTemplate). From another of the
+   * user's organizations, product lines are matched by product name and category; lines without a
+   * match are left out and counted.
+   */
+  async copyTemplate(ctx: Ctx, id: string, input: Out<typeof CopyTemplateInput>): Promise<CopyTemplateResult> {
+    const sourceOrg = input.sourceOrgId ?? ctx.orgId;
+    const source = await this.db.run({ userId: ctx.userId, orgId: sourceOrg }, async (trx) => {
+      const [t] = await this.loadTemplates(trx, id);
+      if (!t) throw notFound('Template');
+      const productIds = [...new Set(t.steps.flatMap((s) => s.inputs.map((i) => i.productId)))];
+      const products = productIds.length ? await trx.selectFrom('products').select(['id', 'name', 'category']).where('id', 'in', productIds).execute() : [];
+      return { t, products };
+    });
+    return this.db.run(ctx, async (trx) => {
+      let productOf = (pid: string): string | null => pid;
+      if (sourceOrg !== ctx.orgId) {
+        const names = source.products.map((p) => p.name);
+        const own = names.length ? await trx.selectFrom('products').select(['id', 'name', 'category']).where('name', 'in', names).where('archived_at', 'is', null).execute() : [];
+        productOf = (pid) => {
+          const p = source.products.find((x) => x.id === pid);
+          return own.find((o) => p && o.name === p.name && o.category === p.category)?.id ?? null;
+        };
+      }
+      let droppedInputs = 0;
+      const steps = source.t.steps.map((s) => ({
+        type: s.type,
+        title: s.title,
+        anchor: s.anchor,
+        offsetDays: s.offsetDays,
+        bbchStage: s.bbchStage,
+        notes: s.notes,
+        inputs: s.inputs.flatMap((i) => {
+          const productId = productOf(i.productId);
+          if (!productId) {
+            droppedInputs++;
+            return [];
+          }
+          return [{ productId, ratePerHa: i.ratePerHa }];
+        }),
+      }));
+      const template = await this.createIn(trx, ctx, { cropId: source.t.cropId, name: input.name, notes: source.t.notes, steps });
+      return { template, droppedInputs };
+    });
+  }
+
+  /**
+   * A crop's operations (not canceled) as a new template (reference
+   * createNewTemplateFromCultivationId): harvests count from the harvest, everything else from
+   * the sowing date, else from the season start.
+   */
+  saveCycleAsTemplate(ctx: Ctx, cropCycleId: string, input: Out<typeof SaveAsTemplateInput>): Promise<CultivationTemplate> {
+    return this.db.run(ctx, async (trx) => {
+      const cycle = await trx
+        .selectFrom('crop_cycles as cc')
+        .innerJoin('growing_seasons as s', 's.id', 'cc.season_id')
+        .select(['cc.id', 'cc.crop_id', 'cc.sowing_date', 's.start_date'])
+        .where('cc.id', '=', cropCycleId)
+        .executeTakeFirst();
+      if (!cycle) throw notFound('Crop cycle');
+      const { rows } = await sql<{ id: string; day: string | null }>`
+        SELECT DISTINCT o.id, coalesce((o.performed_at AT TIME ZONE 'Europe/Berlin')::date, o.planned_on)::text AS day
+        FROM operations o JOIN operation_fields ofl ON ofl.operation_id = o.id
+        WHERE ofl.crop_cycle_id = ${cropCycleId} AND o.status <> 'canceled'
+        ORDER BY day NULLS LAST`.execute(trx);
+      const ops = (await this.operations.load(trx, rows.map((r) => r.id))).filter((o) => o.performedAt || o.plannedOn);
+      if (!ops.length) throw badRequest('no_operations', 'The crop has no dated operations to save as a template');
+      const dayOf = (o: (typeof ops)[number]) => (o.performedAt ? o.performedAt.slice(0, 10) : o.plannedOn!);
+      const sowing = ops.find((o) => o.type === 'sowing') ? dayOf(ops.find((o) => o.type === 'sowing')!) : cycle.sowing_date;
+      const harvest = ops.find((o) => o.type === 'harvest') ? dayOf(ops.find((o) => o.type === 'harvest')!) : null;
+      const diff = (a: string, b: string) => Math.round((Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86_400_000);
+      const steps = ops.map((o) => {
+        const day = dayOf(o);
+        const [anchor, offsetDays] = o.type === 'harvest' && harvest ? (['harvest', diff(day, harvest)] as const) : sowing ? (['sowing', diff(day, sowing)] as const) : (['season_start', diff(day, cycle.start_date)] as const);
+        return {
+          type: o.type,
+          title: o.title,
+          anchor,
+          offsetDays: Math.max(-400, Math.min(400, offsetDays)),
+          bbchStage: o.bbchStage,
+          notes: null,
+          inputs: o.inputs.filter((i) => i.ratePerHa != null && i.ratePerHa > 0).map((i) => ({ productId: i.productId, ratePerHa: i.ratePerHa! })),
+        };
+      });
+      return this.createIn(trx, ctx, { cropId: cycle.crop_id, name: input.name, notes: null, steps });
+    });
+  }
+
+  private async createIn(trx: Trx, ctx: Ctx, input: Out<typeof TemplateInput>): Promise<CultivationTemplate> {
+    await this.assertCrop(trx, input.cropId);
+    await this.assertUniqueName(trx, input.cropId, input.name);
+    const { id } = await trx
+      .insertInto('cultivation_templates')
+      .values({ organization_id: ctx.orgId, crop_id: input.cropId, name: input.name, notes: input.notes ?? null, created_by: ctx.userId })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await this.writeSteps(trx, ctx, id, input);
+    await record(trx, ctx, { entityType: 'template', entityId: id, action: 'created', changes: { name: input.name, steps: input.steps.length } });
+    return (await this.loadTemplates(trx, id))[0];
+  }
+
+  /** One name per crop in the organization (reference: unique per organization and crop). */
+  private async assertUniqueName(trx: Trx, cropId: string, name: string, except?: string) {
+    let q = trx
+      .selectFrom('cultivation_templates')
+      .select('id')
+      .where('crop_id', '=', cropId)
+      .where('archived_at', 'is', null)
+      .where(sql<boolean>`lower(name) = lower(${name})`);
+    if (except) q = q.where('id', '<>', except);
+    if (await q.executeTakeFirst()) throw conflict('template_exists', 'A template with this name already exists for this crop');
   }
 
   private async writeSteps(trx: Trx, ctx: Ctx, templateId: string, input: Out<typeof TemplateInput>) {

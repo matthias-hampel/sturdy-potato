@@ -1,5 +1,5 @@
 import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
-import { ApplyTemplateInput, AssignRotationInput, CalendarYearsQuery, CarryForwardInput, RollOverInput, RotationInput, TemplateInput } from '@agmeo/contracts';
+import { ApplyTemplateInput, AssignRotationInput, CalendarYearsQuery, CarryForwardInput, CopyTemplateInput, RollOverInput, RotationInput, SaveAsTemplateInput, TemplateInput } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { type Out, ZBody, ZQuery } from '../../core/validation.js';
 import { PlanningService } from './planning.service.js';
@@ -11,6 +11,24 @@ export class PlanningController {
   @Get('templates')
   templates(@OrgCtx() ctx: Ctx) {
     return this.planning.templates(ctx);
+  }
+
+  /** Templates of the user's other organizations, read-only. */
+  @Get('templates/shared')
+  sharedTemplates(@OrgCtx() ctx: Ctx) {
+    return this.planning.sharedTemplates(ctx);
+  }
+
+  @Post('templates/:id/copy')
+  @Requires('crop.write')
+  copyTemplate(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string, @ZBody(CopyTemplateInput) input: Out<typeof CopyTemplateInput>) {
+    return this.planning.copyTemplate(ctx, id, input);
+  }
+
+  @Post('crop-cycles/:id/save-as-template')
+  @Requires('crop.write')
+  saveAsTemplate(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string, @ZBody(SaveAsTemplateInput) input: Out<typeof SaveAsTemplateInput>) {
+    return this.planning.saveCycleAsTemplate(ctx, id, input);
   }
 
   @Get('templates/:id')
