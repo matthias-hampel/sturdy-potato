@@ -25,7 +25,7 @@ beforeAll(async () => {
   const refdata = createKysely(config.refdataDatabaseUrl, 1)
   try {
     const r = await syncBsl(refdata)
-    expect(r.varieties).toBe(2231)
+    expect(r.varieties).toBeGreaterThan(2050)
   } finally {
     await refdata.destroy()
   }
@@ -52,7 +52,7 @@ describe('variety catalogue', () => {
 
     const species = (await u.get(`${base}/variety-catalogue/species`).expect(200)).body as { key: string; speciesCode: string | null; count: number; crops: { id: string; name: string }[] }[]
     const ww = species.find((s) => s.key === 'WW')!
-    expect(ww.count).toBeGreaterThan(400)
+    expect(ww.count).toBeGreaterThan(300)
     expect(ww.crops.map((c) => c.name)).toContain('Winterweizen')
     expect(species.find((s) => s.key === 'bsl:hanf')).toMatchObject({ speciesCode: null, crops: [] })
 

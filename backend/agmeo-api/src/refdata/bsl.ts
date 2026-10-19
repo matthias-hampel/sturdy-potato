@@ -212,13 +212,35 @@ export const numericRows = (properties: Record<string, BslValue>): RawVarietyPro
 // Import
 // ---------------------------------------------------------------------------
 
+/**
+ * The list repeats a variety in several of its tables (e.g. yield levels and quality, footnoted
+ * "Name 1)"); within one use group these are one variety. Merged by group, name and Kennnummer;
+ * the first entry's values win, later entries add what it lacks.
+ */
+export function mergeDuplicates(varieties: BslSourceVariety[]): BslSourceVariety[] {
+  const byKey = new Map<string, BslSourceVariety>();
+  for (const v of varieties) {
+    const key = [v.species, v.subspecies, normalizeVarietyKey(bslVarietyName(v.name)), v.kenn?.trim() ?? ''].join('|');
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, v);
+      continue;
+    }
+    const merged: BslSourceVariety = { ...v, ...Object.fromEntries(Object.entries(prev).filter(([, x]) => x != null)) } as BslSourceVariety;
+    merged.properties = { ...v.properties, ...prev.properties };
+    merged.quality = { ...v.quality, ...prev.quality };
+    byKey.set(key, merged);
+  }
+  return [...byKey.values()];
+}
+
 const BATCH = 300;
 
 /** Loads the BSL into bsl_varieties (upsert by source id) and links the BSA register. */
 export async function syncBsl(db: Kysely<DB>, data: BslData = loadBslData()): Promise<{ varieties: number; linked: number }> {
   const logger = new Logger('BslSync');
   const now = new Date();
-  const rows = data.varieties.map((v) => {
+  const rows = mergeDuplicates(data.varieties).map((v) => {
     const { speciesCode, registrationNumber } = bsaKey(v);
     const coerce = (m: Record<string, BslValue> = {}) => JSON.stringify(Object.fromEntries(Object.entries(m).map(([k, x]) => [k, coerceNumeric(x)])));
     return {
@@ -271,6 +293,8 @@ export async function syncBsl(db: Kysely<DB>, data: BslData = loadBslData()): Pr
         )
         .execute();
     }
+    // Entries merged into another one since an earlier import.
+    await trx.deleteFrom('bsl_varieties').where('bsl_id', 'not in', rows.map((r) => r.bsl_id)).execute();
     // The BSA register: by Kennnummer within the species, else by name within the species.
     const byNumber = await sql`
       UPDATE bsl_varieties l SET bsa_variety_id = b.id

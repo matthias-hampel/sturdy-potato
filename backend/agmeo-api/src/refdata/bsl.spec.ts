@@ -4,6 +4,7 @@ import {
   coerceNumeric,
   DISEASE_PROPERTY_NAMES,
   loadBslData,
+  mergeDuplicates,
   normalizeVarietyKey,
   type RawVarietyPropertyRow,
   toDiseaseRatings,
@@ -22,6 +23,18 @@ describe('BSL data', () => {
     // Most entries resolve to a BSA species (crops map to those codes).
     const keyed = data.varieties.filter((v) => bsaKey(v).speciesCode)
     expect(keyed.length / data.varieties.length).toBeGreaterThan(0.95);
+  });
+
+  it('merges entries the list repeats within a use group', () => {
+    const a = { id: 1, name: 'Absint', kenn: '6146', species: 'weizen_winter', subspecies: 'W', properties: { reife: 5 } }
+    const b = { id: 2, name: 'Absint 1)', kenn: '6146', species: 'weizen_winter', subspecies: 'W', breeder: 'X', properties: { reife: 6, lager: 3 }, quality: { fallzahl: 7 } }
+    const c = { id: 3, name: 'Absint', kenn: '6146', species: 'weizen_winter', subspecies: 'Öko', properties: {} }
+    const merged = mergeDuplicates([a, b, c])
+    expect(merged).toHaveLength(2)
+    expect(merged[0]).toMatchObject({ id: 1, name: 'Absint', breeder: 'X', properties: { reife: 5, lager: 3 }, quality: { fallzahl: 7 } })
+    const all = mergeDuplicates(loadBslData().varieties)
+    expect(all.length).toBeLessThan(2231)
+    expect(all.length).toBeGreaterThan(2050)
   });
 
   it('reads the BSA species and Kennnummer of an entry', () => {

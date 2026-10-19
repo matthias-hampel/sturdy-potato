@@ -26,10 +26,10 @@ const humanize = (key: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function RatingBadges({ ratings, max = 3 }: { ratings: VarietyRating[]; max?: number }) {
+function RatingBadges({ ratings, max = 2 }: { ratings: VarietyRating[]; max?: number }) {
   if (!ratings.length) return <span className="text-muted">—</span>
   return (
-    <span className="flex flex-wrap gap-1">
+    <span className="flex flex-wrap gap-1 whitespace-nowrap">
       {ratings.slice(0, max).map((r) => (
         <Badge key={r.disease} tone={ratingTone(r.susceptibility)}>
           {r.disease} {r.susceptibility}
@@ -76,7 +76,7 @@ function VarietiesPage() {
         render: (v) => (trait(v, key) != null ? fmt.num(trait(v, key), 1) : '—'),
       }),
     ),
-    { id: 'ratings', label: t('varieties.col.ratings'), value: (v) => v.ratings[0]?.susceptibility ?? null, text: (v) => v.ratings.map((r) => r.disease).join(' '), render: (v) => <RatingBadges ratings={v.ratings} /> },
+    { id: 'ratings', label: t('varieties.col.ratings'), className: 'min-w-80', value: (v) => v.ratings[0]?.susceptibility ?? null, text: (v) => v.ratings.map((r) => r.disease).join(' '), render: (v) => <RatingBadges ratings={v.ratings} /> },
     {
       id: 'approval',
       label: t('varieties.col.approval'),
@@ -142,7 +142,7 @@ function VarietyDialog({ id, onClose }: { id: string; onClose: () => void }) {
         <div className="space-y-4 text-sm">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
             <dt className="text-muted">{t('varieties.species')}</dt>
-            <dd>{d.speciesName} · {d.subspecies}{d.usage ? ` (${d.usage})` : ''}</dd>
+            <dd>{[d.speciesName, d.subspecies !== d.speciesName ? d.subspecies : null].filter(Boolean).join(' · ')}{d.usage ? ` (${d.usage})` : ''}</dd>
             <dt className="text-muted">{t('varieties.col.kenn')}</dt>
             <dd>{d.kennNummer ?? '—'}</dd>
             <dt className="text-muted">{t('varieties.col.breeder')}</dt>
