@@ -20,6 +20,7 @@ import {
   type PsmUse,
   type StockShortage,
   type StorageLocation,
+  type VoiceDraft,
 } from '@agmeo/contracts'
 import type { TFunction } from 'i18next'
 import { AlertTriangle, Plus, X } from 'lucide-react'
@@ -183,6 +184,29 @@ export function initialState(opts: { farmId: string | null; fieldIds?: string[];
     details: defaultDetails(opts.type ?? 'fertilization'),
     notes: '',
   }
+}
+
+/**
+ * The form prefilled from a reviewed voice draft: product and rate, the day (a past day records
+ * the work as done), BBCH, weather and the dictation as notes. The field comes in through
+ * `initialState`; anything the draft did not resolve stays for the user to fill in.
+ */
+export function applyVoiceDraft(state: OperationFormState, draft: VoiceDraft, transcriptLabel: string): OperationFormState {
+  const d = draft.draft
+  const r = draft.resolved
+  if (!d || !r) return state
+  const next: OperationFormState = { ...state }
+  if (r.productId) next.inputs = [{ key: nextKey(), productId: r.productId, ratePerHa: r.ratePerHa ?? NaN, storageLocationId: null, unitCost: NaN }]
+  if (r.performedOn) {
+    next.plannedOn = r.performedOn
+    next.performedOn = r.performedOn
+    next.done = r.performedOn <= today()
+  }
+  if (d.bbch != null) next.bbchStage = String(d.bbch)
+  const weather = [d.windMs != null ? `${fmt.num(d.windMs, 1)} m/s` : null, d.tempC != null ? `${fmt.num(d.tempC, 1)} °C` : null].filter(Boolean)
+  if (weather.length) next.weatherConditions = weather.join(', ')
+  next.notes = [`${transcriptLabel}: „${draft.transcript ?? ''}“`, d.freeText].filter(Boolean).join('\n')
+  return next
 }
 
 /** Plant protection on arable land is applied in the open field unless the user says otherwise. */
