@@ -17,3 +17,4 @@ export * from './regulatory.js';
 export * from './units.js';
 export * from './files.js';
 export * from './psmRecord.js';
+export * from './carbon.js';

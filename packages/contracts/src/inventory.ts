@@ -321,15 +321,26 @@ export type FromPsmInput = z.input<typeof FromPsmInput>;
 // Calculation parameters (read-only emission factors)
 // ---------------------------------------------------------------------------
 
-export const CALCULATION_PARAMETER_GROUPS = ['general', 'fuel', 'nitrous_oxide', 'ammonia', 'fertilizer_supply', 'plant_protection', 'seed'] as const;
+export const CALCULATION_PARAMETER_GROUPS = ['general', 'fuel', 'field', 'fertilizer_supply', 'organic_fertilizer', 'plant_protection', 'crop', 'scope2'] as const;
+export type CalculationParameterGroup = (typeof CALCULATION_PARAMETER_GROUPS)[number];
 
+/** A factor of the BEK calculator with its citation (agmeo method/parametersSources.ts). */
 export interface CalculationParameter {
-  group: (typeof CALCULATION_PARAMETER_GROUPS)[number];
+  /** Parameter id of the method, e.g. `ef.diesel` or `crop.winterWheat.rootProportion`. */
+  id: string;
+  group: CalculationParameterGroup;
+  /** Last segment of the id, e.g. `diesel`, `rootProportion`. */
   key: string;
-  /** Fertilizer type or application technique the value applies to. */
+  /** Crop, fertilizer category or incorporation the value applies to. */
   variant: string | null;
   value: number;
   unit: string;
+  /** Symbol and description from the method sheet (German). */
+  name: string | null;
+  description: string | null;
+  /** Short and full citation; null for values the method sets itself. */
+  source: string | null;
+  citation: string | null;
 }
 
 export interface CalculationParameters {

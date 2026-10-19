@@ -26,7 +26,7 @@ import { record } from '../../core/events.js';
 import { dateIn, iso, round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
-import { CO2E_FACTOR_SET, operationEmissions } from '../carbon/co2e.js';
+import { writeOperationEmissions } from '../carbon/ledger.js';
 import { cropName } from '../crops/crop-name.js';
 import { resolveSeason } from '../crops/seasons.js';
 
@@ -219,7 +219,7 @@ export class OperationsService {
         WHERE coalesce(c.amount, 0) > 0 AND round(c.amount * f.share, 2) <> 0`.execute(trx);
 
       // 2b. Greenhouse-gas emissions, allocated like the costs.
-      await this.writeEmissions(trx, ctx, id, seq, season?.id ?? null, op.details as Record<string, unknown>);
+      await this.writeEmissions(trx, ctx, id, seq, season?.id ?? null);
 
       // 3. Status change.
       await trx
@@ -524,86 +524,15 @@ export class OperationsService {
         .execute();
       for (const op of ops) {
         const season = await resolveSeason(trx, null, op.day);
-        await this.writeEmissions(trx, ctx, op.id, op.completion_seq, season?.id ?? null, op.details as Record<string, unknown>);
+        await this.writeEmissions(trx, ctx, op.id, op.completion_seq, season?.id ?? null);
       }
       return ops.length;
     });
   }
 
-  /**
-   * Emissions of a completion by source, split over the treated fields by area. Diesel is the
-   * recorded fuel, else the operation's diesel per hectare, else machine hours × consumption per hour.
-   */
-  private async writeEmissions(trx: Trx, ctx: Ctx, operationId: string, seq: number, seasonId: string | null, details: Record<string, unknown>) {
-    const inputs = await trx
-      .selectFrom('operation_inputs as oi')
-      .innerJoin('products as p', 'p.id', 'oi.product_id')
-      .select(['oi.total_quantity', 'p.category', 'p.base_unit', 'p.n_pct', 'p.nh4_n_pct', 'p.p2o5_pct', 'p.k2o_pct', 'p.cao_pct', 'p.density_t_m3', 'p.fertilizer_type'])
-      .where('oi.operation_id', '=', operationId)
-      .execute();
-    const fuel = inputs.filter((i) => i.category === 'fuel' && (i.base_unit === 'l' || i.base_unit === 'm3')).reduce((s, i) => s + i.total_quantity * (i.base_unit === 'm3' ? 1000 : 1), 0);
-    // Diesel: recorded fuel, else the operation's diesel per hectare, else machine hours × consumption.
-    const perHa = fuel > 0
-      ? 0
-      : Number(
-          (await trx
-            .selectFrom('operations as o')
-            .innerJoin('operation_fields as ofl', 'ofl.operation_id', 'o.id')
-            .select(sql<number | null>`max(o.diesel_l_per_ha) * sum(ofl.treated_area_ha)`.as('l'))
-            .where('o.id', '=', operationId)
-            .executeTakeFirst())?.l ?? 0,
-        );
-    const machineFuel = fuel > 0 || perHa > 0
-      ? 0
-      : Number(
-          (await trx
-            .selectFrom('operation_equipment as q')
-            .innerJoin('equipment as e', 'e.id', 'q.equipment_id')
-            .select(sql<number>`coalesce(sum(q.hours * e.fuel_l_per_h), 0)`.as('l'))
-            .where('q.operation_id', '=', operationId)
-            .executeTakeFirst())?.l ?? 0,
-        );
-    const emissions = operationEmissions({
-      dieselL: fuel + perHa + machineFuel,
-      technique: (details.applicationTechnique as ApplicationTechnique | undefined) ?? null,
-      incorporationHours: typeof details.incorporationHours === 'number' ? details.incorporationHours : null,
-      inputs: inputs.map((i) => ({
-        category: i.category,
-        baseUnit: i.base_unit as BaseUnit,
-        totalQuantity: i.total_quantity,
-        product: { nPct: i.n_pct, nh4NPct: i.nh4_n_pct, p2o5Pct: i.p2o5_pct, k2oPct: i.k2o_pct, caoPct: i.cao_pct, densityTM3: i.density_t_m3, fertilizerType: i.fertilizer_type as FertilizerType | null },
-      })),
-    });
-    const sources = Object.entries(emissions).filter(([, v]) => v);
-    if (!sources.length) return;
-    const lines = await trx
-      .selectFrom('operation_fields as ofl')
-      .leftJoin('crop_cycles as cc', 'cc.id', 'ofl.crop_cycle_id')
-      .select(['ofl.field_id', 'ofl.field_part_id', 'ofl.crop_cycle_id', 'ofl.treated_area_ha', 'cc.season_id'])
-      .where('ofl.operation_id', '=', operationId)
-      .execute();
-    const area = lines.reduce((s, l) => s + l.treated_area_ha, 0);
-    if (!area) return;
-    await trx
-      .insertInto('emission_entries')
-      .values(
-        lines.flatMap((l) =>
-          sources.map(([source, kg]) => ({
-            organization_id: ctx.orgId,
-            operation_id: operationId,
-            completion_seq: seq,
-            kind: 'operation',
-            season_id: l.season_id ?? seasonId,
-            crop_cycle_id: l.crop_cycle_id,
-            field_id: l.field_id,
-            field_part_id: l.field_part_id,
-            source,
-            kg_co2e: round((kg! * l.treated_area_ha) / area, 3),
-            factor_set: CO2E_FACTOR_SET,
-          })),
-        ),
-      )
-      .execute();
+  /** Emissions of a completion by BEK source and treated field (see carbon/ledger.ts). */
+  private async writeEmissions(trx: Trx, ctx: Ctx, operationId: string, seq: number, seasonId: string | null) {
+    await writeOperationEmissions(trx, ctx, operationId, seq, seasonId);
   }
 
   /** Required vs. recorded stock per product (and storage location, where one is chosen). */
