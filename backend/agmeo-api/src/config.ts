@@ -32,6 +32,11 @@ export const config = {
     baseUrl: env('OPEN_METEO_URL', 'https://api.open-meteo.com/v1/forecast'),
     cacheMinutes: Number(env('WEATHER_CACHE_MINUTES', '30')),
   },
+  // Address search for farms. The public Photon instance allows fair use only; self-host it for more load.
+  geocoding: {
+    photonUrl: env('PHOTON_URL', 'https://photon.komoot.io'),
+    userAgent: env('GEOCODING_USER_AGENT', 'agmeo (https://agvolution.com)'),
+  },
   // Language model that phrases the reasons of field recommendations. Without a key the
   // recommendations still work; the UI then shows the reasons from the evidence codes.
   openai: {

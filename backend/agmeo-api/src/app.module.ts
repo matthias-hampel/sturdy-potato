@@ -36,6 +36,8 @@ import { RecommendationsController } from './modules/recommendations/recommendat
 import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
 import { RegulatoryController } from './modules/regulatory/regulatory.controller.js';
 import { RegulatoryService } from './modules/regulatory/regulatory.service.js';
+import { GeocodingController } from './modules/geocoding/geocoding.controller.js';
+import { GeocodingService } from './modules/geocoding/geocoding.service.js';
 import { SearchController } from './modules/search/search.controller.js';
 import { SearchService } from './modules/search/search.service.js';
 import { OperationsController } from './modules/operations/operations.controller.js';
@@ -73,6 +75,7 @@ export const DOMAIN_SERVICES = [
   RecommendationsService,
   DashboardService,
   SearchService,
+  GeocodingService,
 ];
 
 /**
@@ -104,6 +107,7 @@ export const DOMAIN_SERVICES = [
     RecommendationsController,
     DashboardController,
     SearchController,
+    GeocodingController,
   ],
   providers: [
     TokenService,

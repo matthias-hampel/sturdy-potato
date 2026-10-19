@@ -1,9 +1,10 @@
-import type { Farm, LatLng, Organization, Season } from '@agmeo/contracts'
+import type { Farm, Organization, Season } from '@agmeo/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Archive, ArchiveRestore, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Form } from 'react-aria-components'
+import { AddressField, useFarmPlace } from '#/components/map/AddressField'
 import { LocationPicker } from '#/components/map/LocationPicker'
 import { LOCALE, t } from '#/i18n'
 import { api } from '#/lib/api'
@@ -175,8 +176,8 @@ function FarmsCard() {
 function FarmDialog({ farm, onClose }: { farm: Farm | null; onClose: () => void }) {
   const { org } = useOrg()
   const [name, setName] = useState(farm?.name ?? '')
-  const [address, setAddress] = useState(farm?.address ?? '')
-  const [location, setLocation] = useState<LatLng | null>(farm?.location ?? null)
+  const place = useFarmPlace(org.id, { address: farm?.address ?? null, location: farm?.location ?? null })
+  const { address, location } = place
   const [mapZoom, setMapZoom] = useState<number | null>(farm?.mapZoom ?? (farm?.location ? 13 : null))
   const [notes, setNotes] = useState(farm?.notes ?? '')
   const body = { name, address: address || null, country: farm?.country ?? org.country, timezone: farm?.timezone ?? 'Europe/Berlin', location, mapZoom, notes: notes || null }
@@ -189,7 +190,16 @@ function FarmDialog({ farm, onClose }: { farm: Farm | null; onClose: () => void 
       <Form onSubmit={(e) => { e.preventDefault(); save.mutate() }} className="grid md:grid-cols-[1fr_1.2fr] gap-5">
         <div className="space-y-4">
           <TextField label={t('onboarding.farm.name')} isRequired value={name} onChange={setName} />
-          <TextField label={t('onboarding.farm.address')} value={address} onChange={setAddress} />
+          <AddressField
+            orgId={org.id}
+            label={t('onboarding.farm.address')}
+            placeholder={t('onboarding.farm.addressPlaceholder')}
+            value={address}
+            onChange={place.setAddress}
+            onSelect={place.select}
+            country={farm?.country ?? org.country}
+            near={location}
+          />
           <div className="text-sm">
             <div className="font-medium text-fg-2 flex items-center gap-1.5"><MapPin className="size-4" /> {t('onboarding.farm.location')}</div>
             <div className="text-muted tabular mt-1">
@@ -203,7 +213,7 @@ function FarmDialog({ farm, onClose }: { farm: Farm | null; onClose: () => void 
             <Button type="submit" variant="primary" isPending={save.isPending}>{t('common.save')}</Button>
           </div>
         </div>
-        <LocationPicker value={location} zoom={mapZoom} onChange={setLocation} onZoomChange={setMapZoom} className="h-80" />
+        <LocationPicker value={location} zoom={mapZoom} onChange={place.pick} onZoomChange={setMapZoom} className="h-80" />
       </Form>
     </ModalDialog>
   )
