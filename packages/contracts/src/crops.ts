@@ -17,6 +17,10 @@ export interface Crop {
   custom: boolean;
   /** Bundessortenamt species code ("Kennbuchstabe") whose registered varieties apply to this crop. */
   bsaSpeciesCode: string | null;
+  /** EU Plant Variety Portal (UPOV) species code whose EU Common Catalogue varieties apply to this crop. */
+  euSpeciesCode: string | null;
+  /** Form of the crop within its EU species (wheat, barley, rye, triticale, oats, rapeseed); null for species without forms. */
+  euSeason: 'winter' | 'spring' | null;
   isLegume: boolean;
   isPerennial: boolean;
   /** Typical sowing and harvest day ('MM-DD'); winter and catch crops are sown in the year before harvest. */
@@ -37,25 +41,42 @@ export interface Variety {
   id: string;
   cropId: string;
   name: string;
-  /** Set when the variety is in the Bundessortenamt register. */
+  /** Set when the variety is in the Bundessortenamt register or, failing that, the EU Common Catalogue. */
   registeredVarietyId: string | null;
 }
 
-/** A variety from the Bundessortenamt register that may currently be sown in Germany. */
+/**
+ * A variety that may currently be sown in Germany: approved by the Bundessortenamt ('bsa'), or
+ * listed in the EU Common Catalogue only ('eu', registered in another member state).
+ */
 export interface RegisteredVariety {
   id: string;
   name: string;
+  source: 'bsa' | 'eu';
+  /** BSA "Kennbuchstabe", or the EU Plant Variety Portal species code. */
   speciesCode: string;
-  /** BSA "Kennnummer". */
-  registrationNumber: number;
+  /** BSA "Kennnummer"; null for EU catalogue varieties. */
+  registrationNumber: number | null;
+  /** BSA approval, or the earliest national registration in the EU. */
   approvedOn: string | null;
-  /** Set when the approval has ended and certified seed may only be sold until this date. */
+  /** Set when the approval (all registrations) has ended and certified seed may only be sold until this date. */
   marketableUntil: string | null;
   /** Region of origin of a conservation variety ("Erhaltungssorte"). */
   conservationRegion: string | null;
+  /** Countries that currently register an EU catalogue variety (EL = Greece, XI = Northern Ireland); empty for BSA varieties. */
+  countries: string[];
+  /**
+   * Form an EU catalogue variety is registered as ("Season Type"): 'alternative' may be sown in
+   * autumn or spring; null when the catalogue does not state it, and for BSA varieties, whose
+   * species is the form.
+   */
+  season: 'winter' | 'spring' | 'alternative' | null;
 }
 
 export const CreateVarietyInput = z.object({ cropId: id, name });
+
+/** Compares variety names the way registers spell them differently: ignoring case, spaces and hyphens ("DKC 2972" = "DKC2972"). */
+export const varietyKey = (name: string) => name.toLowerCase().replace(/[\s-]+/g, '');
 export type CreateVarietyInput = z.input<typeof CreateVarietyInput>;
 
 export interface Season {

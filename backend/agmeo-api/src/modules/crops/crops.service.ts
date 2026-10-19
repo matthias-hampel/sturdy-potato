@@ -1,25 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  CreateCropCyclesInput,
-  CreateCropInput,
-  CreateVarietyInput,
-  Crop,
-  CropCategory,
-  CropCycle,
-  CropCycleStatus,
-  CropRole,
-  RegisteredVariety,
-  Season,
-  SeasonInput,
-  UpdateCropCycleInput,
-  Variety,
+import {
+  type CreateCropCyclesInput,
+  type CreateCropInput,
+  type CreateVarietyInput,
+  type Crop,
+  type CropCategory,
+  type CropCycle,
+  type CropCycleStatus,
+  type CropRole,
+  type RegisteredVariety,
+  type Season,
+  type SeasonInput,
+  type UpdateCropCycleInput,
+  type Variety,
+  varietyKey,
 } from '@agmeo/contracts';
-import { sql } from 'kysely';
+import { type ExpressionBuilder, sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
 import { badRequest, conflict, notFound } from '../../core/errors.js';
 import { diff, record } from '../../core/events.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
+import type { DB } from '../../db/schema.js';
 import { cropName } from './crop-name.js';
 import { defaultSeasonName } from './seasons.js';
 
@@ -51,6 +53,8 @@ export class CropsService {
         color: r.color,
         custom: r.organization_id != null,
         bsaSpeciesCode: r.bsa_species_code,
+        euSpeciesCode: r.eu_species_code,
+        euSeason: r.eu_season as Crop['euSeason'],
         isLegume: r.is_legume,
         isPerennial: r.is_perennial,
         defaultSowingMd: r.default_sowing_md,
@@ -61,39 +65,36 @@ export class CropsService {
   }
 
   /**
-   * Varieties of the crop's species in the Bundessortenamt register that may currently be sown:
-   * approved, or with an ended approval whose seed run-off period has not passed. A name that was
-   * registered more than once lists only its latest registration.
+   * Varieties of the crop's species that may currently be sown, sorted by name. From the
+   * Bundessortenamt register: approved, or with an ended approval whose seed run-off period has not
+   * passed; a name that was registered more than once lists only its latest registration. Then the
+   * EU Common Catalogue varieties of names the BSA list lacks: registered in a member state, or with
+   * ended registrations whose marketing extension has not passed.
+   *
+   * Where the BSA splits the EU species into winter and spring forms (crops.eu_season), the EU list
+   * keeps the crop's form, alternative varieties and those of unknown form, and leaves out the names
+   * the BSA lists for another form of the species.
    */
   registeredVarieties(ctx: Ctx, cropId: string): Promise<RegisteredVariety[]> {
     return this.db.run(ctx, async (trx) => {
-      const crop = await trx.selectFrom('crops').select('bsa_species_code').where('id', '=', cropId).executeTakeFirst();
+      const crop = await trx.selectFrom('crops').select(['bsa_species_code', 'eu_species_code', 'eu_season']).where('id', '=', cropId).executeTakeFirst();
       if (!crop) throw notFound('Crop');
-      if (!crop.bsa_species_code) return [];
-      const rows = await trx
-        .selectFrom('bsa_varieties')
-        .distinctOn('name')
-        .select(['id', 'name', 'species_code', 'registration_number', 'approval_granted_on', 'approval_ended_on', 'marketable_until', 'conservation_region'])
-        .where('species_code', '=', crop.bsa_species_code)
-        .where((eb) =>
-          eb.or([
-            eb.and([eb('approval_granted_on', 'is not', null), eb('approval_ended_on', 'is', null)]),
-            eb('marketable_until', '>=', sql<string>`current_date`),
-          ]),
-        )
-        .orderBy('name')
-        .orderBy(sql`approval_ended_on IS NULL`, 'desc')
-        .orderBy('approval_granted_on', sql`desc nulls last`)
-        .execute();
-      return rows.map((r) => ({
-        id: r.id,
-        name: r.name,
-        speciesCode: r.species_code,
-        registrationNumber: r.registration_number,
-        approvedOn: r.approval_granted_on,
-        marketableUntil: r.approval_ended_on ? r.marketable_until : null,
-        conservationRegion: r.conservation_region,
-      }));
+      const bsa = crop.bsa_species_code ? await bsaVarieties(trx, crop.bsa_species_code) : [];
+      if (!crop.eu_species_code) return bsa;
+      const eu = await euVarieties(trx, crop.eu_species_code, crop.eu_season);
+      const otherForms = crop.eu_season
+        ? await trx
+            .selectFrom('crops')
+            .select('bsa_species_code')
+            .distinct()
+            .where('eu_species_code', '=', crop.eu_species_code)
+            .where('bsa_species_code', 'is not', null)
+            .where('bsa_species_code', 'is distinct from', crop.bsa_species_code)
+            .execute()
+        : [];
+      const bsaNames = new Set(bsa.map((v) => varietyKey(v.name)));
+      for (const { bsa_species_code } of otherForms) for (const v of await bsaVarieties(trx, bsa_species_code!)) bsaNames.add(varietyKey(v.name));
+      return [...bsa, ...eu.filter((v) => !bsaNames.has(varietyKey(v.name)))].sort((a, b) => a.name.localeCompare(b.name, 'de'));
     });
   }
 
@@ -120,44 +121,57 @@ export class CropsService {
 
   varieties(ctx: Ctx, cropId?: string): Promise<Variety[]> {
     return this.db.run(ctx, async (trx) => {
-      let q = trx.selectFrom('crop_varieties').select(['id', 'crop_id', 'name', 'bsa_variety_id']).orderBy('name');
+      let q = trx.selectFrom('crop_varieties').select(['id', 'crop_id', 'name', 'bsa_variety_id', 'eu_variety_id']).orderBy('name');
       if (cropId) q = q.where('crop_id', '=', cropId);
-      return (await q.execute()).map((r) => ({ id: r.id, cropId: r.crop_id, name: r.name, registeredVarietyId: r.bsa_variety_id }));
+      return (await q.execute()).map((r) => ({ id: r.id, cropId: r.crop_id, name: r.name, registeredVarietyId: r.bsa_variety_id ?? r.eu_variety_id }));
     });
   }
 
   /**
    * Adds a variety to the organization's list, or returns the existing one of that name. A name
-   * found in the Bundessortenamt register for the crop's species (ignoring case) is stored under
-   * its registered spelling and linked to the register entry.
+   * found in the Bundessortenamt register or the EU Common Catalogue for the crop's species
+   * (compared by varietyKey) is stored under its registered spelling, the BSA's first, and linked
+   * to the catalogue entries; an EU variety only if it may be of the crop's form.
    */
   createVariety(ctx: Ctx, input: Out<typeof CreateVarietyInput>): Promise<Variety> {
     return this.db.run(ctx, async (trx) => {
-      const crop = await trx.selectFrom('crops').select(['id', 'bsa_species_code']).where('id', '=', input.cropId).executeTakeFirst();
+      const crop = await trx.selectFrom('crops').select(['id', 'bsa_species_code', 'eu_species_code', 'eu_season']).where('id', '=', input.cropId).executeTakeFirst();
       if (!crop) throw notFound('Crop');
       const registered = crop.bsa_species_code
         ? await trx
             .selectFrom('bsa_varieties')
             .select(['id', 'name'])
             .where('species_code', '=', crop.bsa_species_code)
-            .where(sql`lower(name)`, '=', input.name.toLowerCase())
+            .where(nameKey, '=', varietyKey(input.name))
             .orderBy(sql`approval_ended_on IS NULL`, 'desc')
             .orderBy('approval_granted_on', sql`desc nulls last`)
             .limit(1)
             .executeTakeFirst()
         : undefined;
-      const name = registered?.name ?? input.name;
+      const eu = crop.eu_species_code
+        ? await trx
+            .selectFrom('eu_varieties')
+            .select(['id', 'name'])
+            .where('species_code', '=', crop.eu_species_code)
+            .where(nameKey, '=', varietyKey(input.name))
+            .where(ofSeason(crop.eu_season))
+            .orderBy(sql`cardinality(countries)`, 'desc')
+            .limit(1)
+            .executeTakeFirst()
+        : undefined;
+      const name = registered?.name ?? eu?.name ?? input.name;
       const row = await trx
         .insertInto('crop_varieties')
-        .values({ organization_id: ctx.orgId, crop_id: input.cropId, name, bsa_variety_id: registered?.id ?? null })
+        .values({ organization_id: ctx.orgId, crop_id: input.cropId, name, bsa_variety_id: registered?.id ?? null, eu_variety_id: eu?.id ?? null })
         .onConflict((oc) =>
           oc.columns(['organization_id', 'crop_id', 'name']).doUpdateSet({
             bsa_variety_id: sql`coalesce(excluded.bsa_variety_id, crop_varieties.bsa_variety_id)`,
+            eu_variety_id: sql`coalesce(excluded.eu_variety_id, crop_varieties.eu_variety_id)`,
           }),
         )
-        .returning(['id', 'crop_id', 'name', 'bsa_variety_id'])
+        .returning(['id', 'crop_id', 'name', 'bsa_variety_id', 'eu_variety_id'])
         .executeTakeFirstOrThrow();
-      return { id: row.id, cropId: row.crop_id, name: row.name, registeredVarietyId: row.bsa_variety_id };
+      return { id: row.id, cropId: row.crop_id, name: row.name, registeredVarietyId: row.bsa_variety_id ?? row.eu_variety_id };
     });
   }
 
@@ -464,4 +478,65 @@ export class CropsService {
       notes: r.notes,
     }));
   }
+}
+
+/** SQL counterpart of varietyKey. */
+const nameKey = sql<string>`regexp_replace(lower(name), '[[:space:]-]+', '', 'g')`;
+
+async function bsaVarieties(trx: Trx, speciesCode: string): Promise<RegisteredVariety[]> {
+  const rows = await trx
+    .selectFrom('bsa_varieties')
+    .distinctOn('name')
+    .select(['id', 'name', 'species_code', 'registration_number', 'approval_granted_on', 'approval_ended_on', 'marketable_until', 'conservation_region'])
+    .where('species_code', '=', speciesCode)
+    .where((eb) =>
+      eb.or([
+        eb.and([eb('approval_granted_on', 'is not', null), eb('approval_ended_on', 'is', null)]),
+        eb('marketable_until', '>=', sql<string>`current_date`),
+      ]),
+    )
+    .orderBy('name')
+    .orderBy(sql`approval_ended_on IS NULL`, 'desc')
+    .orderBy('approval_granted_on', sql`desc nulls last`)
+    .execute();
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    source: 'bsa',
+    speciesCode: r.species_code,
+    registrationNumber: r.registration_number,
+    approvedOn: r.approval_granted_on,
+    marketableUntil: r.approval_ended_on ? r.marketable_until : null,
+    conservationRegion: r.conservation_region,
+    countries: [],
+    season: null,
+  }));
+}
+
+/** EU varieties that may be of the crop's form: that form, alternative, or not stated. */
+const ofSeason =
+  (season: string | null) =>
+  (eb: ExpressionBuilder<DB, 'eu_varieties'>) =>
+    season ? eb.or([eb('season', 'is', null), eb('season', 'in', [season, 'alternative'])]) : eb.lit(true);
+
+async function euVarieties(trx: Trx, speciesCode: string, season: string | null): Promise<RegisteredVariety[]> {
+  const rows = await trx
+    .selectFrom('eu_varieties')
+    .select(['id', 'name', 'species_code', 'countries', 'registered_on', 'marketable_until', 'season'])
+    .where('species_code', '=', speciesCode)
+    .where((eb) => eb.or([eb(sql`cardinality(countries)`, '>', 0), eb('marketable_until', '>=', sql<string>`current_date`)]))
+    .where(ofSeason(season))
+    .execute();
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    source: 'eu',
+    speciesCode: r.species_code,
+    registrationNumber: null,
+    approvedOn: r.registered_on,
+    marketableUntil: r.countries.length ? null : r.marketable_until,
+    conservationRegion: null,
+    countries: r.countries,
+    season: r.season as RegisteredVariety['season'],
+  }));
 }
