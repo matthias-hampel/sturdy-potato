@@ -360,3 +360,39 @@ export interface OperationChecks {
   /** Earliest harvest date after the waiting periods of this application, per crop cycle. */
   earliestHarvest: { cropCycleId: string; date: string }[];
 }
+
+/** A BVL approval condition (Auflage) of a product or of one of its approved uses. */
+export interface PsmRestriction {
+  auflagenr: string;
+  /** null: applies to the product as a whole. */
+  awgId: string | null;
+  code: string;
+  text: string | null;
+  codeGroup: string | null;
+  /** Buffer to surface water in m (unreduced, else the widest permitted drift-reduction tier). */
+  waterBufferM: number | null;
+  /** Drift-reduction class the buffer assumes, when it comes from a tier. */
+  driftReductionPct: number | null;
+  /** Buffer per drift-reduction class; distance null = not permitted in that class. */
+  tiers: { reductionPct: number; distanceM: number | null }[];
+}
+
+/** Register facts of a plant-protection product for the product info popover. */
+export interface PsmProductInfo {
+  productId: string;
+  kennr: string | null;
+  bvlName: string | null;
+  approvalEndsOn: string | null;
+  /** The approved use asked for (or the product's only professional one). */
+  use: {
+    awgId: string;
+    doseMax: number | null;
+    doseUnit: string | null;
+    maxApplications: number | null;
+    waterMinLHa: number | null;
+    waterMaxLHa: number | null;
+    targets: string[];
+    waitingDays: Record<string, number | null>;
+  } | null;
+  restrictions: PsmRestriction[];
+}

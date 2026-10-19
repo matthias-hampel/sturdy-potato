@@ -1079,6 +1079,23 @@ export interface PsmProducts {
   use_up_until: string | null;
 }
 
+export interface PsmRestrictionReductions {
+  auflagenr: string;
+  distance_m: Numeric | null;
+  reduction_pct: number;
+}
+
+export interface PsmRestrictions {
+  auflagenr: string;
+  awg_id: string | null;
+  code: string;
+  code_group: string | null;
+  drift_reduction_pct: number | null;
+  kennr: string | null;
+  text: string | null;
+  water_buffer_m: Numeric | null;
+}
+
 export interface PsmUses {
   area: string | null;
   awg_id: string;
@@ -1694,6 +1711,8 @@ export interface DB {
   psm_codes: PsmCodes;
   psm_crop_groups: PsmCropGroups;
   psm_products: PsmProducts;
+  psm_restriction_reductions: PsmRestrictionReductions;
+  psm_restrictions: PsmRestrictions;
   psm_uses: PsmUses;
   radar_frames: RadarFrames;
   radar_state: RadarState;
