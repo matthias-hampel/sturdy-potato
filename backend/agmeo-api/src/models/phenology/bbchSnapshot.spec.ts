@@ -1,4 +1,5 @@
-import { calibrateBbch, calibrationAnchor, runBbchModel } from './bbchSnapshot.js';
+import { bbchToBd, getCropGsParams } from './bbchModel.js';
+import { calibrateBbch, runBbchModel } from './bbchSnapshot.js';
 
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 /** Mild autumn into spring, enough to carry winter wheat through tillering into stem elongation. */
@@ -40,10 +41,10 @@ describe('BBCH snapshot', () => {
   it('meets the observed stage on the observation day and keeps the offset after it', () => {
     const day = '2026-04-01';
     const observed = Math.min(run.bbch[run.dates.indexOf(day)] + 6, 99);
-    const anchor = calibrationAnchor(run, 'winterWheat', day, observed);
-    if (typeof anchor === 'string') throw new Error(anchor);
+    const gs = getCropGsParams('winterWheat')!
+    const anchor = { bdOffset: bbchToBd(observed, gs.gs, gs.isCanola) - run.cumulativeBd[run.dates.indexOf(day)] };
     expect(anchor.bdOffset).toBeGreaterThan(0);
-    const s = calibrateBbch(run, 'winterWheat', [{ observedOn: day, observedBbch: observed, bdOffset: anchor.bdOffset }], today);
+    const s = calibrateBbch(run, 'winterWheat', [{ observedBbch: observed, bdOffset: anchor.bdOffset }], today);
     expect(s.bbchByDate[day]).toBe(observed);
     expect(s.bbchOffset).toBeCloseTo(anchor.bdOffset, 10);
     expect(s.currentBbch!).toBeGreaterThanOrEqual(s.modelBbchByDate[today]);
@@ -52,9 +53,4 @@ describe('BBCH snapshot', () => {
     expect(early).toBeLessThan(s.bbchByDate[day] - s.modelBbchByDate[day]);
   });
 
-  it('refuses observations it cannot anchor', () => {
-    expect(calibrationAnchor(run, 'grassSeed', today, 30)).toBe('UNSUPPORTED_CROP');
-    expect(calibrationAnchor(null, 'winterWheat', today, 30)).toBe('MODEL_UNAVAILABLE');
-    expect(calibrationAnchor(run, 'winterWheat', '2025-01-01', 30)).toBe('DATE_OUT_OF_RANGE');
-  });
 });

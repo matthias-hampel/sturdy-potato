@@ -1,4 +1,5 @@
 import {
+  bbchCalibration,
   computeDiseaseRisk,
   computeFieldConditionBars,
   computeFieldWaterBalance,
@@ -119,6 +120,28 @@ describe('model entry points (rewrite crop codes)', () => {
     expect(result.sowingDate).toBe('2026-04-25');
     expect(result.bbchSource).toBe('calendar');
     expect(result.currentBbch).toBeGreaterThan(0);
+  });
+
+  it('shifts the model BBCH through a farmer observation', () => {
+    const base = { cropCode: 'winter_wheat', weather, sowingDate: '2025-10-10', harvestYear: 2026, latitude: 52 };
+    const raw = computePhenology({ ...base, today: TODAY });
+    const observed = raw.currentBbch! - 8;
+    const cal = bbchCalibration({ ...base, date: TODAY, observedBbch: observed });
+    expect(cal).toMatchObject({ ok: true, modelBbch: raw.currentBbch });
+    if (!cal.ok) return;
+    expect(cal.bdOffset).toBeLessThan(0);
+    const shifted = computePhenology({ ...base, today: TODAY, calibrations: [{ observedBbch: observed, bdOffset: cal.bdOffset }] });
+    expect(shifted.calibrated).toBe(true);
+    expect(Math.abs(shifted.currentBbch! - observed)).toBeLessThanOrEqual(1);
+    // The offset ramps in from sowing: early stages stay close to the raw model.
+    const early = addDaysUtc('2025-10-10', 10);
+    expect(Math.abs(shifted.dailyBbch!.get(early)! - raw.dailyBbch!.get(early)!)).toBeLessThanOrEqual(1);
+  });
+
+  it('refuses calibrations the model cannot place', () => {
+    const base = { weather, sowingDate: '2025-10-10', harvestYear: 2026, latitude: 52, observedBbch: 30 };
+    expect(bbchCalibration({ ...base, cropCode: 'potatoes', date: TODAY })).toEqual({ ok: false, reason: 'unsupported_crop' });
+    expect(bbchCalibration({ ...base, cropCode: 'winter_wheat', date: '2025-09-01' })).toEqual({ ok: false, reason: 'date_out_of_range' });
   });
 
   it('returns empty phenology for an unmapped crop', () => {

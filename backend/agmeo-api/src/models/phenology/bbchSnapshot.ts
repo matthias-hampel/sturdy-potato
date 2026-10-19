@@ -1,12 +1,11 @@
 /**
- * Calibrated BBCH per crop cycle, ported from the reference's `actions/bbch.ts`
- * (runBbchModelForCultivation, buildBbchSnapshots, saveBbchCalibration): the ESM
- * phenology model runs from the booked sowing date to seven days past today; each
- * observed BBCH stage is an anchor in biological days that shifts the model from
- * there on (see {@link buildCalibrationCurve}).
+ * The BBCH dialog's model run, ported from the reference's `actions/bbch.ts`
+ * (runBbchModelForCultivation, buildBbchSnapshots): the ESM phenology model from sowing to
+ * seven days past today with its vernalization, photoperiod and temperature, and the
+ * calibrated stages through the farmer's observations (see {@link buildCalibrationCurve}).
  */
 import type { SupportedCrops } from '../crops.js';
-import { bbchToBd, bdToBbch, buildCalibrationCurve, calculateBbchModel, getCropGsParams, hasModelParams } from './bbchModel.js';
+import { bdToBbch, buildCalibrationCurve, calculateBbchModel, getCropGsParams, hasModelParams } from './bbchModel.js';
 
 /** Days past today the model runs into the forecast (reference FORECAST_HORIZON_DAYS). */
 export const BBCH_FORECAST_HORIZON_DAYS = 7;
@@ -45,7 +44,7 @@ export function runBbchModel(input: { weather: Weather; crop: SupportedCrops | n
   return { dates, bbch: r.bbch, cumulativeBd: r.cumulativeBd, vernalization: r.vernalization, photoperiod: r.photoperiod, tempMean: daily.map((d) => d.tempMean) };
 }
 
-export type BbchCalibrationAnchor = { observedOn: string; observedBbch: number; bdOffset: number };
+type Anchor = { observedBbch: number; bdOffset: number };
 
 export type BbchSnapshot = {
   sowingDate: string;
@@ -60,7 +59,7 @@ export type BbchSnapshot = {
 };
 
 /** Applies the calibration curve to a model run (calibrations newest first or in any order). */
-export function calibrateBbch(run: BbchModelRun, crop: SupportedCrops, calibrations: BbchCalibrationAnchor[], today: string): BbchSnapshot {
+export function calibrateBbch(run: BbchModelRun, crop: SupportedCrops, calibrations: Anchor[], today: string): BbchSnapshot {
   const gs = getCropGsParams(crop);
   const offsetAt = buildCalibrationCurve(calibrations, crop);
   const bbchByDate: Record<string, number> = {};
@@ -80,16 +79,4 @@ export function calibrateBbch(run: BbchModelRun, crop: SupportedCrops, calibrati
     bbchByDate,
     modelBbchByDate,
   };
-}
-
-export type CalibrationError = 'UNSUPPORTED_CROP' | 'MODEL_UNAVAILABLE' | 'DATE_OUT_OF_RANGE';
-
-/** The anchor an observation on `date` becomes: observed − model biological days on that day. */
-export function calibrationAnchor(run: BbchModelRun | null, crop: SupportedCrops | null, date: string, observedBbch: number): { bdOffset: number; modelBbch: number } | CalibrationError {
-  const gs = crop ? getCropGsParams(crop) : null;
-  if (!gs) return 'UNSUPPORTED_CROP';
-  if (!run) return 'MODEL_UNAVAILABLE';
-  const i = run.dates.indexOf(date);
-  if (i < 0) return 'DATE_OUT_OF_RANGE';
-  return { bdOffset: bbchToBd(observedBbch, gs.gs, gs.isCanola) - run.cumulativeBd[i], modelBbch: run.bbch[i] };
 }

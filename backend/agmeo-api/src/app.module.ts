@@ -10,6 +10,8 @@ import { ComplianceController } from './modules/compliance/compliance.controller
 import { ComplianceService } from './modules/compliance/compliance.service.js';
 import { CropsController } from './modules/crops/crops.controller.js';
 import { CropsService } from './modules/crops/crops.service.js';
+import { CropTableController } from './modules/crops/crop-table.controller.js';
+import { CropTableService } from './modules/crops/crop-table.service.js';
 import { DashboardController } from './modules/dashboard/dashboard.controller.js';
 import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { EconomicsController } from './modules/economics/economics.controller.js';
@@ -78,10 +80,10 @@ import { TasksService } from './modules/tasks/tasks.service.js';
 import { TeamController } from './modules/team/team.controller.js';
 import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
-import { SeasonConditionsController } from './modules/weather/season-conditions.controller.js';
+import { CropModelsController } from './modules/weather/crop-models.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
-import { SeasonConditionsService } from './modules/weather/season-conditions.service.js';
+import { CropModelsService } from './modules/weather/crop-models.service.js';
 import { MaizeDmcClient } from './modules/maize-dmc/client.js';
 import { MaizeDmcController } from './modules/maize-dmc/maize-dmc.controller.js';
 import { MaizeDmcService } from './modules/maize-dmc/maize-dmc.service.js';
@@ -104,6 +106,7 @@ export const DOMAIN_SERVICES = [
   FieldManagementService,
   FieldGroupsService,
   CropsService,
+  CropTableService,
   InventoryService,
   TeamService,
   KtblService,
@@ -119,7 +122,7 @@ export const DOMAIN_SERVICES = [
   ComplianceService,
   WeatherService,
   FieldConditionsService,
-  SeasonConditionsService,
+  CropModelsService,
   NewsService,
   MonitoringService,
   ProductivityService,
@@ -175,7 +178,8 @@ export const DOMAIN_SERVICES = [
     NewsController,
     ComplianceController,
     WeatherController,
-    SeasonConditionsController,
+    CropModelsController,
+    CropTableController,
     MonitoringController,
     ProductivityController,
     VraController,

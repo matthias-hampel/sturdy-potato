@@ -1,6 +1,7 @@
 /**
- * Season conditions for the crop tables: traffic lights, calibrated BBCH and the water balance
- * with irrigation and a rooting-depth override, computed from stored weather inserted here.
+ * Per-crop model details of the crop tabs: the season's water balances with irrigation and a
+ * rooting-depth override, and the BBCH dialog's phenology with an observation, computed from
+ * stored weather inserted here.
  */
 import type { INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
@@ -32,8 +33,8 @@ afterAll(async () => {
   await app?.close()
 })
 
-describe('season conditions', () => {
-  it('serves bars, BBCH with calibration and the water balance of every crop of a season', async () => {
+describe('crop models', () => {
+  it('serves water balances, root depths and the phenology with observations', async () => {
     const res = await http().post('/v1/auth/dev/sign-in').send({ email: `seasoncond-${run}@example.test`, displayName: 'Saison' }).expect(201)
     const auth = { authorization: `Bearer ${res.body.accessToken as string}` }
     const get = (url: string) => http().get(`/v1${url}`).set(auth)
@@ -42,7 +43,6 @@ describe('season conditions', () => {
     const base = `/orgs/${org.id}`
     const farm = (await post(`${base}/farms`, { name: 'Hof' }).expect(201)).body
     const field = (await post(`${base}/fields`, { farmId: farm.id, name: 'A', geometry: rect(lng + 0.001, lat + 0.001, lng + 0.003, lat + 0.003) }).expect(201)).body
-    const bare = (await post(`${base}/fields`, { farmId: farm.id, name: 'B', geometry: rect(lng + 0.0032, lat + 0.001, lng + 0.0042, lat + 0.003) }).expect(201)).body
     await http().patch(`/v1${base}/fields/${field.id}/site`).set(auth).send({ soilTexture: 'sL' }).expect(200)
     const today = day(0)
     const year = Number(today.slice(0, 4)) + (Number(today.slice(5, 7)) >= 8 ? 1 : 0)
@@ -70,19 +70,6 @@ describe('season conditions', () => {
         .values(Array.from({ length: 60 }, (_, h) => ({ lat, lng, time: new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000 + (h - 6) * 3_600_000), temp: 12, humidity: 70, precipitation: 0, wind_speed: 8, wind_gusts: 15 })))
         .execute()
 
-      const rows = (await get(`${base}/conditions?seasonId=${season.id}`).expect(200)).body
-      const a = rows.find((r: { fieldId: string }) => r.fieldId === field.id)
-      const b = rows.find((r: { fieldId: string }) => r.fieldId === bare.id)
-      expect(a.cropCycleId).toBe(cycle.id)
-      expect(a.sowing).toHaveLength(14)
-      expect(a.spraying[0]).toMatchObject({ date: today })
-      expect(a.bbch.sowingDate).toBe(day(-90))
-      expect(a.bbch.bbchByDate[today]).toBe(a.bbch.currentBbch)
-      expect(a.water.awcMm).toBeGreaterThan(0)
-      expect(a.water.totalIrrigationMm).toBe(20)
-      expect(b).toMatchObject({ cropCycleId: null, bbch: null, water: null })
-      expect(b.sowing).toHaveLength(14)
-
       // Rooting depth override and the balance's days with the irrigation event.
       await http().patch(`/v1${base}/water-balances/root-depths`).set(auth).send({ updates: [{ cropCycleId: cycle.id, rootDepthM: 0.8 }] }).expect(200)
       const [wb] = (await get(`${base}/water-balances?seasonId=${season.id}`).expect(200)).body
@@ -91,19 +78,23 @@ describe('season conditions', () => {
       expect(wb.days.find((d: { date: string }) => d.date === day(-10)).irrigationMm).toBe(20)
       expect(wb.fcMm).toBeGreaterThan(wb.pwpMm)
 
-      // An observed stage becomes a calibration anchor the snapshot meets on that day.
+      // An observed stage shifts the model; the dialog shows it with the model run.
       const before = (await get(`${base}/crop-cycles/${cycle.id}/phenology`).expect(200)).body
-      expect(before).toMatchObject({ supported: true, calibrations: [] })
-      const observed = Math.min(before.snapshot.bbchByDate[day(-5)] + 4, 99)
-      const after = (await post(`${base}/crop-cycles/${cycle.id}/bbch-calibrations`, { observedOn: day(-5), observedBbch: observed }).expect(201)).body
-      expect(after.calibrations).toHaveLength(1)
-      expect(after.snapshot.bbchByDate[day(-5)]).toBe(observed)
-      expect(after.snapshot.calibrationDates).toEqual([day(-5)])
-      await post(`${base}/crop-cycles/${cycle.id}/bbch-calibrations`, { observedOn: day(-400), observedBbch: 30 }).expect(400)
-      const removed = (await http().delete(`/v1${base}/crop-cycles/${cycle.id}/bbch-calibrations/${day(-5)}`).set(auth).expect(200)).body
-      expect(removed.calibrations).toHaveLength(0)
+      expect(before).toMatchObject({ supported: true, sowingDate: day(-90), sowingSource: 'planned', observations: [] })
+      expect(before.days[before.days.length - 1].date).toBe(day(7))
+      const modelled = before.days.find((d: { date: string }) => d.date === day(-5))
+      const observed = Math.min(modelled.bbch + 4, 99)
+      await post(`${base}/crop-cycles/${cycle.id}/bbch-observations`, { date: day(-5), bbch: observed }).expect(204)
+      const after = (await get(`${base}/crop-cycles/${cycle.id}/phenology`).expect(200)).body
+      expect(after.observations).toEqual([expect.objectContaining({ observedOn: day(-5), observedBbch: observed })])
+      expect(after.days.find((d: { date: string }) => d.date === day(-5)).bbch).toBe(observed)
+      expect(after.bbchOffset).toBeGreaterThan(0)
+      const table = (await get(`${base}/crop-table/conditions?seasonId=${season.id}`).expect(200)).body
+      const row = table.rows.find((r: { cropCycleId: string }) => r.cropCycleId === cycle.id)
+      expect(row.bbchObservedDates).toEqual([day(-5)])
+      expect(row.bbchByDate[day(-5)]).toBe(observed)
     } finally {
-      await owner.updateTable('fields').set({ status: 'archived' }).where('id', 'in', [field.id, bare.id]).execute()
+      await owner.updateTable('fields').set({ status: 'archived' }).where('id', '=', field.id).execute()
       await owner.deleteFrom('weather_cells').where('lat', '=', lat).where('lng', '=', lng).execute()
       await owner.destroy()
     }

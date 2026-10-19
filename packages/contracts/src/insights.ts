@@ -1,6 +1,6 @@
 import type { MultiPolygon } from 'geojson';
 import { z } from 'zod';
-import { id, isoDate, type LatLng } from './common.js';
+import { id, type LatLng } from './common.js';
 import type { FieldDiseaseRisk } from './modelServices.js';
 import type { OperationStatus, OperationType } from './operations.js';
 import type { Task } from './tasks.js';
@@ -439,7 +439,8 @@ export interface FieldConditions {
   disease: FieldDiseaseRisk;
   /** Spray level per hour for the next 48 hours. */
   sprayHours: { time: string; level: ConditionLevel; reasons: ConditionReason[] }[];
-  phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; bbchByDate: Record<string, number> | null } | null;
+  /** `calibrated`: the model's stages follow the farmer's BBCH observations. */
+  phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; calibrated: boolean; bbchByDate: Record<string, number> | null } | null;
   waterBalance: {
     soilTypeKa5: string | null;
     awcMm: number | null;
@@ -454,56 +455,27 @@ export interface FieldConditions {
   } | null;
 }
 
-/**
- * One crop cycle of a season (or a field without one) as the crop tables show it: the sowing and
- * spraying traffic lights for the next 14 days, the ISIP disease risk of the last 14 days with
- * data, the calibrated BBCH and the root-zone water balance (reference cultivation timeseries,
- * BBCH snapshot and irrigation data by year).
- */
-export interface SeasonFieldConditions {
-  fieldId: string;
-  cropCycleId: string | null;
-  refreshedAt: string | null;
-  sowing: ConditionDay[];
-  spraying: ConditionDay[];
-  /** null when ISIP does not model the crop. */
-  disease: ConditionDay[] | null;
-  bbch: BbchSnapshot | null;
-  water: WaterBalanceSummary | null;
-}
-
-export interface BbchSnapshot {
-  sowingDate: string;
-  /** Calibrated BBCH today. */
-  currentBbch: number | null;
-  /** Uncalibrated model BBCH on the last modelled day. */
-  modelBbch: number | null;
-  /** Offset in biological days applied today; null without calibrations. */
-  bbchOffset: number | null;
-  calibrationDate: string | null;
-  calibrationBbch: number | null;
-  calibrationDates: string[];
-  /** Calibrated BBCH from sowing to seven days past today. */
-  bbchByDate: Record<string, number>;
-}
-
-/** The ESM phenology of one crop cycle with its calibrations (reference BBCH dialog). */
+/** The ESM phenology of one crop cycle with the farmer's BBCH observations (reference BBCH dialog). */
 export interface CropPhenology {
   cropCycleId: string;
   cropName: string;
   /** Whether the ESM model has parameters for the crop. */
   supported: boolean;
   sowingDate: string | null;
-  snapshot: BbchSnapshot | null;
+  sowingSource: 'booked' | 'planned' | 'calendar' | null;
+  /** Calibrated BBCH today. */
+  currentBbch: number | null;
+  /** Uncalibrated model BBCH on the last modelled day. */
+  modelBbch: number | null;
+  /** Offset in biological days applied today; null without observations. */
+  bbchOffset: number | null;
+  /** Sowing to seven days past today. */
   days: { date: string; bbch: number; modelBbch: number; vernalization: number; photoperiod: number; tempMean: number }[];
-  calibrations: { observedOn: string; observedBbch: number; modelBbch: number | null; bdOffset: number }[];
+  observations: { observedOn: string; observedBbch: number; modelBbch: number | null; bdOffset: number }[];
   /** Model parameters: temperatures in °C, VDSAT in days, cpp in hours, stage durations in biological days. */
   params: Record<string, number> | null;
   stageDurations: Record<string, number> | null;
 }
-
-export const BbchCalibrationInput = z.object({ observedOn: isoDate, observedBbch: z.int().min(0).max(99) });
-export type BbchCalibrationInput = z.input<typeof BbchCalibrationInput>;
 
 export type DeficitLevel = 'ok' | 'warning' | 'critical';
 
