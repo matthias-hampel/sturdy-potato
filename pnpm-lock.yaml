@@ -316,6 +316,9 @@ importers:
       '@turf/bbox':
         specifier: ^7.4.0
         version: 7.4.0
+      but-unzip:
+        specifier: 0.1.10
+        version: 0.1.10
       i18next:
         specifier: ^26.4.7
         version: 26.4.7(typescript@6.0.3)

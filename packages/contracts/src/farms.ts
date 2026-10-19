@@ -102,12 +102,18 @@ export interface GeometryValidation {
 
 export const ImportFieldsInput = z.object({
   farmId: id,
+  /** Season the imported crops are planned in; required when any feature carries a crop. */
+  seasonId: id.nullish(),
   features: z
     .array(
       z.object({
         name,
         identifier: shortText,
         geometry: FieldGeometry,
+        /** Main crop of the field in `seasonId`, e.g. resolved from the land-use code of a subsidy application. */
+        cropId: id.nullish(),
+        /** Land-use code (Nutzungscode) from the source; kept on the crop when it differs from the crop's default. */
+        landUseCode: z.string().trim().max(5).nullish(),
       }),
     )
     .min(1)
@@ -117,6 +123,8 @@ export type ImportFieldsInput = z.input<typeof ImportFieldsInput>;
 
 export interface ImportFieldsResult {
   created: { id: string; name: string; areaHa: number }[];
+  /** Number of imported fields that got a crop in the season. */
+  cropsAssigned: number;
   errors: { index: number; name: string; message: string }[];
   overlaps: { name: string; overlaps: FieldOverlap[] }[];
 }
