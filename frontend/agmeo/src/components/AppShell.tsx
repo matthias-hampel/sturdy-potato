@@ -2,6 +2,7 @@ import { LOCALES, type CurrentUser, type Locale } from '@agmeo/contracts'
 import { Link as RouterLink, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   BarChart3,
+  BookOpen,
   Boxes,
   Coins,
   Building2,
@@ -85,6 +86,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/inventory', label: 'nav.inventory', icon: Boxes },
       { to: '/o/$orgId/prices', label: 'nav.prices', icon: Coins },
       { to: '/o/$orgId/machinery', label: 'nav.machinery', icon: Tractor },
+      { to: '/o/$orgId/varieties', label: 'nav.varieties', icon: BookOpen },
       { to: '/o/$orgId/team', label: 'nav.team', icon: Users },
       { to: '/o/$orgId/files', label: 'nav.files', icon: FolderOpen },
     ],
