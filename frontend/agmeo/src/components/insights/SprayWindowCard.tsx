@@ -87,6 +87,12 @@ function Block({ block, first }: { block: WeatherHour[]; first: boolean }) {
   const rain = block.reduce((s, h) => s + (h.precipitationMm ?? 0), 0)
   return (
     <div className={`relative h-24 ${first ? '' : 'border-l border-line/70'}`}>
+      {/* Suitable hours tinted green so spray windows stand out */}
+      <div className="absolute inset-0 flex" aria-hidden>
+        {block.map((h) => (
+          <div key={h.time} className={`flex-1 ${h.spray === 'good' ? 'bg-success/15' : ''}`} />
+        ))}
+      </div>
       {/* Hourly rain bars, behind the labels */}
       <div className="absolute inset-x-0 bottom-0 flex items-end h-14" aria-hidden>
         {block.map((h) => (
