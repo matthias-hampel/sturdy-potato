@@ -376,6 +376,9 @@ importers:
       polyclip-ts:
         specifier: 0.16.8
         version: 0.16.8
+      proj4:
+        specifier: 2.22.0
+        version: 2.22.0
       react:
         specifier: ^19.2.0
         version: 19.3.1

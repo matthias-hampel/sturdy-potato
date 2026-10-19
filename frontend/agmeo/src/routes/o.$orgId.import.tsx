@@ -28,6 +28,7 @@ import {
 } from '#/components/import/rows'
 import { centreOf, locationWarning } from '#/components/import/plausibility'
 import { RotationPicker } from '#/components/import/RotationPicker'
+import { readPortalXml } from '#/components/import/portal'
 import { readShapefiles, type ShapeLayer } from '#/components/import/shapefile'
 import { FieldMap } from '#/components/map/FieldMap'
 import { farmView } from '#/components/map/useMap'
@@ -51,7 +52,7 @@ export const Route = createFileRoute('/o/$orgId/import')({
 })
 
 const SOURCE_META: Record<ImportSource, { icon: LucideIcon; accept: string[] }> = {
-  antrag: { icon: FileText, accept: ['.zip', '.shp', '.dbf', '.prj', '.cpg'] },
+  antrag: { icon: FileText, accept: ['.zip', '.shp', '.dbf', '.prj', '.cpg', '.xml', '.gml'] },
   shapefile: { icon: Shapes, accept: ['.zip', '.shp', '.dbf', '.prj', '.cpg'] },
   isoxml: { icon: Tractor, accept: ['.zip', '.xml', '.XML'] },
 }
@@ -167,7 +168,9 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     setParseError(null)
     const run = async (): Promise<Parsed> => {
       if (source === 'isoxml') return { kind: 'isoxml', rows: isoxmlRows(readIsoxml(files.files)) }
-      const layers = (await readShapefiles(files.files, crsOverride)).filter((l) => l.features.length)
+      // Portal XML/GML exports carry names and codes, so they come before any Shapefile next to them.
+      const portal = source === 'antrag' ? await readPortalXml(files.files, crsOverride) : []
+      const layers = [...portal, ...(await readShapefiles(files.files, crsOverride))].filter((l) => l.features.length)
       if (!layers.length) {
         const portalXml = files.files.some((f) => ['xml', 'gml'].includes(extension(f)))
         throw new Error(t(source === 'antrag' && portalXml ? 'import.antrag.xmlOnly' : 'import.shapefile.none'))
