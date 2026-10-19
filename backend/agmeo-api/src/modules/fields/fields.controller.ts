@@ -199,6 +199,12 @@ export class FieldsController {
     return this.fields.updateGeometry(ctx, id, input);
   }
 
+  @Delete(':id/geometry/:versionId')
+  @Requires('field.write')
+  cancelPlannedGeometry(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string, @Param('versionId', ParseUUIDPipe) versionId: string) {
+    return this.fields.cancelPlannedGeometry(ctx, id, versionId);
+  }
+
   @Delete(':id')
   @HttpCode(204)
   @Requires('field.write')

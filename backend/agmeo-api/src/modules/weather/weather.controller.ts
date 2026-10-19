@@ -22,6 +22,7 @@ export class WeatherController {
     return this.weather.forecast(ctx, farmId);
   }
 
+  /** Stored daily and hourly weather of the field's grid cell. */
   @Get('fields/:fieldId/weather')
   fieldWeather(@OrgCtx() ctx: Ctx, @Param('fieldId', ParseUUIDPipe) fieldId: string, @Query('from') from?: string, @Query('to') to?: string) {
     return this.weather.fieldWeather(ctx, fieldId, { from: isoDay(from), to: isoDay(to) });
@@ -47,5 +48,11 @@ export class WeatherController {
       return n;
     };
     return this.conditions.trafficability(ctx, fieldId, { equipmentId, frontKpa: kpa(frontKpa), rearKpa: kpa(rearKpa) });
+  }
+
+  /** Live forecast at the field (spray windows on the field overview). */
+  @Get('fields/:fieldId/forecast')
+  fieldForecast(@OrgCtx() ctx: Ctx, @Param('fieldId', ParseUUIDPipe) fieldId: string) {
+    return this.weather.fieldForecast(ctx, fieldId);
   }
 }

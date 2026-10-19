@@ -31,11 +31,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Form, Header, ListBoxSection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { FormActions, NONE, enumItems, keyOrNull, textOrNull } from '#/components/resources/form'
+import { DataTable } from '#/components/table/DataTable'
+import { useTableView, type ColumnDef } from '#/components/table/tableTools'
 import { t } from '#/i18n'
 import { baseUnitLabel, productCategoryLabel } from '#/i18n/labels'
 import { fertilizerTypeLabel } from '#/i18n/labels.fieldwork'
 import { api } from '#/lib/api'
 import { fmt, localToIso, today } from '#/lib/format'
+import { openSearch, useOpenParam } from '#/lib/openParam'
 import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button, Link, SegmentedControl } from '#/ui/Button'
@@ -45,7 +48,7 @@ import { Menu, MenuItem, MenuSeparator, MenuTrigger, ModalDialog } from '#/ui/Ov
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx } from '#/ui/utils'
 
-export const Route = createFileRoute('/o/$orgId/inventory')({ component: InventoryPage })
+export const Route = createFileRoute('/o/$orgId/inventory')({ validateSearch: openSearch, component: InventoryPage })
 
 const ALL = '__all'
 const categoryItems = () => enumItems(PRODUCT_CATEGORIES, productCategoryLabel.all())
@@ -87,6 +90,8 @@ function InventoryPage() {
   const { can } = useOrg()
   const canWrite = can('inventory.write')
   const [dialog, setDialog] = useState<DialogState>(null)
+  const products = useOrgQuery<Product[]>('/products')
+  useOpenParam(products.data, (p) => canWrite && setDialog({ kind: 'product', product: p }))
   const product = dialog && 'product' in dialog ? dialog.product : undefined
   const onOpenChange = (open: boolean) => !open && setDialog(null)
 
@@ -245,6 +250,69 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
       .filter((p) => !q || [p.name, p.manufacturer, p.activeIngredients, p.registrationNumber].some((s) => s?.toLowerCase().includes(q)))
   }, [all, category, search])
 
+  const columns = useMemo<ColumnDef<Product>[]>(
+    () => [
+      {
+        id: 'product',
+        label: t('inventory.product'),
+        value: (p) => p.name,
+        text: (p) => [p.name, productDetail(p), p.psm && psmStatus(p.psm).label].filter(Boolean).join(' '),
+        render: (p) => {
+          const detail = productDetail(p)
+          return (
+            <>
+              <div className="font-medium min-w-40">{p.name}</div>
+              {detail && <div className="text-xs text-muted mt-0.5">{detail}</div>}
+              {p.category === 'crop_protection' && <PsmBadge product={p} className="mt-1" />}
+            </>
+          )
+        },
+      },
+      { id: 'category', label: t('inventory.category'), filter: 'select', className: 'whitespace-nowrap', value: (p) => productCategoryLabel(p.category), render: (p) => productCategoryLabel(p.category) },
+      { id: 'manufacturer', label: t('inventory.manufacturer'), filter: 'select', className: 'whitespace-nowrap', value: (p) => p.manufacturer, render: (p) => p.manufacturer ?? <span className="text-muted">—</span> },
+      {
+        id: 'stock',
+        label: t('inventory.stock'),
+        align: 'end',
+        filter: 'number',
+        value: (p) => p.stock,
+        render: (p) => (
+          <>
+            <div className={cx('font-medium', p.stock < 0 && 'text-danger')}>{fmt.qty(p.stock, p.baseUnit)}</div>
+            {p.lowStockThreshold != null && <div className="text-xs text-muted">{t('inventory.minStock', { qty: fmt.qty(p.lowStockThreshold, p.baseUnit) })}</div>}
+          </>
+        ),
+      },
+      {
+        id: 'price',
+        label: t('inventory.price'),
+        align: 'end',
+        filter: 'number',
+        value: (p) => p.currentPrice?.price,
+        render: (p) =>
+          p.currentPrice ? (
+            <>
+              <div>{`${fmt.money(p.currentPrice.price, org.currency, 2)} / ${unitLabel(p.baseUnit)}`}</div>
+              <div className="text-xs text-muted">{t(`inventory.priceSource.${p.currentPrice.source}`, { year: p.currentPrice.year })}</div>
+            </>
+          ) : (
+            <span className="text-muted">—</span>
+          ),
+      },
+      {
+        id: 'value',
+        label: t('inventory.value'),
+        align: 'end',
+        filter: 'number',
+        value: (p) => p.stockValue,
+        render: (p) => (p.stockValue != null ? fmt.money(p.stockValue, org.currency) : <span className="text-muted">—</span>),
+      },
+      { id: 'status', label: t('common.status'), filter: 'select', value: (p) => productStatus(p).rank, text: (p) => productStatus(p).label, render: (p) => <ProductStatus product={p} /> },
+    ],
+    [t, org.currency],
+  )
+  const view = useTableView(columns, visible)
+
   const stockValue = active.reduce((s, p) => s + (p.stockValue ?? 0), 0)
   const lowStock = active.filter((p) => p.lowStock || p.stock < 0)
   const expiring = active.filter((p) => p.nextExpiry != null && p.nextExpiry <= addDays(today(), EXPIRY_WARNING_DAYS)).sort((a, b) => a.nextExpiry!.localeCompare(b.nextExpiry!))
@@ -333,110 +401,85 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
             <FileDown /> {t('inventory.exportCsv')}
           </Button>
         </div>
-        <Table aria-label={t('inventory.tabs.products')}>
-          <TableHeader>
-            <Column isRowHeader>{t('inventory.product')}</Column>
-            <Column>{t('inventory.category')}</Column>
-            <Column>{t('inventory.manufacturer')}</Column>
-            <Column align="end">{t('inventory.stock')}</Column>
-            <Column align="end">{t('inventory.price')}</Column>
-            <Column align="end">{t('inventory.value')}</Column>
-            <Column>{t('common.status')}</Column>
-            {canWrite && (
-              <Column>
-                <span className="sr-only">{t('inventory.actions')}</span>
-              </Column>
-            )}
-          </TableHeader>
-          <TableBody items={visible} dependencies={[canWrite, org.currency]} renderEmptyState={() => <p className="text-sm text-muted text-center py-8">{t('inventory.noMatches')}</p>}>
-            {(p) => {
-              const detail = productDetail(p)
-              return (
-                <Row id={p.id} className={p.archivedAt ? 'text-muted' : undefined}>
-                  <Cell>
-                    <div className="font-medium min-w-40">{p.name}</div>
-                    {detail && <div className="text-xs text-muted mt-0.5">{detail}</div>}
-                    {p.category === 'crop_protection' && <PsmBadge product={p} className="mt-1" />}
-                  </Cell>
-                  <Cell className="whitespace-nowrap">{productCategoryLabel(p.category)}</Cell>
-                  <Cell className="whitespace-nowrap">{p.manufacturer ?? <span className="text-muted">—</span>}</Cell>
-                  <Cell align="end">
-                    <div className={cx('font-medium', p.stock < 0 && 'text-danger')}>{fmt.qty(p.stock, p.baseUnit)}</div>
-                    {p.lowStockThreshold != null && <div className="text-xs text-muted">{t('inventory.minStock', { qty: fmt.qty(p.lowStockThreshold, p.baseUnit) })}</div>}
-                  </Cell>
-                  <Cell align="end">
-                    {p.currentPrice ? (
-                      <>
-                        <div>{`${fmt.money(p.currentPrice.price, org.currency, 2)} / ${unitLabel(p.baseUnit)}`}</div>
-                        <div className="text-xs text-muted">{t(`inventory.priceSource.${p.currentPrice.source}`, { year: p.currentPrice.year })}</div>
-                      </>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                  </Cell>
-                  <Cell align="end">{p.stockValue != null ? fmt.money(p.stockValue, org.currency) : <span className="text-muted">—</span>}</Cell>
-                  <Cell>
-                    <ProductStatus product={p} />
-                  </Cell>
-                  {canWrite && (
-                    <Cell className="w-0">
-                      <MenuTrigger>
-                        <Button variant="ghost" size="icon-sm" aria-label={t('inventory.actionsFor', { name: p.name })}>
-                          <Ellipsis />
-                        </Button>
-                        <Menu
-                          onAction={(key) => {
-                            if (key === 'archive') archive.mutate(p)
-                            else onAction({ kind: key as 'product' | MovementDialog, product: p })
-                          }}
-                        >
-                          <MenuItem id="product" textValue={t('common.edit')}>
-                            <Pencil /> {t('common.edit')}
-                          </MenuItem>
-                          {!p.archivedAt && (
-                            <MenuItem id="receive" textValue={t('inventory.receiveStock')}>
-                              <PackagePlus /> {t('inventory.receiveStock')}
-                            </MenuItem>
-                          )}
-                          {!p.archivedAt && (
-                            <MenuItem id="issue" textValue={t('inventory.issueStock')}>
-                              <PackageMinus /> {t('inventory.issueStock')}
-                            </MenuItem>
-                          )}
-                          {!p.archivedAt && (
-                            <MenuItem id="stocktake" textValue={t('inventory.stocktake.title')}>
-                              <ClipboardCheck /> {t('inventory.stocktake.title')}
-                            </MenuItem>
-                          )}
-                          {!p.archivedAt && (
-                            <MenuItem id="adjust" textValue={t('inventory.adjustStock')}>
-                              <Scale /> {t('inventory.adjustStock')}
-                            </MenuItem>
-                          )}
-                          <MenuSeparator />
-                          <MenuItem id="archive" textValue={p.archivedAt ? t('inventory.restore') : t('common.archive')}>{p.archivedAt ? <><ArchiveRestore /> {t('inventory.restore')}</> : <><Archive /> {t('common.archive')}</>}</MenuItem>
-                        </Menu>
-                      </MenuTrigger>
-                    </Cell>
-                  )}
-                </Row>
-              )
-            }}
-          </TableBody>
-        </Table>
+        <DataTable
+          aria-label={t('inventory.tabs.products')}
+          view={view}
+          row={(p) => ({ className: p.archivedAt ? 'text-muted' : undefined })}
+          empty={<p className="text-sm text-muted text-center py-8">{t('inventory.noMatches')}</p>}
+          actions={
+            canWrite
+              ? (p) => (
+                  <MenuTrigger>
+                    <Button variant="ghost" size="icon-sm" aria-label={t('inventory.actionsFor', { name: p.name })}>
+                      <Ellipsis />
+                    </Button>
+                    <Menu
+                      onAction={(key) => {
+                        if (key === 'archive') archive.mutate(p)
+                        else onAction({ kind: key as 'product' | MovementDialog, product: p })
+                      }}
+                    >
+                      <MenuItem id="product" textValue={t('common.edit')}>
+                        <Pencil /> {t('common.edit')}
+                      </MenuItem>
+                      {!p.archivedAt && (
+                        <MenuItem id="receive" textValue={t('inventory.receiveStock')}>
+                          <PackagePlus /> {t('inventory.receiveStock')}
+                        </MenuItem>
+                      )}
+                      {!p.archivedAt && (
+                        <MenuItem id="issue" textValue={t('inventory.issueStock')}>
+                          <PackageMinus /> {t('inventory.issueStock')}
+                        </MenuItem>
+                      )}
+                      {!p.archivedAt && (
+                        <MenuItem id="stocktake" textValue={t('inventory.stocktake.title')}>
+                          <ClipboardCheck /> {t('inventory.stocktake.title')}
+                        </MenuItem>
+                      )}
+                      {!p.archivedAt && (
+                        <MenuItem id="adjust" textValue={t('inventory.adjustStock')}>
+                          <Scale /> {t('inventory.adjustStock')}
+                        </MenuItem>
+                      )}
+                      <MenuSeparator />
+                      <MenuItem id="archive" textValue={p.archivedAt ? t('inventory.restore') : t('common.archive')}>{p.archivedAt ? <><ArchiveRestore /> {t('inventory.restore')}</> : <><Archive /> {t('common.archive')}</>}</MenuItem>
+                    </Menu>
+                  </MenuTrigger>
+                )
+              : undefined
+          }
+        />
       </Card>
     </div>
   )
 }
 
+/** Stock state of a product, as a badge; `rank` orders the states from archived to in stock. */
+/** Counterparty, invoice, lot, expiry and total price of a receipt or issue. */
+function movementDetails(m: StockMovement, currency: string): string[] {
+  return [
+    m.counterparty,
+    m.invoiceNumber && t('inventory.movements.invoice', { number: m.invoiceNumber }),
+    m.lotNumber && t('inventory.movements.lot', { lot: m.lotNumber }),
+    m.expiryDate && t('inventory.movements.expires', { date: fmt.date(m.expiryDate) }),
+    m.totalPrice != null && `${fmt.money(m.totalPrice, currency, 2)}${m.vatRate != null ? ` + ${fmt.num(m.vatRate, 0)} % ${t('inventory.movements.vat')}` : ''}`,
+  ].filter((x): x is string => !!x)
+}
+
+function productStatus(p: Product): { tone: BadgeTone; label: string; rank: number } {
+  if (p.archivedAt) return { tone: 'neutral', label: t('inventory.status.archived'), rank: 0 }
+  if (p.stock < 0) return { tone: 'danger', label: t('inventory.status.negative'), rank: 1 }
+  if (p.stock === 0) return { tone: 'danger', label: t('inventory.status.outOfStock'), rank: 2 }
+  if (p.nextExpiry && p.nextExpiry < today()) return { tone: 'danger', label: t('inventory.status.expired'), rank: 3 }
+  if (p.lowStock) return { tone: 'warning', label: t('inventory.lowStock'), rank: 4 }
+  if (p.nextExpiry && p.nextExpiry <= addDays(today(), EXPIRY_WARNING_DAYS)) return { tone: 'warning', label: t('inventory.status.expiresOn', { date: fmt.date(p.nextExpiry) }), rank: 5 }
+  return { tone: 'success', label: t('inventory.status.inStock'), rank: 6 }
+}
+
 function ProductStatus({ product: p }: { product: Product }) {
-  const { t } = useTranslation()
-  if (p.archivedAt) return <Badge>{t('inventory.status.archived')}</Badge>
-  if (p.stock <= 0) return <Badge tone="danger">{p.stock < 0 ? t('inventory.status.negative') : t('inventory.status.outOfStock')}</Badge>
-  if (p.nextExpiry && p.nextExpiry < today()) return <Badge tone="danger">{t('inventory.status.expired')}</Badge>
-  if (p.lowStock) return <Badge tone="warning">{t('inventory.lowStock')}</Badge>
-  if (p.nextExpiry && p.nextExpiry <= addDays(today(), EXPIRY_WARNING_DAYS)) return <Badge tone="warning">{t('inventory.status.expiresOn', { date: fmt.date(p.nextExpiry) })}</Badge>
-  return <Badge tone="success">{t('inventory.status.inStock')}</Badge>
+  const { tone, label } = productStatus(p)
+  return <Badge tone={tone}>{label}</Badge>
 }
 
 /** Approval state of a plant-protection product in the BVL register, as a badge. */
@@ -1237,6 +1280,68 @@ function MovementsTab() {
   const movements = useOrgQuery<StockMovement[]>('/stock/movements', range)
 
   const visible = useMemo(() => (movements.data ?? []).filter((m) => kind === ALL || m.kind === kind), [movements.data, kind])
+  const columns = useMemo<ColumnDef<StockMovement>[]>(
+    () => [
+      { id: 'date', label: t('common.date'), filter: 'date', className: 'whitespace-nowrap tabular', value: (m) => m.occurredAt, render: (m) => fmt.date(m.occurredAt) },
+      { id: 'product', label: t('inventory.product'), filter: 'select', className: 'font-medium', value: (m) => m.productName, render: (m) => m.productName },
+      {
+        id: 'kind',
+        label: t('inventory.movements.kind'),
+        filter: 'select',
+        value: (m) => movementKindLabel(m.kind),
+        render: (m) => <Badge tone={KIND_TONES[m.kind]}>{movementKindLabel(m.kind)}</Badge>,
+      },
+      {
+        id: 'quantity',
+        label: t('inventory.movements.quantity'),
+        align: 'end',
+        filter: 'number',
+        value: (m) => m.quantityDelta,
+        render: (m) => (
+          <span className={cx('font-medium', m.quantityDelta > 0 ? 'text-success' : 'text-fg')}>
+            {m.quantityDelta > 0 ? '+' : ''}
+            {fmt.qty(m.quantityDelta, m.baseUnit)}
+          </span>
+        ),
+      },
+      {
+        id: 'unitCost',
+        label: t('inventory.unitCost'),
+        align: 'end',
+        filter: 'number',
+        value: (m) => m.unitCost,
+        render: (m) => (m.unitCost != null ? fmt.money(m.unitCost, org.currency, 2) : <span className="text-muted">—</span>),
+      },
+      { id: 'location', label: t('inventory.storageLocation'), filter: 'select', className: 'whitespace-nowrap', value: (m) => m.storageLocationName, render: (m) => m.storageLocationName ?? <span className="text-muted">—</span> },
+      {
+        id: 'details',
+        label: t('inventory.movements.details'),
+        className: 'text-xs text-fg-2 max-w-64',
+        value: (m) => movementDetails(m, org.currency).join(' · ') || null,
+        render: (m) => {
+          const details = movementDetails(m, org.currency)
+          return details.length ? details.join(' · ') : <span className="text-muted">—</span>
+        },
+      },
+      {
+        id: 'operation',
+        label: t('inventory.movements.operation'),
+        value: (m) => (m.operationId ? (m.operationTitle ?? t('inventory.movements.operation')) : null),
+        render: (m) =>
+          m.operationId ? (
+            <Link to="/o/$orgId/operations/$operationId" params={{ orgId, operationId: m.operationId }} className="whitespace-nowrap">
+              {m.operationTitle ?? t('inventory.movements.operation')}
+            </Link>
+          ) : (
+            <span className="text-muted">—</span>
+          ),
+      },
+      { id: 'note', label: t('inventory.note'), className: 'text-fg-2 max-w-64', value: (m) => m.note, render: (m) => m.note ?? <span className="text-muted">—</span> },
+      { id: 'by', label: t('inventory.movements.by'), filter: 'select', className: 'whitespace-nowrap text-fg-2', value: (m) => m.createdByName, render: (m) => m.createdByName ?? <span className="text-muted">—</span> },
+    ],
+    [t, orgId, org.currency],
+  )
+  const view = useTableView(columns, visible)
 
   return (
     <Card padded={false}>
@@ -1261,7 +1366,7 @@ function MovementsTab() {
         </Select>
         <DatePicker aria-label={t('inventory.movements.from')} value={from} onChange={setFrom} maxValue={to ?? undefined} />
         <DatePicker aria-label={t('inventory.movements.to')} value={to} onChange={setTo} minValue={from ?? undefined} />
-        <span className="text-sm text-muted ml-auto">{movements.data ? t('inventory.movements.count', { count: visible.length }) : null}</span>
+        <span className="text-sm text-muted ml-auto">{movements.data ? t('inventory.movements.count', { count: view.shown.length }) : null}</span>
         <Button size="sm" onPress={() => void api.download(`/orgs/${orgId}/stock/movements.csv`, range, 'stock-movements.csv')}>
           <FileDown /> {t('inventory.exportCsv')}
         </Button>
@@ -1275,83 +1380,26 @@ function MovementsTab() {
           <ErrorNotice error={movements.error} />
         </div>
       ) : (
-        <Table aria-label={t('inventory.tabs.movements')}>
-          <TableHeader>
-            <Column isRowHeader>{t('common.date')}</Column>
-            <Column>{t('inventory.product')}</Column>
-            <Column>{t('inventory.movements.kind')}</Column>
-            <Column align="end">{t('inventory.movements.quantity')}</Column>
-            <Column align="end">{t('inventory.unitCost')}</Column>
-            <Column>{t('inventory.storageLocation')}</Column>
-            <Column>{t('inventory.movements.details')}</Column>
-            <Column>{t('inventory.movements.operation')}</Column>
-            <Column>{t('inventory.note')}</Column>
-            <Column>{t('inventory.movements.by')}</Column>
-            {canWrite && (
-              <Column>
-                <span className="sr-only">{t('inventory.actions')}</span>
-              </Column>
-            )}
-          </TableHeader>
-          <TableBody
-            items={visible}
-            dependencies={[orgId, org.currency, canWrite]}
-            renderEmptyState={() => (
-              <EmptyState icon={History} title={t('inventory.movements.empty.title')}>
-                {t('inventory.movements.empty.text')}
-              </EmptyState>
-            )}
-          >
-            {(m) => {
-              const label = movementKindLabel(m.kind)
-              const tone = KIND_TONES[m.kind]
-              const details = [
-                m.counterparty,
-                m.invoiceNumber && t('inventory.movements.invoice', { number: m.invoiceNumber }),
-                m.lotNumber && t('inventory.movements.lot', { lot: m.lotNumber }),
-                m.expiryDate && t('inventory.movements.expires', { date: fmt.date(m.expiryDate) }),
-                m.totalPrice != null && `${fmt.money(m.totalPrice, org.currency, 2)}${m.vatRate != null ? ` + ${fmt.num(m.vatRate, 0)} % ${t('inventory.movements.vat')}` : ''}`,
-              ].filter(Boolean)
-              const voidable = canWrite && !m.voidedBy && ['receipt', 'issue', 'adjustment'].includes(m.kind)
-              return (
-                <Row id={m.id} className={m.voidedBy ? 'text-muted line-through decoration-muted' : undefined}>
-                  <Cell className="whitespace-nowrap tabular">{fmt.date(m.occurredAt)}</Cell>
-                  <Cell className="font-medium">{m.productName}</Cell>
-                  <Cell>
-                    <Badge tone={tone}>{label}</Badge>
-                  </Cell>
-                  <Cell align="end" className={cx('font-medium', m.quantityDelta > 0 ? 'text-success' : 'text-fg')}>
-                    {m.quantityDelta > 0 ? '+' : ''}
-                    {fmt.qty(m.quantityDelta, m.baseUnit)}
-                  </Cell>
-                  <Cell align="end">{m.unitCost != null ? fmt.money(m.unitCost, org.currency, 2) : <span className="text-muted">—</span>}</Cell>
-                  <Cell className="whitespace-nowrap">{m.storageLocationName ?? <span className="text-muted">—</span>}</Cell>
-                  <Cell className="text-xs text-fg-2 max-w-64">{details.length ? details.join(' · ') : <span className="text-muted">—</span>}</Cell>
-                  <Cell>
-                    {m.operationId ? (
-                      <Link to="/o/$orgId/operations/$operationId" params={{ orgId, operationId: m.operationId }} className="whitespace-nowrap">
-                        {m.operationTitle ?? t('inventory.movements.operation')}
-                      </Link>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                  </Cell>
-                  <Cell className="text-fg-2 max-w-64">{m.note ?? <span className="text-muted">—</span>}</Cell>
-                  <Cell className="whitespace-nowrap text-fg-2">{m.createdByName ?? <span className="text-muted">—</span>}</Cell>
-                  {canWrite && (
-                    <Cell className="w-0">
-                      {voidable && (
-                        <Button variant="ghost" size="icon-sm" aria-label={t('inventory.void.action')} onPress={() => setVoiding(m)}>
-                          <Undo2 />
-                        </Button>
-                      )}
-                    </Cell>
-                  )}
-                </Row>
-              )
-            }}
-          </TableBody>
-        </Table>
+        <DataTable
+          aria-label={t('inventory.tabs.movements')}
+          view={view}
+          row={(m) => ({ className: m.voidedBy ? 'text-muted line-through decoration-muted' : undefined })}
+          actions={
+            canWrite
+              ? (m) =>
+                  !m.voidedBy && ['receipt', 'issue', 'adjustment'].includes(m.kind) && (
+                    <Button variant="ghost" size="icon-sm" aria-label={t('inventory.void.action')} onPress={() => setVoiding(m)}>
+                      <Undo2 />
+                    </Button>
+                  )
+              : undefined
+          }
+          empty={
+            <EmptyState icon={History} title={t('inventory.movements.empty.title')}>
+              {t('inventory.movements.empty.text')}
+            </EmptyState>
+          }
+        />
       )}
       <ModalDialog isOpen={!!voiding} onOpenChange={(open) => !open && setVoiding(null)} title={t('inventory.void.title')} description={t('inventory.void.description')} size="sm">
         {(close) => voiding && <VoidForm movement={voiding} close={close} />}

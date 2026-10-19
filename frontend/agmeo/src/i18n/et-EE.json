@@ -896,8 +896,6 @@
   "crops.form.varietyConservation": "BSA nr {{number}} · säilitussort ({{region}})",
   "crops.form.varietyPhasingOut": "BSA nr {{number}} · registreering lõppenud, seemet müüakse kuni {{date}}",
   "crops.form.varietyPlaceholder": "Valikuline; lisamiseks hakake trükkima",
-  "crops.form.varietyRegisteredHint": "{{count}} Bundessortenamtis registreeritud sorti; teised sordid lihtsalt trükkige",
-  "crops.form.varietyRegisteredHint_one": "{{count}} Bundessortenamtis registreeritud sort; teised sordid lihtsalt trükkige",
   "crops.form.varietyUsed": "Varem kasutatud",
   "crops.newSeason": "Uus hooaeg",
   "crops.noneAssigned": "Kultuure pole veel määratud.",

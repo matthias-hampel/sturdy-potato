@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react'
 import { Form } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { CropTag, templateStepTiming } from '#/components/labels'
+import { DataTable } from '#/components/table/DataTable'
+import { useTableView, type ColumnDef } from '#/components/table/tableTools'
 import { baseUnitLabel, operationTypeLabel, productCategoryLabel, templateAnchorLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
 import { fmt } from '#/lib/format'
@@ -14,7 +16,6 @@ import { Button } from '#/ui/Button'
 import { ComboBox, NumberField, Option, Select, TextField } from '#/ui/Field'
 import { Card, EmptyState, ErrorNotice, Loading, Notice, PageHeader } from '#/ui/Layout'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
-import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
 export const Route = createFileRoute('/o/$orgId/templates')({ component: TemplatesPage })
 
@@ -26,6 +27,35 @@ function TemplatesPage() {
   const remove = useOrgMutation((base, id: string) => api.delete(`${base}/templates/${id}`), { success: t('templates.toast.deleted') })
   const sorted = useMemo(() => [...(templates.data ?? [])].sort((a, b) => a.cropName.localeCompare(b.cropName) || a.name.localeCompare(b.name)), [templates.data])
   const writable = can('crop.write')
+  const columns = useMemo<ColumnDef<CultivationTemplate>[]>(
+    () => [
+      { id: 'crop', label: t('crops.plan.crop'), filter: 'select', value: (tpl) => tpl.cropName, render: (tpl) => <CropTag name={tpl.cropName} color={tpl.cropColor} /> },
+      {
+        id: 'name',
+        label: t('templates.column.name'),
+        isRowHeader: true,
+        value: (tpl) => tpl.name,
+        text: (tpl) => [tpl.name, tpl.notes].filter(Boolean).join(' '),
+        render: (tpl) => (
+          <>
+            <div className="font-medium">{tpl.name}</div>
+            {tpl.notes && <div className="text-xs text-muted line-clamp-1">{tpl.notes}</div>}
+          </>
+        ),
+      },
+      { id: 'steps', label: t('templates.column.steps'), align: 'end', filter: 'number', value: (tpl) => tpl.steps.length, render: (tpl) => fmt.num(tpl.steps.length) },
+      {
+        id: 'usedBy',
+        label: t('templates.column.usedBy'),
+        align: 'end',
+        filter: 'number',
+        value: (tpl) => tpl.usedBy,
+        render: (tpl) => (tpl.usedBy ? t('templates.usedBy', { count: tpl.usedBy }) : <span className="text-muted">—</span>),
+      },
+    ],
+    [t],
+  )
+  const view = useTableView(columns, sorted)
 
   return (
     <>
@@ -46,42 +76,26 @@ function TemplatesPage() {
         </Card>
       ) : (
         <Card padded={false}>
-          <Table aria-label={t('templates.title')}>
-            <TableHeader>
-              <Column>{t('crops.plan.crop')}</Column>
-              <Column isRowHeader>{t('templates.column.name')}</Column>
-              <Column align="end">{t('templates.column.steps')}</Column>
-              <Column align="end">{t('templates.column.usedBy')}</Column>
-              <Column aria-label={t('common.actions')}> </Column>
-            </TableHeader>
-            <TableBody items={sorted}>
-              {(tpl) => (
-                <Row id={tpl.id}>
-                  <Cell><CropTag name={tpl.cropName} color={tpl.cropColor} /></Cell>
-                  <Cell>
-                    <div className="font-medium">{tpl.name}</div>
-                    {tpl.notes && <div className="text-xs text-muted line-clamp-1">{tpl.notes}</div>}
-                  </Cell>
-                  <Cell align="end">{fmt.num(tpl.steps.length)}</Cell>
-                  <Cell align="end">{tpl.usedBy ? t('templates.usedBy', { count: tpl.usedBy }) : <span className="text-muted">—</span>}</Cell>
-                  <Cell>
-                    {writable && (
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon-sm" variant="ghost" aria-label={t('templates.editNamed', { name: tpl.name })} onPress={() => setEditing(tpl)}><Pencil /></Button>
-                        <ConfirmButton
-                          title={t('templates.delete.title', { name: tpl.name })}
-                          message={t('templates.delete.message')}
-                          confirmLabel={t('common.delete')}
-                          onConfirm={() => remove.mutateAsync(tpl.id)}
-                          trigger={<Button size="icon-sm" variant="ghost" aria-label={t('templates.deleteNamed', { name: tpl.name })}><Trash2 /></Button>}
-                        />
-                      </div>
-                    )}
-                  </Cell>
-                </Row>
-              )}
-            </TableBody>
-          </Table>
+          <DataTable
+            aria-label={t('templates.title')}
+            view={view}
+            actions={
+              writable
+                ? (tpl) => (
+                    <div className="flex justify-end gap-1">
+                      <Button size="icon-sm" variant="ghost" aria-label={t('templates.editNamed', { name: tpl.name })} onPress={() => setEditing(tpl)}><Pencil /></Button>
+                      <ConfirmButton
+                        title={t('templates.delete.title', { name: tpl.name })}
+                        message={t('templates.delete.message')}
+                        confirmLabel={t('common.delete')}
+                        onConfirm={() => remove.mutateAsync(tpl.id)}
+                        trigger={<Button size="icon-sm" variant="ghost" aria-label={t('templates.deleteNamed', { name: tpl.name })}><Trash2 /></Button>}
+                      />
+                    </div>
+                  )
+                : undefined
+            }
+          />
         </Card>
       )}
       {editing && <TemplateDialog template={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}

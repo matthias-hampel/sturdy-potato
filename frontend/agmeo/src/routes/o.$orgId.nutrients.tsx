@@ -7,13 +7,14 @@ import { z } from 'zod'
 import { CropTag } from '#/components/labels'
 import { SoilValue } from '#/components/nutrients/badges'
 import { FertilizerNeedDialog } from '#/components/nutrients/FertilizerNeedDialog'
+import { DataTable } from '#/components/table/DataTable'
+import { useTableView, type ColumnDef } from '#/components/table/tableTools'
 import { soilTextureLabel } from '#/i18n/labels.agronomy'
 import { fmt } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
 import { Button, Link } from '#/ui/Button'
 import { Badge, Card, EmptyState, ErrorNotice, Loading, Notice, PageHeader, Stat, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
-import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx } from '#/ui/utils'
 
 const TABS = ['balance', 'soil'] as const
@@ -56,13 +57,84 @@ function Kg({ value, className }: { value: number | null | undefined; className?
   return <span className={cx('tabular', className)}>{fmt.num(value, 0)}</span>
 }
 
+type BalanceRow = CycleNutrientBalance & { id: string }
+
 function BalanceTab() {
   const { t } = useTranslation()
   const { orgId } = useOrg()
   const { seasonId, season, isLoading } = useSeason()
   const balance = useOrgQuery<SeasonNutrientBalance>('/nutrients/season', { seasonId }, { enabled: !!seasonId })
   const [open, setOpen] = useState<string | null>(null)
-  const rows = balance.data?.rows ?? []
+  const rows = useMemo(() => (balance.data?.rows ?? []).map((r) => ({ ...r, id: r.cropCycleId })), [balance.data])
+  const columns = useMemo<ColumnDef<BalanceRow>[]>(
+    () => [
+      {
+        id: 'field',
+        label: t('crops.plan.field'),
+        value: (r) => [r.fieldName, r.fieldPartName].filter(Boolean).join(' '),
+        render: (r) => (
+          <>
+            <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: r.fieldId }} className="font-medium">
+              {r.fieldName}
+            </Link>
+            {r.fieldPartName && <div className="text-xs text-muted">{r.fieldPartName}</div>}
+          </>
+        ),
+      },
+      {
+        id: 'crop',
+        label: t('crops.plan.crop'),
+        filter: 'select',
+        value: (r) => r.cropName,
+        render: (r) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <CropTag name={r.cropName} color={r.cropColor} />
+            {r.nitrateSensitiveZone && <Badge tone="danger">{t('soil.redZone')}</Badge>}
+            {r.closedPeriodViolations > 0 && (
+              <Badge tone="danger">
+                <AlertTriangle className="size-3" aria-hidden />
+                {t('nutrients.closedPeriod', { count: r.closedPeriodViolations })}
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      { id: 'area', label: t('crops.plan.area'), align: 'end', filter: 'number', value: (r) => r.areaHa, render: (r) => fmt.ha(r.areaHa) },
+      { id: 'nNeed', label: t('nutrients.col.nNeed'), align: 'end', filter: 'number', value: (r) => r.nNeed, render: (r) => <NeedCell row={r} /> },
+      {
+        id: 'nApplied',
+        label: t('nutrients.col.nApplied'),
+        align: 'end',
+        filter: 'number',
+        value: (r) => r.applied.availableN,
+        render: (r) => (
+          <>
+            <Kg value={r.applied.availableN} />
+            {r.applied.organicN != null && r.applied.organicN > 0 && <div className="text-xs text-muted">{t('nutrients.organicN', { value: fmt.num(r.applied.organicN) })}</div>}
+          </>
+        ),
+      },
+      { id: 'nPlanned', label: t('nutrients.col.nPlanned'), align: 'end', filter: 'number', value: (r) => r.planned.availableN, render: (r) => <Kg value={r.planned.availableN} className="text-fg-2" /> },
+      {
+        id: 'nRemaining',
+        label: t('nutrients.col.nRemaining'),
+        align: 'end',
+        filter: 'number',
+        value: (r) => r.nRemaining,
+        render: (r) => (
+          <>
+            <Kg value={r.nRemaining} className={cx('font-medium', r.nRemaining != null && r.nRemaining < 0 && 'text-danger')} />
+            {r.nRemaining != null && r.nRemaining < 0 && <div className="text-xs text-danger">{t('nutrients.aboveNeed')}</div>}
+          </>
+        ),
+      },
+      // Sorted and filtered by what was applied, the first of the two numbers shown.
+      { id: 'p2o5', label: t('nutrients.col.p2o5'), align: 'end', filter: 'number', value: (r) => r.applied.p2o5, render: (r) => <NeedVsApplied need={r.p2o5Need} applied={r.applied.p2o5} /> },
+      { id: 'k2o', label: t('nutrients.col.k2o'), align: 'end', filter: 'number', value: (r) => r.applied.k2o, render: (r) => <NeedVsApplied need={r.k2oNeed} applied={r.applied.k2o} /> },
+    ],
+    [t, orgId],
+  )
+  const balanceView = useTableView(columns, rows)
 
   const stats = useMemo(() => {
     const withNeed = rows.filter((r) => r.nNeed != null)
@@ -111,81 +183,20 @@ function BalanceTab() {
       </div>
 
       <Card title={t('nutrients.balance.title', { season: season.name })} description={t('nutrients.balance.description')} padded={false}>
-        <Table aria-label={t('nutrients.balance.title', { season: season.name })}>
-          <TableHeader>
-            <Column isRowHeader>{t('crops.plan.field')}</Column>
-            <Column>{t('crops.plan.crop')}</Column>
-            <Column align="end">{t('crops.plan.area')}</Column>
-            <Column align="end">{t('nutrients.col.nNeed')}</Column>
-            <Column align="end">{t('nutrients.col.nApplied')}</Column>
-            <Column align="end">{t('nutrients.col.nPlanned')}</Column>
-            <Column align="end">{t('nutrients.col.nRemaining')}</Column>
-            <Column align="end">{t('nutrients.col.p2o5')}</Column>
-            <Column align="end">{t('nutrients.col.k2o')}</Column>
-            <Column>
-              <span className="sr-only">{t('common.actions')}</span>
-            </Column>
-          </TableHeader>
-          <TableBody
-            items={rows.map((r) => ({ ...r, id: r.cropCycleId }))}
-            renderEmptyState={() => (
-              <EmptyState icon={Sprout} title={t('nutrients.balance.empty.title')}>
-                {t('nutrients.balance.empty.body')}
-              </EmptyState>
-            )}
-          >
-            {(r) => (
-              <Row id={r.id}>
-                <Cell>
-                  <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: r.fieldId }} className="font-medium">
-                    {r.fieldName}
-                  </Link>
-                  {r.fieldPartName && <div className="text-xs text-muted">{r.fieldPartName}</div>}
-                </Cell>
-                <Cell>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <CropTag name={r.cropName} color={r.cropColor} />
-                    {r.nitrateSensitiveZone && <Badge tone="danger">{t('soil.redZone')}</Badge>}
-                    {r.closedPeriodViolations > 0 && (
-                      <Badge tone="danger">
-                        <AlertTriangle className="size-3" aria-hidden />
-                        {t('nutrients.closedPeriod', { count: r.closedPeriodViolations })}
-                      </Badge>
-                    )}
-                  </div>
-                </Cell>
-                <Cell align="end">{fmt.ha(r.areaHa)}</Cell>
-                <Cell align="end">
-                  <NeedCell row={r} />
-                </Cell>
-                <Cell align="end">
-                  <Kg value={r.applied.availableN} />
-                  {r.applied.organicN != null && r.applied.organicN > 0 && (
-                    <div className="text-xs text-muted">{t('nutrients.organicN', { value: fmt.num(r.applied.organicN) })}</div>
-                  )}
-                </Cell>
-                <Cell align="end">
-                  <Kg value={r.planned.availableN} className="text-fg-2" />
-                </Cell>
-                <Cell align="end">
-                  <Kg value={r.nRemaining} className={cx('font-medium', r.nRemaining != null && r.nRemaining < 0 && 'text-danger')} />
-                  {r.nRemaining != null && r.nRemaining < 0 && <div className="text-xs text-danger">{t('nutrients.aboveNeed')}</div>}
-                </Cell>
-                <Cell align="end">
-                  <NeedVsApplied need={r.p2o5Need} applied={r.applied.p2o5} />
-                </Cell>
-                <Cell align="end">
-                  <NeedVsApplied need={r.k2oNeed} applied={r.applied.k2o} />
-                </Cell>
-                <Cell>
-                  <Button size="sm" variant="quiet" onPress={() => setOpen(r.cropCycleId)}>
-                    <FlaskConical /> {t('nutrients.determineNeed')}
-                  </Button>
-                </Cell>
-              </Row>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          aria-label={t('nutrients.balance.title', { season: season.name })}
+          view={balanceView}
+          empty={
+            <EmptyState icon={Sprout} title={t('nutrients.balance.empty.title')}>
+              {t('nutrients.balance.empty.body')}
+            </EmptyState>
+          }
+          actions={(r) => (
+            <Button size="sm" variant="quiet" onPress={() => setOpen(r.cropCycleId)}>
+              <FlaskConical /> {t('nutrients.determineNeed')}
+            </Button>
+          )}
+        />
       </Card>
       <p className="text-xs text-muted">{t('nutrients.balance.footnote', { ruleset: balance.data?.ruleset ?? '' })}</p>
 
@@ -221,13 +232,86 @@ function NeedVsApplied({ need, applied }: { need: number | null; applied: number
   )
 }
 
+type SoilRow = FieldSoilSummary & { id: string }
+
 function SoilOverview() {
   const { t } = useTranslation()
   const { orgId } = useOrg()
   const soil = useOrgQuery<FieldSoilSummary[]>('/soil')
+  const rows = useMemo(() => (soil.data ?? []).map((r) => ({ ...r, id: r.fieldId })), [soil.data])
+  const columns = useMemo<ColumnDef<SoilRow>[]>(
+    () => [
+      {
+        id: 'field',
+        label: t('crops.plan.field'),
+        value: (r) => r.fieldName,
+        text: (r) => [r.fieldName, r.nitrateSensitiveZone && t('soil.redZone'), r.phosphateSensitiveZone && t('soil.yellowZone')].filter(Boolean).join(' '),
+        render: (r) => (
+          <>
+            <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: r.fieldId }} search={{ tab: 'soil' }} className="font-medium">
+              {r.fieldName}
+            </Link>
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {r.nitrateSensitiveZone && <Badge tone="danger">{t('soil.redZone')}</Badge>}
+              {r.phosphateSensitiveZone && <Badge tone="warning">{t('soil.yellowZone')}</Badge>}
+            </div>
+          </>
+        ),
+      },
+      { id: 'area', label: t('crops.plan.area'), align: 'end', filter: 'number', value: (r) => r.areaHa, render: (r) => fmt.ha(r.areaHa) },
+      {
+        id: 'texture',
+        label: t('soil.texture'),
+        filter: 'select',
+        value: (r) => (r.soilTexture ? soilTextureLabel(r.soilTexture as SoilTexture) : null),
+        render: (r) => (r.soilTexture ? soilTextureLabel(r.soilTexture as SoilTexture) : <span className="text-muted">—</span>),
+      },
+      {
+        id: 'basic',
+        label: t('soil.basicSample'),
+        filter: 'date',
+        value: (r) => r.latestBasic?.sampledOn,
+        render: (r) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="tabular whitespace-nowrap">{r.latestBasic ? fmt.date(r.latestBasic.sampledOn) : <span className="text-muted">{t('soil.noSample')}</span>}</span>
+            {r.basicOutdated && r.latestBasic && <Badge tone="warning">{t('soil.outdated')}</Badge>}
+          </div>
+        ),
+      },
+      { id: 'ph', label: 'pH', align: 'end', filter: 'number', value: (r) => r.latestBasic?.ph, render: (r) => <SoilValue value={r.latestBasic?.ph} cls={r.latestBasic?.classes.ph} /> },
+      { id: 'p2o5', label: 'P₂O₅', align: 'end', filter: 'number', value: (r) => r.latestBasic?.p2o5Mg100g, render: (r) => <SoilValue value={r.latestBasic?.p2o5Mg100g} cls={r.latestBasic?.classes.p} /> },
+      { id: 'k2o', label: 'K₂O', align: 'end', filter: 'number', value: (r) => r.latestBasic?.k2oMg100g, render: (r) => <SoilValue value={r.latestBasic?.k2oMg100g} cls={r.latestBasic?.classes.k} /> },
+      { id: 'mgo', label: 'MgO', align: 'end', filter: 'number', value: (r) => r.latestBasic?.mgoMg100g, render: (r) => <SoilValue value={r.latestBasic?.mgoMg100g} cls={r.latestBasic?.classes.mg} /> },
+      {
+        id: 'humus',
+        label: t('soil.humus'),
+        align: 'end',
+        filter: 'number',
+        value: (r) => r.latestBasic?.humusPct,
+        render: (r) => (r.latestBasic?.humusPct != null ? fmt.pct(r.latestBasic.humusPct, 1) : '—'),
+      },
+      {
+        id: 'nmin',
+        label: t('soil.nminSample'),
+        align: 'end',
+        filter: 'number',
+        value: (r) => r.latestNmin?.nminTotal,
+        render: (r) =>
+          r.latestNmin ? (
+            <>
+              <span className="tabular">{fmt.num(r.latestNmin.nminTotal)} kg N/ha</span>
+              <div className="text-xs text-muted">{fmt.date(r.latestNmin.sampledOn)}</div>
+            </>
+          ) : (
+            '—'
+          ),
+      },
+    ],
+    [t, orgId],
+  )
+  const view = useTableView(columns, rows)
   if (soil.isLoading) return <Loading />
   if (soil.error) return <ErrorNotice error={soil.error} />
-  const rows = soil.data ?? []
   const missing = rows.filter((r) => r.basicOutdated).length
   return (
     <div className="space-y-4">
@@ -237,66 +321,7 @@ function SoilOverview() {
         </Notice>
       )}
       <Card title={t('soil.overview.title')} description={t('soil.overview.description')} padded={false}>
-        <Table aria-label={t('soil.overview.title')}>
-          <TableHeader>
-            <Column isRowHeader>{t('crops.plan.field')}</Column>
-            <Column align="end">{t('crops.plan.area')}</Column>
-            <Column>{t('soil.texture')}</Column>
-            <Column>{t('soil.basicSample')}</Column>
-            <Column align="end">pH</Column>
-            <Column align="end">P₂O₅</Column>
-            <Column align="end">K₂O</Column>
-            <Column align="end">MgO</Column>
-            <Column align="end">{t('soil.humus')}</Column>
-            <Column align="end">{t('soil.nminSample')}</Column>
-          </TableHeader>
-          <TableBody
-            items={rows.map((r) => ({ ...r, id: r.fieldId }))}
-            renderEmptyState={() => (
-              <EmptyState icon={Layers} title={t('soil.overview.empty')} />
-            )}
-          >
-            {(r) => {
-              const b = r.latestBasic
-              return (
-                <Row id={r.id}>
-                  <Cell>
-                    <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: r.fieldId }} search={{ tab: 'soil' }} className="font-medium">
-                      {r.fieldName}
-                    </Link>
-                    <div className="flex flex-wrap gap-1 mt-0.5">
-                      {r.nitrateSensitiveZone && <Badge tone="danger">{t('soil.redZone')}</Badge>}
-                      {r.phosphateSensitiveZone && <Badge tone="warning">{t('soil.yellowZone')}</Badge>}
-                    </div>
-                  </Cell>
-                  <Cell align="end">{fmt.ha(r.areaHa)}</Cell>
-                  <Cell>{r.soilTexture ? soilTextureLabel(r.soilTexture as SoilTexture) : <span className="text-muted">—</span>}</Cell>
-                  <Cell>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="tabular whitespace-nowrap">{b ? fmt.date(b.sampledOn) : <span className="text-muted">{t('soil.noSample')}</span>}</span>
-                      {r.basicOutdated && b && <Badge tone="warning">{t('soil.outdated')}</Badge>}
-                    </div>
-                  </Cell>
-                  <Cell align="end"><SoilValue value={b?.ph} cls={b?.classes.ph} /></Cell>
-                  <Cell align="end"><SoilValue value={b?.p2o5Mg100g} cls={b?.classes.p} /></Cell>
-                  <Cell align="end"><SoilValue value={b?.k2oMg100g} cls={b?.classes.k} /></Cell>
-                  <Cell align="end"><SoilValue value={b?.mgoMg100g} cls={b?.classes.mg} /></Cell>
-                  <Cell align="end">{b?.humusPct != null ? fmt.pct(b.humusPct, 1) : '—'}</Cell>
-                  <Cell align="end">
-                    {r.latestNmin ? (
-                      <>
-                        <span className="tabular">{fmt.num(r.latestNmin.nminTotal)} kg N/ha</span>
-                        <div className="text-xs text-muted">{fmt.date(r.latestNmin.sampledOn)}</div>
-                      </>
-                    ) : (
-                      '—'
-                    )}
-                  </Cell>
-                </Row>
-              )
-            }}
-          </TableBody>
-        </Table>
+        <DataTable aria-label={t('soil.overview.title')} view={view} empty={<EmptyState icon={Layers} title={t('soil.overview.empty')} />} />
       </Card>
       <p className="text-xs text-muted">{t('soil.overview.units')}</p>
     </div>

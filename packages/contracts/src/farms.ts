@@ -77,7 +77,7 @@ export type UpdateFieldInput = z.input<typeof UpdateFieldInput>;
 
 export const UpdateFieldGeometryInput = z.object({
   geometry: FieldGeometry,
-  /** When the new boundary takes effect; defaults to now. */
+  /** When the new boundary takes effect; defaults to now. A future date plans the change. */
   validFrom: isoDateTime.optional(),
   reason: z.string().trim().max(500).optional(),
 });
@@ -104,12 +104,18 @@ export interface GeometryValidation {
 
 export const ImportFieldsInput = z.object({
   farmId: id,
+  /** Season the imported crops are planned in; required when any feature carries a crop. */
+  seasonId: id.nullish(),
   features: z
     .array(
       z.object({
         name,
         identifier: shortText,
         geometry: FieldGeometry,
+        /** Main crop of the field in `seasonId`, e.g. resolved from the land-use code of a subsidy application. */
+        cropId: id.nullish(),
+        /** Land-use code (Nutzungscode) from the source; kept on the crop when it differs from the crop's default. */
+        landUseCode: z.string().trim().max(5).nullish(),
       }),
     )
     .min(1)
@@ -119,6 +125,8 @@ export type ImportFieldsInput = z.input<typeof ImportFieldsInput>;
 
 export interface ImportFieldsResult {
   created: { id: string; name: string; areaHa: number }[];
+  /** Number of imported fields that got a crop in the season. */
+  cropsAssigned: number;
   errors: { index: number; name: string; message: string }[];
   overlaps: { name: string; overlaps: FieldOverlap[] }[];
 }
@@ -157,6 +165,8 @@ export interface Field {
   geometry: MultiPolygon;
   centroid: LatLng;
   geometryVersionId: string;
+  /** Next boundary change that has not taken effect yet. */
+  plannedGeometry: { id: string; validFrom: string; areaHa: number } | null;
   currentCrop: FieldCurrentCrop | null;
   /** Number of part fields (Teilschläge) in the requested season; 0 when the field is used as a whole. */
   partCount: number;
@@ -171,6 +181,8 @@ export interface FieldGeometryVersion {
   areaHa: number;
   validFrom: string;
   validTo: string | null;
+  /** `planned` versions take effect in the future and can still be cancelled. */
+  status: 'past' | 'current' | 'planned';
   source: 'drawn' | 'import' | 'edit' | 'merge' | 'restore';
   reason: string | null;
   geometry: MultiPolygon;

@@ -1106,6 +1106,49 @@ export interface RadarState {
   refreshed_at: Timestamp | null;
 }
 
+export interface RecommendationRuns {
+  briefing: string | null;
+  created_by: string | null;
+  explanation_error: string | null;
+  explanation_model: string | null;
+  generated_at: Generated<Timestamp>;
+  id: Generated<string>;
+  item_count: Generated<number>;
+  organization_id: string;
+  rule_set: string;
+}
+
+export interface Recommendations {
+  action: string;
+  confidence: Numeric;
+  created_at: Generated<Timestamp>;
+  crop_cycle_id: string | null;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  dismiss_note: string | null;
+  dismiss_reason: string | null;
+  evidence: Generated<Json>;
+  explanation: string | null;
+  explanation_model: string | null;
+  farm_id: string;
+  field_id: string;
+  id: Generated<string>;
+  key: string;
+  kind: string;
+  operation_id: string | null;
+  operation_type: string | null;
+  organization_id: string;
+  priority: string;
+  rule_set: string;
+  run_id: string;
+  status: Generated<string>;
+  task_id: string | null;
+  updated_at: Generated<Timestamp>;
+  window_from: string | null;
+  window_to: string | null;
+  zone_nos: number[] | null;
+}
+
 export interface SatelliteScenes {
   acquired_at: Timestamp;
   /**
@@ -1640,6 +1683,8 @@ export interface DB {
   psm_uses: PsmUses;
   radar_frames: RadarFrames;
   radar_state: RadarState;
+  recommendation_runs: RecommendationRuns;
+  recommendations: Recommendations;
   satellite_scenes: SatelliteScenes;
   scope2_entries: Scope2Entries;
   soil_lab_import_zones: SoilLabImportZones;

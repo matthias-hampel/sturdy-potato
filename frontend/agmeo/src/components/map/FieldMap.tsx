@@ -60,6 +60,8 @@ export interface FieldMapProps {
   /** Notes drawn on the map (points, lines, polygons), coloured by their `color` and labelled with their `note`. */
   annotations?: FeatureCollection | null
   onAnnotationClick?: (id: string) => void
+  /** Geometry the camera moves to whenever a new one is passed, e.g. a row picked in a list. */
+  focus?: Geometry | FeatureCollection | null
 }
 
 export function FieldMap({
@@ -84,6 +86,7 @@ export function FieldMap({
   onMap,
   annotations,
   onAnnotationClick,
+  focus,
 }: FieldMapProps) {
   const { t } = useTranslation()
   const [basemap, setBasemap] = useState<Basemap>(defaultBasemap)
@@ -289,6 +292,13 @@ export function FieldMap({
     const offset: [number, number] = [(padding.left - padding.right) / 2, (padding.top - padding.bottom) / 2]
     map.easeTo({ center: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2], zoom, offset, duration: 500 })
   }, [map, selectedId, fields, occludedBy])
+
+  useEffect(() => {
+    const b = map && focus ? boundsOf([], focus) : undefined
+    if (!map || !b) return
+    const camera = map.cameraForBounds(b as LngLatBoundsLike, { padding: 48, maxZoom: 16.5 })
+    if (camera) map.easeTo({ center: camera.center, zoom: camera.zoom, duration: 500 })
+  }, [map, focus])
 
   // Fit to fields when the set of fields changes; the fallback view only applies without any. A selected
   // field that is still shown keeps the camera (e.g. while another index or layer loads).

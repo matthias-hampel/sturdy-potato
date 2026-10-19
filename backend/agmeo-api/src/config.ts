@@ -1,3 +1,11 @@
+// `nest start --watch` does not read .env (the start:* scripts pass --env-file-if-exists).
+// Variables already set in the environment win over the file.
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env: defaults and the process environment apply.
+}
+
 function env(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
   if (value === undefined) throw new Error(`Missing required environment variable ${name}`);
@@ -13,6 +21,7 @@ export const config = {
   port: Number(env('PORT', '3001')),
   databaseUrl: env('DATABASE_URL', 'postgres://agmeo_api:agmeo_api@localhost:5434/agmeo'),
   relayDatabaseUrl: env('RELAY_DATABASE_URL', 'postgres://agmeo_worker:agmeo_worker@localhost:5434/agmeo'),
+  recommenderDatabaseUrl: env('RECOMMENDER_DATABASE_URL', 'postgres://agmeo_recommender_worker:agmeo_recommender_worker@localhost:5434/agmeo'),
   refdataDatabaseUrl: env('REFDATA_DATABASE_URL', 'postgres://agmeo_refdata_sync:agmeo_refdata_sync@localhost:5434/agmeo'),
   jobsDatabaseUrl: env('JOBS_DATABASE_URL', 'postgres://agmeo_jobs_worker:agmeo_jobs_worker@localhost:5434/agmeo'),
   natsUrl: env('NATS_URL', 'nats://localhost:4222'),
@@ -111,5 +120,26 @@ export const config = {
       clientSecret: env('ISIP_CLIENT_SECRET', ''),
       timeoutMs: Number(env('ISIP_TIMEOUT_MS', '60000')),
     },
+  },
+  // Address search for farms. The public Photon instance allows fair use only; self-host it for more load.
+  geocoding: {
+    photonUrl: env('PHOTON_URL', 'https://photon.komoot.io'),
+    userAgent: env('GEOCODING_USER_AGENT', 'agmeo (https://agvolution.com)'),
+  },
+  // Language model that phrases the reasons of field recommendations. Without a key the
+  // recommendations still work; the UI then shows the reasons from the evidence codes.
+  openai: {
+    apiKey: env('OPENAI_API_KEY', ''),
+    model: env('OPENAI_MODEL', 'gpt-5.4-mini'),
+    // Empty for models without reasoning (e.g. gpt-4.1).
+    reasoningEffort: env('OPENAI_REASONING_EFFORT', 'low'),
+    timeoutMs: Number(env('OPENAI_TIMEOUT_MS', '30000')),
+  },
+  // The worker recalculates recommendations each morning and after changes to the calendar
+  // or crops (as agmeo_recommender). 'off' leaves it to the users' refreshes.
+  recommendationSchedule: {
+    enabled: env('RECOMMENDATIONS_SCHEDULE', 'on') !== 'off',
+    dailyAt: env('RECOMMENDATIONS_DAILY_AT', '05:00'),
+    timeZone: env('RECOMMENDATIONS_TIME_ZONE', 'Europe/Berlin'),
   },
 };

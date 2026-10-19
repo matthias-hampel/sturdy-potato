@@ -32,8 +32,10 @@ function niceTicks(min: number, max: number, count = 4): number[] {
   const mag = 10 ** Math.floor(Math.log10(step0))
   const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= step0) ?? step0
   const start = Math.floor(min / step) * step
+  // The last tick must reach max, or the tallest mark overshoots the plot area.
+  const end = Math.ceil(max / step - 1e-9) * step
   const ticks = []
-  for (let v = start; v <= max + step * 0.5; v += step) ticks.push(Math.round(v * 1e6) / 1e6)
+  for (let v = start; v <= end + step * 1e-6; v += step) ticks.push(Math.round(v * 1e6) / 1e6)
   return ticks
 }
 

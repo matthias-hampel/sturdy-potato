@@ -100,6 +100,38 @@ describe('field geometry', () => {
     const history = (await u.get(`/orgs/${org.id}/fields/${field.id}/geometry-history`).expect(200)).body
     expect(history).toHaveLength(2)
     expect(history[1].validTo).not.toBeNull()
+    expect(history[0].status).toBe('current')
+  })
+
+  it('plans a boundary change that only takes effect on its date', async () => {
+    const u = as((await signIn('geo')).token)
+    const org = (await u.post('/orgs', { name: `Planned ${run}` }).expect(201)).body
+    const base = `/orgs/${org.id}`
+    const farm = (await u.post(`${base}/farms`, { name: 'Hof' }).expect(201)).body
+    const field = (await u.post(`${base}/fields`, { farmId: farm.id, name: 'F', geometry: polygon(9.9, 52.3) }).expect(201)).body
+    const later = new Date(Date.now() + 30 * 86_400_000).toISOString()
+
+    const planned = (await u.put(`${base}/fields/${field.id}/geometry`, { geometry: polygon(9.9, 52.3, 0.003), validFrom: later }).expect(200)).body
+    expect(planned.geometryVersionId).toBe(field.geometryVersionId)
+    expect(planned.areaHa).toBe(field.areaHa)
+    expect(planned.plannedGeometry.validFrom).toBe(later)
+    let history = (await u.get(`${base}/fields/${field.id}/geometry-history`).expect(200)).body
+    expect(history.map((v: { status: string }) => v.status)).toEqual(['planned', 'current'])
+    expect(history[1].validTo).toBe(later)
+
+    // A change effective now lands before the planned one.
+    await u.put(`${base}/fields/${field.id}/geometry`, { geometry: polygon(9.9, 52.3, 0.004) }).expect(200)
+    history = (await u.get(`${base}/fields/${field.id}/geometry-history`).expect(200)).body
+    expect(history.map((v: { status: string }) => v.status)).toEqual(['planned', 'current', 'past'])
+    expect(history[1].validTo).toBe(later)
+
+    // Cancelling the planned change lets the current boundary continue.
+    const after = (await u.del(`${base}/fields/${field.id}/geometry/${history[0].id}`).expect(200)).body
+    expect(after.plannedGeometry).toBeNull()
+    history = (await u.get(`${base}/fields/${field.id}/geometry-history`).expect(200)).body
+    expect(history.map((v: { status: string }) => v.status)).toEqual(['current', 'past'])
+    expect(history[0].validTo).toBeNull()
+    await u.del(`${base}/fields/${field.id}/geometry/${history[0].id}`).expect(404)
   })
 })
 

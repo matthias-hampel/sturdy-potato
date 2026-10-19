@@ -46,8 +46,15 @@ import { RadarService } from './modules/radar/radar.service.js';
 import { PsmRecordService } from './modules/protection/record/psm-record.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
+import { ExplainerService } from './modules/recommendations/explainer.service.js';
+import { RecommendationsController } from './modules/recommendations/recommendations.controller.js';
+import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
 import { RegulatoryController } from './modules/regulatory/regulatory.controller.js';
 import { RegulatoryService } from './modules/regulatory/regulatory.service.js';
+import { GeocodingController } from './modules/geocoding/geocoding.controller.js';
+import { GeocodingService } from './modules/geocoding/geocoding.service.js';
+import { SearchController } from './modules/search/search.controller.js';
+import { SearchService } from './modules/search/search.service.js';
 import { OperationsController } from './modules/operations/operations.controller.js';
 import { BoardController } from './modules/operations/board.controller.js';
 import { BoardService } from './modules/operations/board.service.js';
@@ -131,6 +138,10 @@ export const DOMAIN_SERVICES = [
   FieldDocumentsService,
   MaizeDmcService,
   ModelServicesService,
+  ExplainerService,
+  RecommendationsService,
+  SearchService,
+  GeocodingService,
 ];
 
 /**
@@ -179,6 +190,9 @@ export const DOMAIN_SERVICES = [
     FieldDocumentsController,
     MaizeDmcController,
     ModelServicesController,
+    RecommendationsController,
+    SearchController,
+    GeocodingController,
   ],
   providers: [
     TokenService,

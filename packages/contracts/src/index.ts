@@ -26,3 +26,6 @@ export * from './annotations.js';
 export * from './soil.js';
 export * from './maizeDmc.js';
 export * from './modelServices.js';
+export * from './recommendations.js';
+export * from './search.js';
+export * from './geocoding.js';

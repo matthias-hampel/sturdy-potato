@@ -1,9 +1,8 @@
 declare module 'shpjs' {
   import type { FeatureCollection } from 'geojson'
   type Bytes = ArrayBuffer | Uint8Array
-  /**
-   * Parses a zipped Shapefile, or its parts (.shp with optional .dbf, .prj, .cpg), reprojected
-   * to WGS 84 using the .prj.
-   */
-  export default function shp(input: Bytes | string | { shp: Bytes; dbf?: Bytes; prj?: Bytes | string; cpg?: Bytes | string }): Promise<FeatureCollection | FeatureCollection[]>
+  /** Parses a zipped Shapefile (reprojected to WGS 84 using its .prj). */
+  export default function shp(input: Bytes | string): Promise<FeatureCollection | FeatureCollection[]>
+  /** Parses one layer from its parts; `prj` is a WKT or proj4 definition used to reproject to WGS 84. */
+  export default function shp(input: { shp: Bytes; dbf?: Bytes; prj?: Bytes | string; cpg?: Bytes | string }): Promise<FeatureCollection>
 }

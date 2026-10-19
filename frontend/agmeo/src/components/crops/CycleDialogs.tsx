@@ -111,7 +111,6 @@ export function CycleFields({ value, onChange, crops, showArea }: { value: Cycle
         onInputChange={(v) => set('varietyName', v)}
         isDisabled={!value.cropId}
         placeholder={t('crops.form.varietyPlaceholder')}
-        description={registered.data?.length ? t('crops.form.varietyRegisteredHint', { count: registered.data.length }) : undefined}
       >
         {(o) => (
           <Option id={o.key} textValue={o.name} description={describeVariety(o)}>

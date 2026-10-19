@@ -19,6 +19,7 @@ import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdCarbonRouteImport } from './routes/o.$orgId.carbon'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
 import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
+import { Route as OOrgIdImportRouteImport } from './routes/o.$orgId.import'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdMaizeDmcRouteImport } from './routes/o.$orgId.maize-dmc'
 import { Route as OOrgIdNewsRouteImport } from './routes/o.$orgId.news'
@@ -97,6 +98,11 @@ const OOrgIdEconomicsRoute = OOrgIdEconomicsRouteImport.update({
 const OOrgIdFilesRoute = OOrgIdFilesRouteImport.update({
   id: '/files',
   path: '/files',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdImportRoute = OOrgIdImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
@@ -298,6 +305,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
+    | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
+    | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
@@ -464,6 +475,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
+    | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
@@ -575,6 +587,13 @@ declare module '@tanstack/react-router' {
       path: '/files'
       fullPath: '/o/$orgId/files'
       preLoaderRoute: typeof OOrgIdFilesRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/import': {
+      id: '/o/$orgId/import'
+      path: '/import'
+      fullPath: '/o/$orgId/import'
+      preLoaderRoute: typeof OOrgIdImportRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/inventory': {
@@ -788,6 +807,7 @@ interface OOrgIdRouteChildren {
   OOrgIdCarbonRoute: typeof OOrgIdCarbonRoute
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
   OOrgIdFilesRoute: typeof OOrgIdFilesRoute
+  OOrgIdImportRoute: typeof OOrgIdImportRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdMaizeDmcRoute: typeof OOrgIdMaizeDmcRoute
   OOrgIdNewsRoute: typeof OOrgIdNewsRoute
@@ -824,6 +844,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdCarbonRoute: OOrgIdCarbonRoute,
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
   OOrgIdFilesRoute: OOrgIdFilesRoute,
+  OOrgIdImportRoute: OOrgIdImportRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdMaizeDmcRoute: OOrgIdMaizeDmcRoute,
   OOrgIdNewsRoute: OOrgIdNewsRoute,

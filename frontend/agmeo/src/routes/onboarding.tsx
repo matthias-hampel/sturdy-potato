@@ -1,4 +1,4 @@
-import type { Farm, LatLng, Organization } from '@agmeo/contracts'
+import type { Farm, Organization } from '@agmeo/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
 import { Building2, Check, MapPin } from 'lucide-react'
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { Form } from 'react-aria-components'
 import { Logo } from '#/components/Logo'
 import { LOCALE } from '#/i18n'
+import { AddressField, useFarmPlace } from '#/components/map/AddressField'
 import { LocationPicker } from '#/components/map/LocationPicker'
 import { api, errorMessage, tokenStore } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
@@ -30,8 +31,8 @@ function Onboarding() {
   const [orgName, setOrgName] = useState('')
   const [country, setCountry] = useState('DE')
   const [farmName, setFarmName] = useState('')
-  const [address, setAddress] = useState('')
-  const [location, setLocation] = useState<LatLng | null>(null)
+  const place = useFarmPlace(org?.id, { address: null, location: null })
+  const { address, location } = place
   const [mapZoom, setMapZoom] = useState<number | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -127,7 +128,18 @@ function Onboarding() {
                 </div>
               </div>
               <TextField label={t('onboarding.farm.name')} isRequired autoFocus value={farmName} onChange={setFarmName} />
-              <TextField label={t('onboarding.farm.address')} value={address} onChange={setAddress} placeholder={t('onboarding.farm.addressPlaceholder')} />
+              {org && (
+                <AddressField
+                  orgId={org.id}
+                  label={t('onboarding.farm.address')}
+                  placeholder={t('onboarding.farm.addressPlaceholder')}
+                  value={address}
+                  onChange={place.setAddress}
+                  onSelect={place.select}
+                  country={country}
+                  near={location}
+                />
+              )}
               <div className="text-sm">
                 <div className="font-medium text-fg-2">{t('onboarding.farm.location')}</div>
                 <div className="text-muted mt-1 tabular">{location ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}` : t('onboarding.farm.locationHint')}</div>
@@ -137,7 +149,7 @@ function Onboarding() {
                 <Button type="submit" variant="primary" isPending={pending}>{t('onboarding.farm.continue')}</Button>
               </div>
             </div>
-            <LocationPicker value={location} zoom={mapZoom} onChange={setLocation} onZoomChange={setMapZoom} className="h-96 lg:h-auto min-h-80" />
+            <LocationPicker value={location} zoom={mapZoom} onChange={place.pick} onZoomChange={setMapZoom} className="h-96 lg:h-auto min-h-80" />
           </Form>
         )}
       </main>

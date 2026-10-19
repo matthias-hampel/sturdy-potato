@@ -11,6 +11,7 @@ import {
   ChevronsUpDown,
   ClipboardList,
   CloudSun,
+  FileUp,
   FlaskConical,
   FolderOpen,
   Grid2x2,
@@ -47,6 +48,7 @@ import { Button } from '#/ui/Button'
 import { Option, Select } from '#/ui/Field'
 import { Menu, MenuItem, MenuSeparator, MenuTrigger } from '#/ui/Overlay'
 import { cx, focusRing } from '#/ui/utils'
+import { GlobalSearch } from './GlobalSearch'
 import { Logo } from './Logo'
 
 interface NavItem {
@@ -94,6 +96,10 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/carbon', label: 'nav.carbon', icon: Leaf },
       { to: '/o/$orgId/compliance', label: 'nav.compliance', icon: ShieldCheck },
     ],
+  },
+  {
+    title: 'nav.section.import',
+    items: [{ to: '/o/$orgId/import', label: 'nav.dataImport', icon: FileUp, permission: 'field.write' }],
   },
 ]
 
@@ -269,7 +275,9 @@ function TopBar({ user, onOpenNav }: { user: CurrentUser; onOpenNav: () => void 
       <Button variant="ghost" size="icon" className="lg:hidden -ml-2" aria-label={t('nav.openNavigation')} onPress={onOpenNav}>
         <MenuIcon />
       </Button>
-      <div className="flex-1" />
+      <div className="flex-1 min-w-0 flex">
+        <GlobalSearch />
+      </div>
       {seasons.length > 0 ? (
         <Select
           aria-label={t('nav.season')}

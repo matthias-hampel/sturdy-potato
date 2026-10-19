@@ -9,7 +9,8 @@ specification (P0 modules plus inventory, economics, compliance and machinery).
 ```
 frontend/agmeo        TanStack Start + React Aria + MapLibre      :3000  (/api → :3001)
 backend/agmeo-api     NestJS modular monolith (HTTP API)          :3001
-                      + worker entry (outbox → NATS relay, job queue + schedules)
+                      + worker entry (outbox → NATS relay, job queue + schedules,
+                        scheduled recommendations)
 packages/contracts    zod request schemas + response types, shared by API and web
 db/migrations         golang-migrate SQL migrations (PostgreSQL 18 + PostGIS 3.6)
 backend/agmeo-geo     Python: field zonal statistics worker + index tile server  :3002 (internal)
@@ -63,6 +64,15 @@ expressions are written as `sql` fragments.
   `audit_events`; `cost_entries` only allows deleting manual entries (policy).
 - The outbox is insert-only for the API; the relay role (`agmeo_outbox_relay`) can read and
   mark it but has no access to tenant tables.
+- Background recalculation of recommendations connects as a member of `agmeo_recommender`
+  (dev login `agmeo_recommender_worker`, `RECOMMENDER_DATABASE_URL`). It acts for one
+  organization at a time through the ordinary tenant policies: `app.org_id()` accepts
+  `app.organization_id` without a membership only for that role and only while no
+  `app.user_id` is set (`systemCtx(orgId)`), so there is no service user and nothing is
+  attributed to a person (`recommendation_runs.created_by` is NULL). Grants limit it to
+  reading the rule set's inputs (plus member names via `users(id, display_name)`) and
+  writing `recommendation_runs`/`recommendations`; `app.recommendation_schedule()` (SECURITY
+  DEFINER) lists active organizations with their open crop cycles and latest run.
 
 ### Authentication
 
@@ -153,9 +163,14 @@ Types emitted today: `organization.created`, `membership.invited`, `farm.created
 `operation.planned|updated|completed|reopened|canceled`, `inventory.movement_recorded`,
 `inventory.low_stock`, `harvest.recorded`, `task.created|updated`.
 
-Consumer today: `agmeo-geo worker` (durable consumer `agmeo-geo-fields`) subscribes to
-`field.created` / `field.geometry_updated` and computes that field's statistics for every
-scene covering it.
+Consumers today:
+- `agmeo-geo worker` (durable consumer `agmeo-geo-fields`) subscribes to
+  `field.created` / `field.geometry_updated` and computes that field's statistics for every
+  scene covering it.
+- The API worker (durable consumer `agmeo-recommendations`) subscribes to `operation.>` and
+  `crop_cycle.>` and recalculates the organization's recommendations once changes settle
+  (2 min without a further event, at most 15 min after the first). Events are acknowledged
+  when noted; a crash before the recalculation is covered by the next daily run.
 
 ## Satellite monitoring
 
@@ -198,6 +213,7 @@ is a module in `backend/agmeo-api/src/modules`:
 | `carbon` | CO2e of completed operations by source (diesel, machinery, N2O direct/indirect, fertilizer production, lime/urea CO2, plant protection, seed). |
 | `economics` (extended) | DfL, DB I, DB II per crop cycle and crop; plan values from planned operations and expected yield; crop prices per harvest year; overheads and CAP payments → indicative farm result. |
 | `regulatory` | Farm master data for the authorities; annual totals (DüV Anlage 5); 170 kg N balance; ENNI (Niedersachsen) and ENDO (Schleswig-Holstein) XML through the ported `harmonie` library, validated against the official XSDs in tests; subsidy application Shapefile per state portal (ETRS89/UTM); land-use codes. |
+| `recommendations` | Field recommendations (what, when, where, why): rule set `AGMEO-REC-2026.1` over planned operations, the farm forecast, NDVI observations, productivity zones, the season N balance, closed periods and PSM checks. Decisions are typed (kind, action, window, zones, priority, confidence) with evidence codes; one open recommendation per decision key; accepting reschedules the operation or creates a task, dismissing records the reason. An OpenAI model (optional, `OPENAI_API_KEY`) phrases the reasons and a daily briefing with structured output; it never adds or changes a decision. |
 
 ## Domain notes and open points
 
@@ -221,6 +237,16 @@ is a module in `backend/agmeo-api/src/modules`:
 - **Farm result**: CAP payments are indicative and not checked against the paying agency's rules.
 - **170 kg N**: the farm average is the higher of what the records show was applied and the
   livestock balance (excretion + intake − delivery) entered by the user.
+- **Recommendations** are orientation, not advice: weather thresholds (spray, fertilization, soil
+  work, harvest) use the farm forecast, not field soil moisture; NDVI anomalies compare with the
+  previous observation and with the same crop on other fields. The worker recalculates them
+  daily at `RECOMMENDATIONS_DAILY_AT` (05:00 Europe/Berlin) for every organization with planned
+  or active main crop cycles that has not been recalculated since, catching up the same day after
+  an outage (a missed day is not repeated), and after operation/crop-cycle events; users can
+  refresh on demand, and the UI does when the last run is older than six hours. One worker at a
+  time runs the daily pass (advisory lock); organizations run one after another, and a failing one
+  is logged and retried after an hour without stopping the others. Decided keys stay quiet for
+  seven days.
 - Weather: Open-Meteo forecast API, cached 30 minutes per location; spray windows are
   indicative thresholds only (no daylight, inversion or product-label rules).
 - Aerial imagery: Esri World Imagery for development; production needs a licensed provider.

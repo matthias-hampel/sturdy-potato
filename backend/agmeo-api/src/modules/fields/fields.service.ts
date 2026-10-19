@@ -1,21 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  CreateFieldInput,
-  Field,
-  FieldGeometry,
-  FieldGeometryVersion,
-  FieldOverlap,
-  GeometryValidation,
-  ImportFieldsInput,
-  ImportFieldsResult,
-  Tenure,
-  UpdateFieldGeometryInput,
-  UpdateFieldInput,
+import {
+  can,
+  type CreateFieldInput,
+  type Field,
+  type FieldGeometry,
+  type FieldGeometryVersion,
+  type FieldOverlap,
+  type GeometryValidation,
+  type ImportFieldsInput,
+  type ImportFieldsResult,
+  type Tenure,
+  type UpdateFieldGeometryInput,
+  type UpdateFieldInput,
 } from '@agmeo/contracts';
 import type { FeatureCollection, MultiPolygon } from 'geojson';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
-import { badRequest, notFound } from '../../core/errors.js';
+import { badRequest, forbidden, notFound } from '../../core/errors.js';
 import { diff, record } from '../../core/events.js';
 import { iso, round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
@@ -144,7 +145,8 @@ export class FieldsService {
     fieldId: string,
     geometry: FieldGeometry,
     source: 'drawn' | 'import' | 'edit' | 'restore',
-    validFrom?: string,
+    validFrom?: Date,
+    validTo: Date | null = null,
     reason?: string,
   ) {
     const row = await trx
@@ -154,7 +156,8 @@ export class FieldsService {
         field_id: fieldId,
         geometry: geom(geometry),
         area_ha: sql<number>`round((ST_Area(${geom(geometry)}::geography) / 10000)::numeric, 4)`,
-        valid_from: validFrom ? new Date(validFrom) : sql<Date>`now()`,
+        valid_from: validFrom ?? sql<Date>`now()`,
+        valid_to: validTo,
         source,
         reason: reason ?? null,
         created_by: ctx.userId,
@@ -192,12 +195,16 @@ export class FieldsService {
     });
   }
 
-  /** Replaces the boundary from `validFrom`; the previous version stays as history. */
   updateGeometry(ctx: Ctx, id: string, input: Out<typeof UpdateFieldGeometryInput>): Promise<Field> {
     return this.db.run(ctx, (trx) => this.replaceGeometry(trx, ctx, id, input.geometry, { validFrom: input.validFrom, reason: input.reason, source: 'edit' }));
   }
 
-  /** Closes the current boundary at `validFrom` and appends the new one. */
+  /**
+   * Puts `geometry` in place from `validFrom` (the transaction's time by default, so the boundary
+   * reads as current within this transaction too); earlier versions stay as history. A future date
+   * plans the change: the new version takes over until the next planned one, and a change planned
+   * for the same moment is replaced. Restoring an old boundary goes the same way.
+   */
   async replaceGeometry(
     trx: Trx,
     ctx: Ctx,
@@ -205,46 +212,95 @@ export class FieldsService {
     geometry: FieldGeometry,
     opts: { validFrom?: string; reason?: string; source: 'edit' | 'restore' },
   ): Promise<Field> {
-    const current = await trx
+    // The current version followed by the planned ones.
+    const versions = await trx
       .selectFrom('field_geometry_versions')
-      .select(['id', 'valid_from', 'area_ha'])
+      .select(['id', 'valid_from', 'valid_to', 'area_ha'])
       .where('field_id', '=', id)
-      .where('valid_to', 'is', null)
+      .where((eb) => eb.or([eb('valid_to', 'is', null), eb('valid_to', '>', sql<Date>`now()`)]))
+      .orderBy('valid_from')
       .forUpdate()
-      .executeTakeFirst();
+      .execute();
+    const [current] = versions;
     if (!current) throw notFound('Field');
     const check = await this.validateIn(trx, geometry, id);
     if (!check.valid) throw badRequest('invalid_geometry', `Invalid field boundary: ${check.reason}`);
 
-    // Without a date the change takes effect at the transaction's time, so the boundary reads
-    // as current within this transaction too.
-    const validFrom = opts.validFrom ? new Date(opts.validFrom) : await dbNow(trx);
-    if (validFrom > new Date(Date.now() + 60_000)) {
-      throw badRequest('invalid_valid_from', 'A boundary change cannot take effect in the future');
-    }
+    const now = await dbNow(trx);
+    const validFrom = opts.validFrom ? new Date(opts.validFrom) : now;
     if (validFrom <= current.valid_from) {
       throw badRequest('invalid_valid_from', 'The new boundary must take effect after the current one');
     }
-    await trx.updateTable('field_geometry_versions').set({ valid_to: validFrom }).where('id', '=', current.id).execute();
-    const version = await this.insertVersion(trx, ctx, id, geometry, opts.source, validFrom.toISOString(), opts.reason);
+    const same = versions.find((v) => v.valid_from.getTime() === validFrom.getTime());
+    let validTo: Date | null;
+    if (same) {
+      await trx.deleteFrom('field_geometry_versions').where('id', '=', same.id).execute();
+      validTo = same.valid_to;
+    } else {
+      const before = versions.filter((v) => v.valid_from < validFrom).at(-1)!;
+      validTo = before.valid_to;
+      await trx.updateTable('field_geometry_versions').set({ valid_to: validFrom }).where('id', '=', before.id).execute();
+    }
+    const version = await this.insertVersion(trx, ctx, id, geometry, opts.source, validFrom, validTo, opts.reason);
+    const planned = validFrom > now;
     await record(trx, ctx, {
       entityType: 'field',
       entityId: id,
-      action: opts.source === 'restore' ? 'geometry_restored' : 'geometry_updated',
+      action: planned ? 'geometry_planned' : opts.source === 'restore' ? 'geometry_restored' : 'geometry_updated',
       changes: { areaHa: { from: current.area_ha, to: version.areaHa }, validFrom: validFrom.toISOString(), reason: opts.reason ?? null },
       event: {
-        type: 'field.geometry_updated',
-        payload: { fieldId: id, geometryVersionId: version.id, previousVersionId: current.id, areaHa: version.areaHa },
+        // A planned version is picked up by the imagery pipeline once it takes effect.
+        type: planned ? 'field.geometry_planned' : 'field.geometry_updated',
+        payload: { fieldId: id, geometryVersionId: version.id, previousVersionId: current.id, areaHa: version.areaHa, validFrom: validFrom.toISOString() },
       },
     });
     return this.getIn(trx, id);
+  }
+
+  /** Cancels a boundary change that has not taken effect yet; the version before it continues. */
+  cancelPlannedGeometry(ctx: Ctx, id: string, versionId: string): Promise<Field> {
+    return this.db.run(ctx, async (trx) => {
+      const planned = await trx
+        .selectFrom('field_geometry_versions')
+        .select(['id', 'valid_from', 'valid_to', 'area_ha'])
+        .where('id', '=', versionId)
+        .where('field_id', '=', id)
+        .where('valid_from', '>', sql<Date>`now()`)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!planned) throw notFound('Planned boundary');
+      await trx.deleteFrom('field_geometry_versions').where('id', '=', planned.id).execute();
+      await trx
+        .updateTable('field_geometry_versions')
+        .set({ valid_to: planned.valid_to })
+        .where('field_id', '=', id)
+        .where('valid_to', '=', planned.valid_from)
+        .execute();
+      await record(trx, ctx, {
+        entityType: 'field',
+        entityId: id,
+        action: 'geometry_plan_cancelled',
+        changes: { areaHa: planned.area_ha, validFrom: iso(planned.valid_from) },
+        event: { type: 'field.geometry_plan_cancelled', payload: { fieldId: id, geometryVersionId: planned.id } },
+      });
+      return this.getIn(trx, id);
+    });
   }
 
   geometryHistory(ctx: Ctx, id: string): Promise<FieldGeometryVersion[]> {
     return this.db.run(ctx, async (trx) => {
       const rows = await trx
         .selectFrom('field_geometry_versions')
-        .select(['id', 'area_ha', 'valid_from', 'valid_to', 'source', 'reason', sql<MultiPolygon>`ST_AsGeoJSON(geometry, 7)::json`.as('geojson')])
+        .select([
+          'id',
+          'area_ha',
+          'valid_from',
+          'valid_to',
+          'source',
+          'reason',
+          sql<FieldGeometryVersion['status']>`CASE WHEN valid_from > now() THEN 'planned' WHEN valid_to <= now() THEN 'past' ELSE 'current' END`.as('status'),
+          sql<MultiPolygon>`ST_AsGeoJSON(geometry, 7)::json`.as('geojson'),
+        ])
         .where('field_id', '=', id)
         .orderBy('valid_from', 'desc')
         .execute();
@@ -253,6 +309,7 @@ export class FieldsService {
         areaHa: r.area_ha,
         validFrom: iso(r.valid_from),
         validTo: iso(r.valid_to),
+        status: r.status,
         source: r.source as FieldGeometryVersion['source'],
         reason: r.reason,
         geometry: r.geojson,
@@ -261,9 +318,29 @@ export class FieldsService {
   }
 
   /** Imports valid features and reports invalid ones; overlaps are warnings, not errors. */
+  /**
+   * Creates one field per valid feature. Features with a crop also get a planned main crop in
+   * `seasonId`, keeping the source's land-use code where it differs from the crop's default.
+   */
   import(ctx: Ctx, input: Out<typeof ImportFieldsInput>): Promise<ImportFieldsResult> {
     return this.db.run(ctx, async (trx) => {
-      const result: ImportFieldsResult = { created: [], errors: [], overlaps: [] };
+      const cropIds = [...new Set(input.features.flatMap((f) => (f.cropId ? [f.cropId] : [])))];
+      const defaultCodes = new Map<string, string | null>();
+      if (cropIds.length) {
+        if (!can(ctx.role, 'crop.write')) throw forbidden();
+        if (!input.seasonId) throw badRequest('season_required', 'Choose a season for the imported crops');
+        const season = await trx.selectFrom('growing_seasons').select('id').where('id', '=', input.seasonId).executeTakeFirst();
+        if (!season) throw notFound('Season');
+        const crops = await trx.selectFrom('crops').select(['id', 'land_use_code']).where('id', 'in', cropIds).execute();
+        if (crops.length !== cropIds.length) throw notFound('Crop');
+        for (const c of crops) defaultCodes.set(c.id, c.land_use_code);
+      }
+      const sourceCodes = [...new Set(input.features.flatMap((f) => (f.cropId && f.landUseCode ? [f.landUseCode] : [])))];
+      const knownCodes = new Set(
+        sourceCodes.length ? (await trx.selectFrom('land_use_codes').select('code').where('code', 'in', sourceCodes).execute()).map((r) => r.code) : [],
+      );
+
+      const result: ImportFieldsResult = { created: [], cropsAssigned: 0, errors: [], overlaps: [] };
       for (const [index, feature] of input.features.entries()) {
         const check = await this.validateIn(trx, feature.geometry);
         if (!check.valid) {
@@ -273,6 +350,34 @@ export class FieldsService {
         if (check.overlaps.length) result.overlaps.push({ name: feature.name, overlaps: check.overlaps });
         const id = await this.insert(trx, ctx, { ...feature, farmId: input.farmId }, 'import');
         result.created.push({ id, name: feature.name, areaHa: check.areaHa! });
+        if (feature.cropId && input.seasonId) {
+          // Codes outside the catalogue are dropped; the crop's default code applies then.
+          const code = feature.landUseCode && knownCodes.has(feature.landUseCode) ? feature.landUseCode : null;
+          const cycle = await trx
+            .insertInto('crop_cycles')
+            .values({
+              organization_id: ctx.orgId,
+              field_id: id,
+              season_id: input.seasonId,
+              crop_id: feature.cropId,
+              status: 'planned',
+              role: 'main',
+              land_use_code: code && code !== defaultCodes.get(feature.cropId) ? code : null,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await record(trx, ctx, {
+            entityType: 'crop_cycle',
+            entityId: cycle.id,
+            action: 'created',
+            changes: { fieldId: id, cropId: feature.cropId, seasonId: input.seasonId, source: 'import' },
+            event: {
+              type: 'crop_cycle.created',
+              payload: { cropCycleId: cycle.id, fieldId: id, fieldPartId: null, cropId: feature.cropId, seasonId: input.seasonId },
+            },
+          });
+          result.cropsAssigned += 1;
+        }
       }
       return result;
     });
@@ -342,6 +447,18 @@ export class FieldsService {
       .leftJoinLateral(
         (eb) =>
           eb
+            .selectFrom('field_geometry_versions as pv')
+            .select(['pv.id as planned_id', 'pv.valid_from as planned_from', 'pv.area_ha as planned_area_ha'])
+            .whereRef('pv.field_id', '=', 'f.id')
+            .where('pv.valid_from', '>', sql<Date>`now()`)
+            .orderBy('pv.valid_from')
+            .limit(1)
+            .as('planned'),
+        (join) => join.onTrue(),
+      )
+      .leftJoinLateral(
+        (eb) =>
+          eb
             .selectFrom('field_parts as fp')
             .select([
               sql<number>`count(*)::int`.as('part_count'),
@@ -379,6 +496,9 @@ export class FieldsService {
         sql<MultiPolygon>`ST_AsGeoJSON(g.geometry, 7)::json`.as('geojson'),
         sql<number>`ST_Y(ST_PointOnSurface(g.geometry))`.as('lat'),
         sql<number>`ST_X(ST_PointOnSurface(g.geometry))`.as('lng'),
+        'planned.planned_id',
+        'planned.planned_from',
+        'planned.planned_area_ha',
         'cur.crop_cycle_id',
         'cur.crop_name',
         'cur.color',
@@ -415,6 +535,7 @@ export class FieldsService {
       geometry: r.geojson,
       centroid: { lat: r.lat, lng: r.lng },
       geometryVersionId: r.geometry_version_id!,
+      plannedGeometry: r.planned_id ? { id: r.planned_id, validFrom: iso(r.planned_from!), areaHa: r.planned_area_ha! } : null,
       currentCrop: r.crop_cycle_id
         ? { cropCycleId: r.crop_cycle_id, cropName: r.crop_name!, color: r.color!, seasonName: r.season_name!, status: r.cycle_status! }
         : null,

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { FieldWeather, LatLng, SprayWindow, StoredWeatherDay, WeatherDay, WeatherForecast, WeatherHour, WeatherNotice } from '@agmeo/contracts';
+import type { FieldWeather, LatLng, SprayRating, SprayWindow, StoredWeatherDay, WeatherDay, WeatherForecast, WeatherHour, WeatherNotice } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
 import { config } from '../../config.js';
@@ -16,6 +16,8 @@ interface OpenMeteoResponse {
 
 // Typical label thresholds for ground spraying; products and local rules may be stricter.
 const SPRAY = { maxWindKmh: 15, maxGustKmh: 25, minTempC: 5, maxTempC: 25, maxRainProbabilityPct: 20, minHours: 2 };
+// Beyond these an hour is clearly unsuitable; between SPRAY and these it is marginal.
+const SPRAY_POOR = { windKmh: 20, gustKmh: 35, minTempC: 2, maxTempC: 28, rainMm: 0.2, rainProbabilityPct: 50 };
 const GDD_BASE_C = 5;
 
 /** Farm-level weather from Open-Meteo (no API key; CC BY 4.0), cached per location. */
@@ -117,9 +119,32 @@ export class WeatherService {
     if (farm.lat == null || farm.lng == null) {
       throw badRequest('farm_without_location', 'Set a farm location or add fields to get a weather forecast');
     }
-    const location = { lat: round(farm.lat, 3), lng: round(farm.lng, 3) };
-    const { data, fetchedAt } = await this.fetch(location, farm.timezone);
-    return this.toForecast(farmId, farm.name, location, data, fetchedAt);
+    return this.forecastAt(farmId, farm.name, farm.lat, farm.lng, farm.timezone);
+  }
+
+  /** Forecast at the field's centre, in its farm's timezone. */
+  async fieldForecast(ctx: Ctx, fieldId: string): Promise<WeatherForecast> {
+    const field = await this.db.run(ctx, async (trx) => {
+      const { rows } = await sql<{ farm_id: string; farm_name: string; timezone: string; lat: number | null; lng: number | null }>`
+        SELECT fa.id AS farm_id, fa.name AS farm_name, fa.timezone,
+               ST_Y(ST_PointOnSurface(g.geometry)) AS lat,
+               ST_X(ST_PointOnSurface(g.geometry)) AS lng
+        FROM fields f
+        JOIN farms fa ON fa.id = f.farm_id
+        LEFT JOIN field_current_geometry g ON g.field_id = f.id
+        WHERE f.id = ${fieldId}`.execute(trx);
+      return rows[0];
+    });
+    if (!field) throw new DomainError(404, 'not_found', 'Field not found');
+    if (field.lat == null || field.lng == null) throw badRequest('field_without_geometry', 'The field has no boundary');
+    return this.forecastAt(field.farm_id, field.farm_name, field.lat, field.lng, field.timezone);
+  }
+
+  private async forecastAt(farmId: string, farmName: string, lat: number, lng: number, timezone: string) {
+    // ~100 m grid, so fields close together share a cached response.
+    const location = { lat: round(lat, 3), lng: round(lng, 3) };
+    const { data, fetchedAt } = await this.fetch(location, timezone);
+    return this.toForecast(farmId, farmName, location, data, fetchedAt);
   }
 
   private async fetch(loc: LatLng, timezone: string) {
@@ -135,7 +160,7 @@ export class WeatherService {
       forecast_days: '10',
       current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code',
       daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,et0_fao_evapotranspiration,weather_code',
-      hourly: 'temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,relative_humidity_2m',
+      hourly: 'temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m',
     });
     try {
       const res = await fetch(`${config.weather.baseUrl}?${params}`, { signal: AbortSignal.timeout(10_000) });
@@ -182,7 +207,11 @@ export class WeatherService {
         windKmh: d.hourly.wind_speed_10m[i],
         gustKmh: d.hourly.wind_gusts_10m[i],
         humidityPct: d.hourly.relative_humidity_2m[i],
+        // Responses cached before the field was requested lack it.
+        windDirectionDeg: d.hourly.wind_direction_10m?.[i] ?? null,
+        spray: null as SprayRating | null,
       }))
+      .map((h) => ({ ...h, spray: sprayRating(h) }))
       .filter((h) => h.time.slice(0, 13) >= nowLocal)
       .slice(0, 72);
 
@@ -246,12 +275,7 @@ export class WeatherService {
 
   /** Consecutive forecast hours meeting the spray thresholds. Indicative only. */
   private sprayWindows(hours: WeatherHour[]): SprayWindow[] {
-    const ok = (h: WeatherHour) =>
-      h.windKmh != null && h.windKmh <= SPRAY.maxWindKmh &&
-      (h.gustKmh ?? 0) <= SPRAY.maxGustKmh &&
-      h.tempC != null && h.tempC >= SPRAY.minTempC && h.tempC <= SPRAY.maxTempC &&
-      (h.precipitationMm ?? 0) === 0 &&
-      (h.precipitationProbabilityPct ?? 0) <= SPRAY.maxRainProbabilityPct;
+    const ok = (h: WeatherHour) => h.spray === 'good';
     const windows: SprayWindow[] = [];
     let start: number | null = null;
     hours.forEach((h, i) => {
@@ -269,6 +293,24 @@ export class WeatherService {
     });
     return windows;
   }
+}
+
+function sprayRating(h: Omit<WeatherHour, 'spray'>): SprayRating | null {
+  if (h.windKmh == null || h.tempC == null) return null;
+  const gust = h.gustKmh ?? 0;
+  const rain = h.precipitationMm ?? 0;
+  const rainProbability = h.precipitationProbabilityPct ?? 0;
+  if (
+    h.windKmh > SPRAY_POOR.windKmh || gust > SPRAY_POOR.gustKmh ||
+    h.tempC < SPRAY_POOR.minTempC || h.tempC > SPRAY_POOR.maxTempC ||
+    rain >= SPRAY_POOR.rainMm || rainProbability > SPRAY_POOR.rainProbabilityPct
+  ) return 'poor';
+  if (
+    h.windKmh > SPRAY.maxWindKmh || gust > SPRAY.maxGustKmh ||
+    h.tempC < SPRAY.minTempC || h.tempC > SPRAY.maxTempC ||
+    rain > 0 || rainProbability > SPRAY.maxRainProbabilityPct
+  ) return 'marginal';
+  return 'good';
 }
 
 function addHour(localIso: string) {
