@@ -48,6 +48,8 @@ import { RadarService } from './modules/radar/radar.service.js';
 import { PsmRecordService } from './modules/protection/record/psm-record.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
+import { NitrogenController } from './modules/nutrients/nitrogen.controller.js';
+import { NitrogenService } from './modules/nutrients/nitrogen.service.js';
 import { ExplainerService } from './modules/recommendations/explainer.service.js';
 import { RecommendationsController } from './modules/recommendations/recommendations.controller.js';
 import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
@@ -116,6 +118,7 @@ export const DOMAIN_SERVICES = [
   ProtectionService,
   PsmRecordService,
   NutrientsService,
+  NitrogenService,
   RegulatoryService,
   EconomicsService,
   ProfitabilityService,
@@ -172,6 +175,7 @@ export const DOMAIN_SERVICES = [
     ProtectionController,
     PsmRecordController,
     NutrientsController,
+    NitrogenController,
     RegulatoryController,
     EconomicsController,
     EconomicsInsightsController,

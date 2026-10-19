@@ -306,7 +306,7 @@ export class NutrientsService {
     });
   }
 
-  private async computeNeed(trx: Trx, cropCycleId: string, o: Overrides): Promise<FertilizerNeed> {
+  async computeNeed(trx: Trx, cropCycleId: string, o: Overrides): Promise<FertilizerNeed> {
     const c = await trx
       .selectFrom('crop_cycles as cc')
       .innerJoin('fields as f', 'f.id', 'cc.field_id')

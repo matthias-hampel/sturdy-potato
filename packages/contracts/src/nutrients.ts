@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { BaseUnit, FertilizerType } from './inventory.js';
 import { isOrganicFertilizer } from './inventory.js';
 
@@ -100,3 +101,85 @@ export const seedKgPerHa = (grainsPerM2: number, thousandGrainWeightG: number) =
 
 /** Grains per m² from kg/ha of seed and a thousand-grain weight in grams. */
 export const grainsPerM2 = (kgPerHa: number, thousandGrainWeightG: number) => (kgPerHa * 100) / thousandGrainWeightG;
+
+// ---------------------------------------------------------------------------
+// agmeo N model and fertilization strategies (reference nitrogen page)
+// ---------------------------------------------------------------------------
+
+/** A value of the agmeo N balance: the farmer's, the ESM model's, or the soil-class estimate. */
+export interface NBalanceValue {
+  value: number;
+  source: 'user' | 'model' | 'estimate';
+  /** The soil-class estimate, shown as placeholder. */
+  estimate: number;
+}
+
+/** The agmeo N balance of one main crop (reference nitrogen table, N supply and N loss panels). */
+export interface CycleNitrogen {
+  cropCycleId: string;
+  fieldId: string;
+  /** Expected yield the demand is computed from (t/ha). */
+  yieldTHa: number | null;
+  soilTexture: string | null;
+  humusPct: number | null;
+  /** N uptake of the crop at the yield (agmeo yield-N curve), kg N/ha; null without curve or yield. */
+  nDemand: number | null;
+  nMin: NBalanceValue;
+  nMinSpring: NBalanceValue;
+  nLeaching: NBalanceValue;
+  nResidual: NBalanceValue;
+  /** DüV §4 deductions for previous management, kg N/ha. */
+  deductions: { previousCrop: number; organicPreviousYear: number; humus: number; catchCrop: number; total: number };
+  previousCropName: string | null;
+  catchCropName: string | null;
+  organicNPreviousYear: number;
+  /** Nmin + spring mineralisation + deductions. */
+  nSupply: number;
+  /** Leaching and gaseous losses + target Nmin after harvest. */
+  nLoss: number;
+  /** agmeo N need: demand − supply + losses; null without demand. */
+  nDifference: number | null;
+  /** DüV N need after the red-area reduction; null when the crop has no DüV values. */
+  duevNeed: number | null;
+  /** kg N/ha of all fertilization operations that are not canceled (planned and done). */
+  totalN: number;
+  strategyId: string | null;
+}
+
+const nValue = z.number().min(0).max(1000).nullable().optional();
+/** The farmer's values of the agmeo N balance; null resets to model or estimate. */
+export const NPlanningInput = z.object({ nMin: nValue, nMinSpring: nValue, nLeaching: nValue, nResidual: nValue });
+export type NPlanningInput = z.input<typeof NPlanningInput>;
+
+export interface FertilizationStrategy {
+  id: string;
+  name: string;
+  /** Public strategies are offered to every organization and carry no products. */
+  public: boolean;
+  splitPercentages: number[];
+  products: ({ id: string; name: string } | null)[];
+}
+
+export const FertilizationStrategyInput = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    splitPercentages: z.array(z.int().min(1).max(100)).min(1).max(3),
+    productIds: z.array(z.uuid()).min(1).max(3),
+  })
+  .refine((s) => s.splitPercentages.reduce((a, b) => a + b, 0) === 100, { message: 'The split must add up to 100 %', path: ['splitPercentages'] })
+  .refine((s) => s.productIds.length === s.splitPercentages.length, { message: 'Every dose needs a fertilizer', path: ['productIds'] });
+export type FertilizationStrategyInput = z.input<typeof FertilizationStrategyInput>;
+
+export const ApplyStrategyInput = z.object({
+  cropCycleIds: z.array(z.uuid()).min(1).max(500),
+  /** Fertilizer per dose; required for public strategies, overrides an own strategy's. */
+  productIds: z.array(z.uuid()).min(1).max(3).optional(),
+});
+export type ApplyStrategyInput = z.input<typeof ApplyStrategyInput>;
+
+export interface ApplyStrategyResult {
+  created: number;
+  updated: number;
+  canceled: number;
+  skipped: { cropCycleId: string; reason: 'no_need' | 'no_farm' }[];
+}

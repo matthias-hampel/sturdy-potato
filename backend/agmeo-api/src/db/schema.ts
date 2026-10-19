@@ -128,6 +128,18 @@ export interface CropCycleBbchCalibrations {
   organization_id: string;
 }
 
+export interface CropCycleNPlanning {
+  crop_cycle_id: string;
+  n_leaching: Numeric | null;
+  n_min: Numeric | null;
+  n_mineralization: Numeric | null;
+  n_residual: Numeric | null;
+  organization_id: string;
+  strategy_id: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface CropCycles {
   area_ha: Numeric | null;
   created_at: Generated<Timestamp>;
@@ -571,6 +583,16 @@ export interface FieldAnnotations {
   organization_id: string;
   source: Generated<string>;
   updated_at: Generated<Timestamp>;
+}
+
+export interface FertilizationStrategies {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  name: string;
+  organization_id: string | null;
+  product_ids: Generated<string[]>;
+  split_percentages: number[];
 }
 
 export interface FieldDocuments {
@@ -1646,6 +1668,7 @@ export interface DB {
   cost_entries: CostEntries;
   crop_benchmarks: CropBenchmarks;
   crop_cycle_bbch_calibrations: CropCycleBbchCalibrations;
+  crop_cycle_n_planning: CropCycleNPlanning;
   crop_cycles: CropCycles;
   crop_prices: CropPrices;
   crop_rotation_entries: CropRotationEntries;
@@ -1675,6 +1698,7 @@ export interface DB {
   field_rasters: FieldRasters;
   field_annotations: FieldAnnotations;
   field_carbon_soil: FieldCarbonSoil;
+  fertilization_strategies: FertilizationStrategies;
   field_documents: FieldDocuments;
   fields: Fields;
   file_folders: FileFolders;
