@@ -9,6 +9,7 @@ import { BatchZonationDialog } from '#/components/soil/BatchZonationDialog'
 import { AnalysisDashboard } from '#/components/soil/AnalysisDashboard'
 import { ExportDialog } from '#/components/soil/ExportDialog'
 import { HistoryStatesDialog, LabImports } from '#/components/soil/HistoryStatesDialog'
+import { ShareDialog, SharesList } from '#/components/soil/ShareDialog'
 import { UploadLabResultsDialog } from '#/components/soil/UploadLabResultsDialog'
 import { methodLabel, paramLabel, paramValue, statusText } from '#/components/soil/soilLabels'
 import { SelectionBar, selectedIds } from '#/components/table/tableTools'
@@ -22,7 +23,7 @@ import { Badge, Card, ErrorNotice, Loading, PageHeader, Stat, Tab, TabList, TabP
 import { ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
-const TABS = ['overview', 'analysis', 'imports'] as const
+const TABS = ['overview', 'analysis', 'imports', 'shares'] as const
 type SoilTabId = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/soil/')({
@@ -40,6 +41,7 @@ function SoilPage() {
     { id: 'overview', label: t('soil.page.tab.overview'), panel: <Overview /> },
     { id: 'analysis', label: t('soil.page.tab.analysis'), panel: <AnalysisDashboard /> },
     { id: 'imports', label: t('soil.page.tab.imports'), panel: <LabImports /> },
+    { id: 'shares', label: t('soil.page.tab.shares'), panel: <SharesList /> },
   ]
   return (
     <>
@@ -86,6 +88,7 @@ function Overview() {
   const [numbersOpen, setNumbersOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const writable = can('field.write')
 
   const shown = useMemo(() => {
@@ -174,6 +177,9 @@ function Overview() {
         <Button size="sm" onPress={() => setExportOpen(true)}>
           {t('soil.export.button', { count: selected.length })}
         </Button>
+        <Button size="sm" onPress={() => setShareOpen(true)}>
+          {t('soil.share.button')}
+        </Button>
         <Button size="sm" onPress={() => setHistoryOpen(true)}>
           {t('soil.history.bulk.button', { count: selected.length })}
         </Button>
@@ -184,6 +190,7 @@ function Overview() {
         onOpenChange={setBatchOpen}
         fields={selected.map((r) => ({ fieldId: r.fieldId, fieldName: r.fieldName, areaHa: r.areaHa, hasZonation: !!r.zonation }))}
       />
+      <ShareDialog isOpen={shareOpen} onOpenChange={setShareOpen} fieldIds={selected.map((r) => r.fieldId)} />
       <HistoryStatesDialog isOpen={historyOpen} onOpenChange={setHistoryOpen} fieldIds={selected.map((r) => r.fieldId)} />
       <ExportDialog isOpen={exportOpen} onOpenChange={setExportOpen} fieldIds={selected.map((r) => r.fieldId)} />
       <ProbeNumbersDialog isOpen={numbersOpen} onOpenChange={setNumbersOpen} fieldIds={selected.filter((r) => r.zonation).map((r) => r.fieldId)} />

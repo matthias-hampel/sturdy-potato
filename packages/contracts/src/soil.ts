@@ -561,3 +561,89 @@ export function buildSoilAnalysisSummary(payload: SoilAnalysisPayload, selected:
     recommendations,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Share links
+// ---------------------------------------------------------------------------
+
+export const MIN_SHARE_PASSWORD = 6;
+export const SOIL_SHARE_KINDS = ['results', 'history'] as const;
+export type SoilShareKind = (typeof SOIL_SHARE_KINDS)[number];
+
+export const CreateSoilShareInput = z.object({
+  kind: z.enum(SOIL_SHARE_KINDS).default('results'),
+  title: z.string().trim().min(1).max(200),
+  /** Empty = every active field of the organization (history permalink). */
+  fieldIds: z.array(id).max(1000).default([]),
+  password: z.string().min(MIN_SHARE_PASSWORD).max(200).nullish(),
+  expiresAt: z.iso.datetime({ offset: true }).nullish(),
+  /** The lab import whose original file the viewer may download. */
+  labImportId: id.nullish(),
+  locale: z.enum(['de', 'en']).nullish(),
+});
+export type CreateSoilShareInput = z.input<typeof CreateSoilShareInput>;
+
+export const UpdateSoilShareInput = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  /** A new password; null removes it. */
+  password: z.string().min(MIN_SHARE_PASSWORD).max(200).nullish(),
+  expiresAt: z.iso.datetime({ offset: true }).nullish(),
+});
+export type UpdateSoilShareInput = z.input<typeof UpdateSoilShareInput>;
+
+export interface SoilShare {
+  id: string;
+  token: string;
+  kind: SoilShareKind;
+  title: string;
+  fieldIds: string[];
+  fieldNames: string[];
+  hasPassword: boolean;
+  hasFile: boolean;
+  locale: 'de' | 'en' | null;
+  expiresAt: string | null;
+  createdAt: string;
+  createdByName: string | null;
+  revokedAt: string | null;
+}
+
+export const SoilShareAccessInput = z.object({ password: z.string().max(200).nullish() });
+export type SoilShareAccessInput = z.input<typeof SoilShareAccessInput>;
+
+/** What a viewer sees before entering the password. */
+export interface SoilShareInfo {
+  title: string;
+  kind: SoilShareKind;
+  orgName: string;
+  status: 'ok' | 'expired' | 'revoked';
+  requiresPassword: boolean;
+  hasFile: boolean;
+  locale: 'de' | 'en' | null;
+  createdAt: string;
+}
+
+export interface SoilShareCampaign {
+  zonationId: string;
+  createdAt: string;
+  active: boolean;
+  sampledOn: string | null;
+  zones: SoilZone[];
+}
+
+export interface SoilShareField {
+  fieldId: string;
+  fieldName: string;
+  areaHa: number;
+  soilTexture: string | null;
+  geometry: MultiPolygon;
+  /** Newest first; a results share carries only the active zone map. */
+  campaigns: SoilShareCampaign[];
+}
+
+export interface SoilShareData extends SoilShareInfo {
+  /** Short-lived token for further requests (data, file) without the password. */
+  accessToken: string;
+  fields: SoilShareField[];
+  /** Measured parameters, in display order. */
+  params: SoilParameter[];
+}

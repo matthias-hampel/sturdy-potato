@@ -27,6 +27,7 @@ import { Route as OOrgIdTasksRouteImport } from './routes/o.$orgId.tasks'
 import { Route as OOrgIdTeamRouteImport } from './routes/o.$orgId.team'
 import { Route as OOrgIdTemplatesRouteImport } from './routes/o.$orgId.templates'
 import { Route as OOrgIdWeatherRouteImport } from './routes/o.$orgId.weather'
+import { Route as ShareSoilTokenRouteImport } from './routes/share.soil.$token'
 import { Route as OOrgIdComplianceIndexRouteImport } from './routes/o.$orgId.compliance.index'
 import { Route as OOrgIdCompliancePsmRecordRouteImport } from './routes/o.$orgId.compliance.psm-record'
 import { Route as OOrgIdComplianceReportRouteImport } from './routes/o.$orgId.compliance.report'
@@ -134,6 +135,11 @@ const OOrgIdWeatherRoute = OOrgIdWeatherRouteImport.update({
   path: '/weather',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const ShareSoilTokenRoute = ShareSoilTokenRouteImport.update({
+  id: '/share/soil/$token',
+  path: '/share/soil/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OOrgIdComplianceIndexRoute = OOrgIdComplianceIndexRouteImport.update({
   id: '/compliance/',
   path: '/compliance/',
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
+  '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
+  '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
+  '/share/soil/$token': typeof ShareSoilTokenRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
+    | '/share/soil/$token'
     | '/o/$orgId/'
     | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
+    | '/share/soil/$token'
     | '/o/$orgId'
     | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
@@ -417,6 +428,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
+    | '/share/soil/$token'
     | '/o/$orgId/'
     | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
@@ -442,6 +454,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   OOrgIdRoute: typeof OOrgIdRouteWithChildren
+  ShareSoilTokenRoute: typeof ShareSoilTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -571,6 +584,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/o/$orgId/weather'
       preLoaderRoute: typeof OOrgIdWeatherRouteImport
       parentRoute: typeof OOrgIdRoute
+    }
+    '/share/soil/$token': {
+      id: '/share/soil/$token'
+      path: '/share/soil/$token'
+      fullPath: '/share/soil/$token'
+      preLoaderRoute: typeof ShareSoilTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/o/$orgId/compliance/': {
       id: '/o/$orgId/compliance/'
@@ -760,6 +780,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   OOrgIdRoute: OOrgIdRouteWithChildren,
+  ShareSoilTokenRoute: ShareSoilTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

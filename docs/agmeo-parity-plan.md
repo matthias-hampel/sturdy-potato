@@ -61,11 +61,11 @@ rework:
 
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
-| Field soil samples | `soil-maps/*` | partial | Soil maps, zone editor (brush, fill, undo) |
-| Zonation (FCM, k-means, probe, segment), grid/Voronoi sampling, batch | `soil/map`, `soil/_components` | missing | Whole feature |
-| Sample cards (PDF/SHP/GeoJSON), lab upload + matching, probes | `ExportZonationsModal.tsx`, `soil/probes` | missing | Whole feature |
-| History, compare, analysis dashboard | `HistoryDrawer.tsx`, `soil/analyse` | missing | Whole feature |
-| Public share link with password | `src/app/share/soil/[token]` | missing | Whole feature |
+| Field soil samples | `soil-maps/*` | done (feat/parity-soil) | Zone editor (brush, fill, pencil, undo) on the soil field page |
+| Zonation (FCM, k-means, probe, segment), grid/Voronoi sampling, batch | `soil/map`, `soil/_components` | done | TWI, BK50/BÜK200 and soil-rating sources and DSM texture enrichment (no data sources in agmeo) |
+| Sample cards (PDF/SHP/GeoJSON), lab upload + matching, probes | `ExportZonationsModal.tsx`, `soil/probes` | done | PDFs are vector maps without satellite/TWI background; `soil/probes` (physical profile samples) not ported |
+| History, compare, analysis dashboard | `HistoryDrawer.tsx`, `soil/analyse` | done | Dashboard map |
+| Public share link with password | `src/app/share/soil/[token]` | done | CSV/Excel export on the share page |
 
 ### 3.3 Satellite, yield, application maps
 

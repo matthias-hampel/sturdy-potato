@@ -919,6 +919,23 @@ export interface SoilSamples {
   soil_zonation_id: string | null;
 }
 
+export interface SoilShares {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  expires_at: Timestamp | null;
+  field_ids: string[];
+  file_id: string | null;
+  id: Generated<string>;
+  kind: Generated<string>;
+  lab_import_id: string | null;
+  locale: string | null;
+  organization_id: string;
+  password_hash: string | null;
+  revoked_at: Timestamp | null;
+  title: string;
+  token: string;
+}
+
 export interface SoilZonations {
   batch_id: string | null;
   created_at: Generated<Timestamp>;
@@ -1214,6 +1231,7 @@ export interface DB {
   soil_lab_import_zones: SoilLabImportZones;
   soil_lab_imports: SoilLabImports;
   soil_samples: SoilSamples;
+  soil_shares: SoilShares;
   soil_zonations: SoilZonations;
   soil_zones: SoilZones;
   stock_balances: StockBalances;

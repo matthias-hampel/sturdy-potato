@@ -7,9 +7,11 @@ import {
   BatchSamplingPlanInput,
   BatchZonationInput,
   SamplingPlanInput,
+  CreateSoilShareInput,
   RestoreZonationsInput,
   SaveZonesInput,
   SoilExportInput,
+  UpdateSoilShareInput,
   UpdateZoneInput,
 } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
@@ -17,6 +19,7 @@ import { badRequest } from '../../core/errors.js';
 import { type Out, ZBody } from '../../core/validation.js';
 import { SoilExportService } from './export.service.js';
 import { SoilHistoryService } from './history.service.js';
+import { SoilShareService } from './share.service.js';
 import { type LabUpload, SoilLabService } from './lab.service.js';
 import { SoilZonationService } from './zonation.service.js';
 
@@ -55,6 +58,7 @@ export class SoilController {
     private readonly exports: SoilExportService,
     private readonly lab: SoilLabService,
     private readonly histories: SoilHistoryService,
+    private readonly shares: SoilShareService,
   ) {}
 
   @Get('soil/fields')
@@ -194,5 +198,34 @@ export class SoilController {
   @Get('soil/analysis')
   analysis(@OrgCtx() ctx: Ctx) {
     return this.histories.analysis(ctx);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Share links
+  // ---------------------------------------------------------------------------
+
+  @Get('soil/shares')
+  listShares(@OrgCtx() ctx: Ctx) {
+    return this.shares.list(ctx);
+  }
+
+  @Post('soil/shares')
+  @Requires('field.write')
+  createShare(@OrgCtx() ctx: Ctx, @ZBody(CreateSoilShareInput) input: Out<typeof CreateSoilShareInput>) {
+    return this.shares.create(ctx, input);
+  }
+
+  @Patch('soil/shares/:shareId')
+  @Requires('field.write')
+  updateShare(@OrgCtx() ctx: Ctx, @Param('shareId', ParseUUIDPipe) id: string, @ZBody(UpdateSoilShareInput) input: Out<typeof UpdateSoilShareInput>) {
+    return this.shares.update(ctx, id, input);
+  }
+
+  /** Revokes the link; it stays listed. */
+  @Delete('soil/shares/:shareId')
+  @HttpCode(204)
+  @Requires('field.write')
+  revokeShare(@OrgCtx() ctx: Ctx, @Param('shareId', ParseUUIDPipe) id: string) {
+    return this.shares.revoke(ctx, id);
   }
 }

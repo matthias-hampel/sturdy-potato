@@ -50,6 +50,8 @@ import { SoilController } from './modules/soil/soil.controller.js';
 import { SoilExportService } from './modules/soil/export.service.js';
 import { SoilHistoryService } from './modules/soil/history.service.js';
 import { SoilLabService } from './modules/soil/lab.service.js';
+import { SoilSharePublicController } from './modules/soil/share.controller.js';
+import { SoilShareService } from './modules/soil/share.service.js';
 import { SoilZonationService } from './modules/soil/zonation.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
 import { VraService } from './modules/vra/vra.service.js';
@@ -87,6 +89,7 @@ export const DOMAIN_SERVICES = [
   SoilExportService,
   SoilLabService,
   SoilHistoryService,
+  SoilShareService,
   DashboardService,
   FilesService,
   BoardService,
@@ -122,6 +125,7 @@ export const DOMAIN_SERVICES = [
     ProductivityController,
     VraController,
     SoilController,
+    SoilSharePublicController,
     DashboardController,
     FilesController,
     BoardController,
