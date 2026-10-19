@@ -1,0 +1,286 @@
+/**
+ * Ported from AGVOLUTION/agmeo src/lib/co2calculator/src/types.ts — only the
+ * crop vocabulary the models key their tables by (`allSupportedCrops`,
+ * `cropProxy`, `cropsWithoutSowingHarvesting`), plus the mapping from the
+ * rewrite's crop codes (`crops.code`, e.g. `winter_wheat`) onto it.
+ *
+ * The model internals stay keyed by the reference crop keys (`winterWheat`) so
+ * the ported tables and tests read exactly as in the reference. Callers holding
+ * a rewrite crop code convert once at the boundary with {@link modelCrop}.
+ */
+
+export const allSupportedCrops = [
+  'silageMaize',
+  'winterWheat',
+  'canola',
+  'sugarBeet',
+  'winterBarleyFodder',
+  'springBarleyMalting',
+  'springOatsFodder',
+  'springWheatFodder',
+  'winterRyeBaking',
+  'fieldGrassWiltedSilage',
+  'permanentGrasslandWiltedSilage',
+  'potatoTableLate',
+  'peasDry',
+  'peasDryFodder',
+  'triticaleFodder',
+  'broadBeans',
+  'sunflower',
+  'grassSeed',
+  'hardWheat',
+  'grainMaize',
+  'soybeanBeans',
+  'cerealRyeIntercrop',
+  'mustardIntercrop',
+  'oilRadishIntercrop',
+  'persianCloverIntercrop',
+  'phaceliaIntercrop',
+  'ryeWholePlantSilage',
+  'lupine',
+  'spelt',
+  'landscapeFeature',
+  'nonProductiveArea',
+  'alfalfa',
+
+  /* Crops below ship without model data — see cropsWithoutModelData */
+  'winterOats',
+  'springRye',
+  'springTriticale',
+  'springCanola',
+  'springDurum',
+  'winterBroadBeans',
+  'winterPeas',
+  'potatoStarch',
+  'seedPotato',
+  'potatoTableEarly',
+  'cornCobMix',
+  'maizeBiogas',
+  'sorghum',
+  'buckwheat',
+  'millet',
+  'lentils',
+  'chickpeas',
+  'linseed',
+  'hemp',
+  'poppy',
+  'fodderBeet',
+  'vetch',
+  'quinoa',
+  'emmer',
+  'einkorn',
+  'clover',
+  'cloverGrass',
+  'alfalfaGrass',
+  'intercropMixture',
+  'blackOatIntercrop',
+  'vetchIntercrop',
+  'crimsonCloverIntercrop',
+  'alexandrineCloverIntercrop',
+  'buckwheatIntercrop',
+  'sunflowerIntercrop',
+  'nigerIntercrop',
+  'sorghumIntercrop',
+  'linseedIntercrop',
+  'camelinaIntercrop',
+  'serradellaIntercrop',
+  'ryegrassUndersow',
+  'cloverGrassUndersow',
+  'onion',
+  'garlic',
+  'leek',
+  'carrot',
+  'whiteCabbage',
+  'redCabbage',
+  'savoyCabbage',
+  'cauliflower',
+  'broccoli',
+  'kale',
+  'kohlrabi',
+  'brusselsSprouts',
+  'chineseCabbage',
+  'lettuce',
+  'lambsLettuce',
+  'spinach',
+  'beetroot',
+  'celeriac',
+  'fennel',
+  'endive',
+  'bushBeans',
+  'sweetCorn',
+  'pumpkin',
+  'cucumber',
+  'tomato',
+  'bellPepper',
+  'asparagus',
+  'strawberry',
+  'hops',
+  'grapevine',
+  'rhubarb',
+  'pomeFruit',
+  'stoneFruit',
+  'rice',
+  'cowpeas',
+  'dryBeans',
+  'grainSorghum',
+  // Not a plant: placeholder for a cultivation whose crop is genuinely unknown.
+  'unknownCrop',
+] as const;
+
+/** Reference crop key the model tables are keyed by (e.g. `winterWheat`). */
+export type SupportedCrops = (typeof allSupportedCrops)[number];
+
+/**
+ * The closest crop that ships model data — one hop, always a legacy crop. The
+ * models only use it for the rooting depth (`getRootDepth`); phenology is never
+ * proxied.
+ */
+const cropProxyEntries = {
+  winterOats: 'springOatsFodder',
+  springRye: 'winterRyeBaking',
+  springTriticale: 'triticaleFodder',
+  springCanola: 'canola',
+  springDurum: 'winterWheat',
+  winterBroadBeans: 'broadBeans',
+  winterPeas: 'peasDry',
+  potatoStarch: 'potatoTableLate',
+  seedPotato: 'potatoTableLate',
+  potatoTableEarly: 'potatoTableLate',
+  cornCobMix: 'grainMaize',
+  maizeBiogas: 'silageMaize',
+  sorghum: 'silageMaize',
+  buckwheat: 'springOatsFodder',
+  millet: 'grainMaize',
+  lentils: 'peasDry',
+  chickpeas: 'peasDry',
+  linseed: 'springOatsFodder',
+  hemp: 'silageMaize',
+  poppy: 'springOatsFodder',
+  fodderBeet: 'sugarBeet',
+  vetch: 'peasDry',
+  quinoa: 'springOatsFodder',
+  emmer: 'spelt',
+  einkorn: 'spelt',
+  clover: 'alfalfa',
+  cloverGrass: 'fieldGrassWiltedSilage',
+  alfalfaGrass: 'alfalfa',
+  intercropMixture: 'mustardIntercrop',
+  blackOatIntercrop: 'mustardIntercrop',
+  vetchIntercrop: 'persianCloverIntercrop',
+  crimsonCloverIntercrop: 'persianCloverIntercrop',
+  alexandrineCloverIntercrop: 'persianCloverIntercrop',
+  buckwheatIntercrop: 'mustardIntercrop',
+  sunflowerIntercrop: 'mustardIntercrop',
+  nigerIntercrop: 'mustardIntercrop',
+  sorghumIntercrop: 'mustardIntercrop',
+  linseedIntercrop: 'mustardIntercrop',
+  camelinaIntercrop: 'mustardIntercrop',
+  serradellaIntercrop: 'persianCloverIntercrop',
+  ryegrassUndersow: 'cerealRyeIntercrop',
+  cloverGrassUndersow: 'persianCloverIntercrop',
+  onion: 'sugarBeet',
+  garlic: 'sugarBeet',
+  leek: 'sugarBeet',
+  carrot: 'sugarBeet',
+  whiteCabbage: 'sugarBeet',
+  redCabbage: 'sugarBeet',
+  savoyCabbage: 'sugarBeet',
+  cauliflower: 'sugarBeet',
+  broccoli: 'sugarBeet',
+  kale: 'sugarBeet',
+  kohlrabi: 'sugarBeet',
+  brusselsSprouts: 'sugarBeet',
+  chineseCabbage: 'sugarBeet',
+  lettuce: 'sugarBeet',
+  lambsLettuce: 'sugarBeet',
+  spinach: 'sugarBeet',
+  beetroot: 'sugarBeet',
+  celeriac: 'sugarBeet',
+  fennel: 'sugarBeet',
+  endive: 'sugarBeet',
+  bushBeans: 'broadBeans',
+  sweetCorn: 'grainMaize',
+  pumpkin: 'sugarBeet',
+  cucumber: 'sugarBeet',
+  tomato: 'sugarBeet',
+  bellPepper: 'sugarBeet',
+  asparagus: 'alfalfa',
+  strawberry: 'alfalfa',
+  hops: 'alfalfa',
+  grapevine: 'alfalfa',
+  rhubarb: 'alfalfa',
+  pomeFruit: 'alfalfa',
+  stoneFruit: 'alfalfa',
+  rice: 'grainMaize',
+  cowpeas: 'soybeanBeans',
+  dryBeans: 'soybeanBeans',
+  grainSorghum: 'grainMaize',
+} as const satisfies Partial<Record<SupportedCrops, SupportedCrops>>;
+
+export const cropProxy: Partial<Record<SupportedCrops, SupportedCrops>> =
+  cropProxyEntries;
+
+export const cropsWithoutSowingHarvesting: SupportedCrops[] = [
+  'landscapeFeature',
+  'nonProductiveArea',
+  'unknownCrop',
+] as const;
+
+// ── Rewrite crop code → reference crop key ─────────────────────────────────
+
+/**
+ * `crops.code` (db/migrations 000003 + 000014) → reference crop key.
+ *
+ * Same choices as the regulatory export's CROP_KEY_BY_CODE
+ * (modules/regulatory/harmonie/cropKeys.ts), so a field resolves to one crop
+ * across the app:
+ * - `spring_wheat` → `springWheatFodder`, `spring_barley` → `springBarleyMalting`,
+ *   `oats` → `springOatsFodder`, `winter_rye` → `winterRyeBaking`,
+ *   `triticale` → `triticaleFodder` (the reference's only key per species).
+ * - `potatoes` → `potatoTableLate`, `peas` → `peasDry`, `field_beans` → `broadBeans`.
+ * - `grassland` → `permanentGrasslandWiltedSilage`, `field_grass` →
+ *   `fieldGrassWiltedSilage`.
+ * - `cover_crop` → `intercropMixture`, `cc_legume_mix` → `vetchIntercrop`,
+ *   `fallow` → `nonProductiveArea`.
+ */
+export const MODEL_CROP_BY_CODE: Record<string, SupportedCrops> = {
+  winter_wheat: 'winterWheat',
+  spring_wheat: 'springWheatFodder',
+  winter_barley: 'winterBarleyFodder',
+  spring_barley: 'springBarleyMalting',
+  winter_rye: 'winterRyeBaking',
+  triticale: 'triticaleFodder',
+  oats: 'springOatsFodder',
+  winter_rapeseed: 'canola',
+  sunflower: 'sunflower',
+  grain_maize: 'grainMaize',
+  silage_maize: 'silageMaize',
+  sugar_beet: 'sugarBeet',
+  potatoes: 'potatoTableLate',
+  field_beans: 'broadBeans',
+  peas: 'peasDry',
+  soybeans: 'soybeanBeans',
+  grassland: 'permanentGrasslandWiltedSilage',
+  cover_crop: 'intercropMixture',
+  fallow: 'nonProductiveArea',
+  winter_spelt: 'spelt',
+  winter_oats: 'winterOats',
+  spring_rapeseed: 'springCanola',
+  lupins: 'lupine',
+  field_grass: 'fieldGrassWiltedSilage',
+  clover_grass: 'cloverGrass',
+  alfalfa: 'alfalfa',
+  cc_mustard: 'mustardIntercrop',
+  cc_phacelia: 'phaceliaIntercrop',
+  cc_oil_radish: 'oilRadishIntercrop',
+  cc_legume_mix: 'vetchIntercrop',
+  cc_winter_rye: 'cerealRyeIntercrop',
+};
+
+/** Reference crop key for a rewrite crop code; null when unknown or absent. */
+export function modelCrop(
+  code: string | null | undefined,
+): SupportedCrops | null {
+  if (!code || !Object.hasOwn(MODEL_CROP_BY_CODE, code)) return null;
+  return MODEL_CROP_BY_CODE[code];
+}
