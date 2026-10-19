@@ -378,3 +378,56 @@ export interface FieldWeather {
   /** From the current hour on, at most 48 hours. */
   hourly: StoredWeatherHour[];
 }
+
+// ---------------------------------------------------------------------------
+// Field conditions from the models (condition bars, phenology, water balance, trafficability)
+// ---------------------------------------------------------------------------
+
+/** 0 = good … 3 = bad, null = no data. */
+export type ConditionLevel = 0 | 1 | 2 | 3;
+
+export interface ConditionReason {
+  /** Untranslated reason key of the model, e.g. "reason.wind". */
+  key: string;
+  value: number | string | null;
+}
+
+export interface ConditionDay {
+  date: string;
+  value: ConditionLevel | null;
+  reasons: ConditionReason[];
+}
+
+export interface FieldConditions {
+  fieldId: string;
+  refreshedAt: string | null;
+  cropCycle: { id: string; cropName: string; sowingDate: string | null; sowingSource: 'booked' | 'planned' | null } | null;
+  /** The soil class the water balance uses; its texture fractions are class mid-points. */
+  soil: { texture: string | null; textureSource: 'soil_class' | null };
+  bars: { spraying: ConditionDay[]; sowing: ConditionDay[]; weatherRisk: ConditionDay[]; trafficability: ConditionDay[] | null };
+  /** Spray level per hour for the next 48 hours. */
+  sprayHours: { time: string; level: ConditionLevel; reasons: ConditionReason[] }[];
+  phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; bbchByDate: Record<string, number> | null } | null;
+  waterBalance: {
+    soilTypeKa5: string | null;
+    awcMm: number | null;
+    rootDepthM: number;
+    currentDeficitMm: number | null;
+    deficitLevel: string | null;
+    totalPrecipitationMm: number;
+    totalEtaMm: number;
+    /** Irrigation recommendation of the reference model (status, triggerDate, doseMm, …). */
+    recommendation: Record<string, unknown>;
+    days: { date: string; swcMm: number; deficitMm: number; etaMm: number; precipitationMm: number | null; forecast: boolean }[];
+  } | null;
+}
+
+export interface FieldTrafficability {
+  fieldId: string;
+  equipmentId: string;
+  ka5: string | null;
+  frontKpa: number;
+  rearKpa: number;
+  sciReady: boolean;
+  days: { date: string; pf: number | null; precompressionKpa: number | null; stressAtDepthKpa: number | null; sci: number | null; band: string | null }[];
+}
