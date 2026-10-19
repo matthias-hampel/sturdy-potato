@@ -45,11 +45,11 @@ rework:
 |---|---|---|---|
 | Field table | `fields/[year]/columns.tsx`, `ColumnConfigBar.tsx` | partial | BBCH, LAI, GDD, disease, trafficability, sowing/spray/weather bars, rain 24h/7d/season, yield, margin, CO2e, N columns; column config, quick views, inline edit, grouping by field group |
 | Secondary crop, plan next year | `AddSecondaryCropDialog.tsx`, `PlanNextYear.tsx` | partial | Bulk actions on the list (data model exists) |
-| Boundary import | `_components/ImportFieldDialog/*` | partial | State + year, crop assignment, inline rotations, shapefile diagnostics |
-| Cadastral parcel selection (state WFS) | `SelectFieldsTab.tsx`, `lib/cadastral` | missing | Whole feature |
+| Boundary import | `_components/ImportFieldDialog/*` | done | Data import page; rotation pick/create and location check added (000105 branch). No state picker needed (columns and land-use codes are detected); no open-water check |
+| Cadastral parcel selection (state WFS) | `SelectFieldsTab.tsx`, `lib/cadastral` | done | German states only (no AT/PL/… countries); IACS boundary tiles of `SelectFieldsTab` not ported (no GYI data) |
 | Edit boundary | `edit-boundary/*` | partial | Cut holes, simplify slider, snapping, reason; restore an earlier version |
 | Fields manager | `fields-manager/[year]/*` | partial | Merge, split, renumber, archive/restore, multi-field editor |
-| Lease management + analytics | `LeaseManagementTable.tsx`, `LeaseAnalytics.tsx` | missing | Parcel intersection, lease amount/share, per-field lease |
+| Lease management + analytics | `LeaseManagementTable.tsx`, `LeaseAnalytics.tsx` | done | Inline cell editing (dialog instead), parcel hover popup on the field map |
 | Crop rotations page | `fields/[year]/crop-rotations` | partial | Backend exists (`planning`), no UI |
 | Field groups / cultivation groups | `fieldGroups`, `cultivation-groups` | missing | Entity and UI |
 | Org map layers | `_components/mapLayers/*`, `maps/*` | partial | Vector tiles, economic/KPI choropleths, soil, yield, trafficability, radar, stations, background rasters |
@@ -432,3 +432,30 @@ Open:
 - DMC: offsets per variety instead of per KWS sales region; no pre-computing job; FAO maturity entered
   in the app.
 
+### Cadastral parcels and leases (2026-10-19)
+
+- **Cadastre** (000105 `cadastral_parcels`, `parcel_leases`): the 16 states' ALKIS WFS configuration and
+  parsing ported to `backend/agmeo-api/src/modules/cadastral/wfs` (INSPIRE, AdV simplified, Berlin),
+  with own UTM reprojection and GML reading; multi-part parcels and holes are kept; the
+  Flurstückskennzeichen is decoded into Gemarkung number, Flur and number. Requests go through the API
+  (`GET /cadastral/lookup`), split into grid cells cached for 24 h and limited to 4 at a time. States
+  whose extents overlap are tried in turn (the reference picked one and found nothing south of
+  Göttingen). Unit tests run on responses recorded from the services on 2026-10-19.
+- **Field from parcels**: new mode "Flurstücke wählen" on "Schläge hinzufügen"; the boundary is the union
+  of the picked parcels, which are stored with the field.
+- **Parcel sync** (`POST /cadastral/sync`): fetches the parcels under fields; stored parcels are never
+  overwritten; parcels with less than 1 % of their area inside the field are skipped (the reference took
+  every touching parcel).
+- **Leases**: one per parcel (kind, owner, address, leaseholder, rent per year or per ha, term, land
+  register, notes); page "Pachtverwaltung" with lease-coloured map, table, GeoJSON export; analytics with
+  areas by status, rent, rent per leased ha, per-field figures, uncovered area and expiring leases.
+- **Economics**: a field's own `lease_per_ha` (now editable) wins, else the rent derived from its parcels
+  (only when every leased parcel has a rent), else the farm figure.
+- **Import extras**: crop rotation picked or created inline for the imported fields; fields outside
+  Europe, the organization's country or 300 km from its fields need a confirmation.
+
+Open:
+- Bayern needs an LDBV contract (answers "no access"); non-German cadastres (AT, PL, NL, FR, …) of the
+  reference's `countries.ts` are not ported.
+- `SelectFieldsTab`'s click-to-select IACS boundaries with crop of the year depend on the reference's GYI
+  boundary dataset, which this app does not have; the parcel picker covers selecting land on the map.

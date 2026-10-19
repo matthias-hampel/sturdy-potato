@@ -21,12 +21,13 @@ export function federalStateFromFlik(flik: string | null | undefined): FederalSt
 const encloses = (outer: FederalStateConfig, inner: FederalStateConfig) =>
   inner !== outer && inner.bbox[0] >= outer.bbox[0] && inner.bbox[2] <= outer.bbox[2] && inner.bbox[1] >= outer.bbox[1] && inner.bbox[3] <= outer.bbox[3];
 
-export function federalStateAt(lon: number, lat: number): FederalStateCode | null {
+/**
+ * States whose extent contains the point, most likely first: enclosed city states, then the state
+ * the point lies deepest inside. Extents overlap widely (Göttingen lies in both the NI and the HE
+ * box), so callers try the next state when the first one's service finds nothing there.
+ */
+export function federalStatesAt(lon: number, lat: number): FederalStateCode[] {
   const candidates = Object.values(FEDERAL_STATES).filter((s) => lon >= s.bbox[0] && lon <= s.bbox[2] && lat >= s.bbox[1] && lat <= s.bbox[3]);
-  if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0].code;
-  const enclosed = candidates.filter((a) => candidates.some((b) => encloses(b, a)));
-  const pool = enclosed.length > 0 ? enclosed : candidates;
   const margin = (s: FederalStateConfig) =>
     Math.min(
       (lon - s.bbox[0]) / (s.bbox[2] - s.bbox[0]),
@@ -34,11 +35,22 @@ export function federalStateAt(lon: number, lat: number): FederalStateCode | nul
       (lat - s.bbox[1]) / (s.bbox[3] - s.bbox[1]),
       (s.bbox[3] - lat) / (s.bbox[3] - s.bbox[1]),
     );
-  return [...pool].sort((a, b) => margin(b) - margin(a))[0].code;
+  const enclosed = (a: FederalStateConfig) => candidates.some((b) => encloses(b, a));
+  return [...candidates].sort((a, b) => Number(enclosed(b)) - Number(enclosed(a)) || margin(b) - margin(a)).map((s) => s.code);
+}
+
+export function federalStateAt(lon: number, lat: number): FederalStateCode | null {
+  return federalStatesAt(lon, lat)[0] ?? null;
 }
 
 /** The state for a point, preferring the state letters of a FLIK. */
 export function resolveFederalState(lon: number, lat: number, flik?: string | null): FederalStateConfig | null {
-  const code = federalStateFromFlik(flik) ?? federalStateAt(lon, lat);
-  return code ? FEDERAL_STATES[code] : null;
+  return resolveFederalStates(lon, lat, flik)[0] ?? null;
+}
+
+/** All states that may hold a point's parcels, most likely first (the FLIK's state leads). */
+export function resolveFederalStates(lon: number, lat: number, flik?: string | null): FederalStateConfig[] {
+  const fromFlik = federalStateFromFlik(flik);
+  const codes = [...(fromFlik ? [fromFlik] : []), ...federalStatesAt(lon, lat).filter((c) => c !== fromFlik)];
+  return codes.map((c) => FEDERAL_STATES[c]);
 }

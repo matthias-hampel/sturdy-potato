@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { CadastralClient, getFeatureUrl, WfsHttp } from './client.js';
 import { parseFeatureCollection, WfsError } from './gml.js';
 import { decodeKennzeichen, geodesicAreaM2, normalizeParcel } from './normalize.js';
-import { federalStateAt, federalStateFromFlik, resolveFederalState } from './router.js';
+import { federalStateAt, federalStateFromFlik, resolveFederalState, resolveFederalStates } from './router.js';
 import { FEDERAL_STATES, type FederalStateCode } from './states.js';
 import { fromUtm, toUtm } from './utm.js';
 import { parseXml } from './xml.js';
@@ -170,5 +170,15 @@ describe('client', () => {
   it('passes on unavailable services', async () => {
     const client = new CadastralClient({ get: async () => { throw new WfsError('unavailable', 'HTTP 503') } } as unknown as WfsHttp)
     await expect(client.parcels(ni, bbox)).rejects.toMatchObject({ kind: 'unavailable' })
+  })
+})
+
+describe('overlapping state extents', () => {
+  it('lists every state that may hold a point, most likely first', () => {
+    // South of Göttingen lies in the extents of both Hessen and Niedersachsen.
+    const codes = resolveFederalStates(9.908, 51.463).map((s) => s.code)
+    expect(codes).toEqual(expect.arrayContaining(['HE', 'NI']))
+    expect(resolveFederalStates(9.99, 53.55)[0].code).toBe('HH')
+    expect(resolveFederalStates(9.908, 51.463, 'DENILI0000000001')[0].code).toBe('NI')
   })
 })

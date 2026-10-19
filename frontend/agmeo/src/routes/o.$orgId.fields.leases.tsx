@@ -224,7 +224,7 @@ function ParcelsView({ parcels, fields, writable }: { parcels: CadastralParcel[]
   return (
     <div className="space-y-4">
       <FieldMap fields={fields} labels overlay={overlay} overlayOpacity={0.6} fillOpacity={0.05} focus={focus} className="h-[45vh] min-h-72">
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute top-14 left-3 z-10">
           <SegmentedControl
             aria-label={t('cadastral.leases.mapColor')}
             value={colorMode}

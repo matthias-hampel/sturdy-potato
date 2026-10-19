@@ -45,7 +45,7 @@ import { FieldsService } from '../fields/fields.service.js';
 import { type BBox, CadastralClient } from './wfs/client.js';
 import { WfsError } from './wfs/gml.js';
 import type { NormalizedParcel } from './wfs/normalize.js';
-import { resolveFederalState } from './wfs/router.js';
+import { resolveFederalStates } from './wfs/router.js';
 import { type FederalStateConfig } from './wfs/states.js';
 
 /** Grid the lookup extent is split into, so neighbouring map views share cached cells. */
@@ -199,24 +199,26 @@ export class CadastralService {
 
   /** Parcels in a map extent, straight from the state's cadastre service. */
   async lookup(q: Out<typeof CadastralLookupQuery>): Promise<CadastralLookup> {
-    const centre = resolveFederalState((q.west + q.east) / 2, (q.south + q.north) / 2);
-    if (!centre) return { status: 'unsupported', state: null, message: null, parcels: [] };
-    const cells: { bbox: BBox; state: FederalStateConfig }[] = [];
+    const centre = resolveFederalStates((q.west + q.east) / 2, (q.south + q.north) / 2);
+    if (!centre.length) return { status: 'unsupported', state: null, message: null, parcels: [] };
+    const cells: { bbox: BBox; states: FederalStateConfig[] }[] = [];
     for (let x = Math.floor(q.west / CELL_LON); x * CELL_LON < q.east; x++) {
       for (let y = Math.floor(q.south / CELL_LAT); y * CELL_LAT < q.north; y++) {
-        const bbox = { west: x * CELL_LON, south: y * CELL_LAT, east: (x + 1) * CELL_LON, north: (y + 1) * CELL_LAT };
-        // Each cell asks the state it lies in, so views across a state border show both sides.
-        const state = resolveFederalState((bbox.west + bbox.east) / 2, (bbox.south + bbox.north) / 2) ?? centre;
-        cells.push({ bbox: { west: round(bbox.west, 6), south: round(bbox.south, 6), east: round(bbox.east, 6), north: round(bbox.north, 6) }, state });
+        const bbox = { west: round(x * CELL_LON, 6), south: round(y * CELL_LAT, 6), east: round((x + 1) * CELL_LON, 6), north: round((y + 1) * CELL_LAT, 6) };
+        // Each cell asks the states it may lie in, so views across a state border show both sides.
+        const states = resolveFederalStates((bbox.west + bbox.east) / 2, (bbox.south + bbox.north) / 2);
+        cells.push({ bbox, states: states.length ? states : centre });
       }
     }
-    const results = await Promise.allSettled(cells.map((c) => this.client.parcels(c.state, c.bbox)));
+    const results = await Promise.allSettled(cells.map((c) => this.fromStates(c.states, (state) => this.client.parcels(state, c.bbox))));
     const failure = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    const found = results.flatMap((r) => (r.status === 'fulfilled' && r.value.parcels.length ? [r.value.state] : []));
+    const state = found[0] ?? centre[0];
     const seen = new Set<string>();
     const parcels: CadastralParcelCandidate[] = [];
     for (const r of results) {
       if (r.status !== 'fulfilled') continue;
-      for (const p of r.value) {
+      for (const p of r.value.parcels) {
         const key = p.officialId ?? JSON.stringify(p.geometry.coordinates[0][0][0]);
         if (seen.has(key) || !touches(p, q)) continue;
         seen.add(key);
@@ -224,11 +226,30 @@ export class CadastralService {
       }
     }
     if (failure && !parcels.length) {
-      const e = failure.reason as Error;
+      const e = failure.reason as Error & { state?: FederalStateConfig };
       const kind = e instanceof WfsError ? e.kind : 'error';
-      return { status: kind === 'no_access' ? 'no_access' : kind === 'unavailable' ? 'unavailable' : 'error', state: stateRef(centre), message: e.message, parcels: [] };
+      return { status: kind === 'no_access' ? 'no_access' : kind === 'unavailable' ? 'unavailable' : 'error', state: stateRef(e.state ?? state), message: e.message, parcels: [] };
     }
-    return { status: parcels.length ? 'ok' : 'no_coverage', state: stateRef(centre), message: null, parcels };
+    return { status: parcels.length ? 'ok' : 'no_coverage', state: stateRef(state), message: null, parcels };
+  }
+
+  /**
+   * Asks the candidate states in order until one has parcels there (state extents overlap). When
+   * none has any, the most likely state's failure is passed on (e.g. Bayern's missing access), else
+   * an empty result of that state.
+   */
+  private async fromStates(states: FederalStateConfig[], fetch: (s: FederalStateConfig) => Promise<NormalizedParcel[]>, keep: (p: NormalizedParcel[]) => boolean = (p) => p.length > 0) {
+    let firstError: (Error & { state?: FederalStateConfig }) | null = null;
+    for (const [i, state] of states.entries()) {
+      try {
+        const parcels = await fetch(state);
+        if (keep(parcels)) return { state, parcels };
+      } catch (e) {
+        if (i === 0) firstError = Object.assign(e as Error, { state });
+      }
+    }
+    if (firstError) throw firstError;
+    return { state: states[0], parcels: [] as NormalizedParcel[] };
   }
 
   /** A new field made of parcels picked on the map. */
@@ -331,16 +352,22 @@ export class CadastralService {
     f: { id: string; name: string; identifier: string | null; west: number; south: number; east: number; north: number; lng: number; lat: number },
   ): Promise<ParcelSyncFieldResult> {
     const base = { fieldId: f.id, fieldName: f.name, inserted: 0, skipped: 0 };
-    const state = resolveFederalState(f.lng, f.lat, f.identifier);
-    if (!state) return { ...base, status: 'unsupported', state: null, message: null };
+    const states = resolveFederalStates(f.lng, f.lat, f.identifier);
+    if (!states.length) return { ...base, status: 'unsupported', state: null, message: null };
     const started = Date.now();
-    let parcels: NormalizedParcel[];
+    const bbox = { west: f.west, south: f.south, east: f.east, north: f.north };
+    let found: { state: FederalStateConfig; parcels: NormalizedParcel[] };
     try {
-      parcels = await this.client.parcels(state, { west: f.west, south: f.south, east: f.east, north: f.north });
+      // A neighbouring state's service may answer with its own parcels across the border; the field's
+      // state is the one whose parcels actually cover the field.
+      const inside = { west: f.lng, east: f.lng, south: f.lat, north: f.lat };
+      found = await this.fromStates(states, (state) => this.client.parcels(state, bbox), (parcels) => parcels.some((p) => touches(p, inside)));
     } catch (e) {
+      const err = e as Error & { state?: FederalStateConfig };
       const kind = e instanceof WfsError ? e.kind : 'error';
-      return { ...base, status: kind === 'no_access' ? 'no_access' : kind === 'unavailable' ? 'unavailable' : 'error', state: state.code, message: (e as Error).message };
+      return { ...base, status: kind === 'no_access' ? 'no_access' : kind === 'unavailable' ? 'unavailable' : 'error', state: err.state?.code ?? states[0].code, message: err.message };
     }
+    const { state, parcels } = found;
     try {
       return await this.db.run(ctx, async (trx) => {
         let inserted = 0;
