@@ -17,6 +17,7 @@ import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
 import { round } from '../../core/mappers.js';
 import { Database, type Trx } from '../../db/database.js';
+import { derivedLeasePerHa } from '../cadastral/cadastral.service.js';
 import { EconomicsService, capPayments } from './economics.service.js';
 
 interface Physical {
@@ -41,7 +42,7 @@ export class ProfitabilityService {
     return this.db.run(ctx, async (trx) => {
       const season = await trx.selectFrom('growing_seasons').select('harvest_year').where('id', '=', summary.seasonId).executeTakeFirstOrThrow();
       const cycleIds = summary.cycles.map((c) => c.cropCycleId);
-      const [physical, fieldInfo, coverage] = await Promise.all([
+      const [physical, fieldInfo, coverage, parcelLease] = await Promise.all([
         this.physical(trx, summary.seasonId),
         cycleIds.length
           ? trx
@@ -57,6 +58,8 @@ export class ProfitabilityService {
               .execute()
           : Promise.resolve([]),
         this.coverage(trx, summary.seasonId),
+        // Rent per ha from the fields' cadastral parcel leases, where the field has no lease of its own.
+        derivedLeasePerHa(trx, [...new Set(summary.cycles.map((c) => c.fieldId))]),
       ]);
       const infoOf = new Map(fieldInfo.map((r) => [r.id, r]));
 
@@ -91,7 +94,7 @@ export class ProfitabilityService {
           // Land rent, insurance and other cost entries booked on the crop come off DB II too.
           const db2 = db1 - laborCosts - per(c.otherCosts);
           const buildingCosts = o?.buildingsPerHa ?? 0;
-          const leasePerHa = info?.lease_per_ha ?? o?.leasePerHa ?? 0;
+          const leasePerHa = info?.lease_per_ha ?? parcelLease.get(c.fieldId) ?? o?.leasePerHa ?? 0;
           const landCosts = leasePerHa + (o?.landTaxPerHa ?? 0) + (o?.accidentInsurancePerHa ?? 0);
           const rightsCosts = o?.rightsPerHa ?? 0;
           const singleCostFreeMargin = db2 - buildingCosts - landCosts - rightsCosts;
