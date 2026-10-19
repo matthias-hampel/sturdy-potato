@@ -62,6 +62,15 @@ export interface BsaVarieties {
   synced_at: Generated<Timestamp>;
 }
 
+export interface CarbonReportNotes {
+  harvest_year: number;
+  notes: Generated<string>;
+  organization_id: string;
+  summary: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface CarbonSettings {
   nuts2_code: string | null;
   organization_id: string;
@@ -1611,6 +1620,7 @@ export interface DB {
   audit_events: AuditEvents;
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
+  carbon_report_notes: CarbonReportNotes;
   carbon_settings: CarbonSettings;
   comments: Comments;
   cost_entries: CostEntries;

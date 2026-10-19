@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   CARBON_LEVELS,
+  CarbonReportNotesInput,
   CarbonSettingsInput,
   CarbonSoilInput,
   type CarbonLevel,
@@ -22,6 +23,7 @@ import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { badRequest } from '../../core/errors.js';
 import { type Out, ZBody } from '../../core/validation.js';
 import { CarbonService } from './carbon.service.js';
+import { CarbonReportService } from './report.service.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -39,7 +41,37 @@ function years(value?: string): number[] | undefined {
 /** Greenhouse-gas balance (BEK), farm comparison, scope 2 and the soil-carbon simulation. */
 @Controller('orgs/:orgId')
 export class CarbonController {
-  constructor(private readonly carbon: CarbonService) {}
+  constructor(
+    private readonly carbon: CarbonService,
+    private readonly reports: CarbonReportService,
+  ) {}
+
+  /** Measures that lower the year's emissions, priced per crop cycle (agmeo `recommendations/[year]`). */
+  @Get('carbon/recommendations')
+  recommendations(
+    @OrgCtx() ctx: Ctx,
+    @Query('harvestYear', ParseIntPipe) harvestYear: number,
+  ) {
+    return this.reports.recommendations(ctx, harvestYear);
+  }
+
+  /** Management data per crop, summary and notes of the printable CO2 report. */
+  @Get('carbon/report')
+  report(
+    @OrgCtx() ctx: Ctx,
+    @Query('harvestYear', ParseIntPipe) harvestYear: number,
+  ) {
+    return this.reports.report(ctx, harvestYear);
+  }
+
+  @Put('carbon/report/notes')
+  @Requires('farm.write')
+  saveReportNotes(
+    @OrgCtx() ctx: Ctx,
+    @ZBody(CarbonReportNotesInput) input: Out<typeof CarbonReportNotesInput>,
+  ) {
+    return this.reports.saveNotes(ctx, input);
+  }
 
   @Get('carbon/analysis')
   analysis(

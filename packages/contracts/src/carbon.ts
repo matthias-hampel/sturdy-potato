@@ -308,3 +308,167 @@ export const Scope2Input = z.object({
     .refine((rows) => new Set(rows.map((r) => r.kind)).size === rows.length, { message: 'Each kind once' }),
 });
 export type Scope2Input = z.input<typeof Scope2Input>;
+
+// ---------------------------------------------------------------------------
+// Emission recommendations (agmeo `recommendations/[year]`, lib/sanityChecker recommendations)
+// ---------------------------------------------------------------------------
+
+/**
+ * Measures the calculator can price: incorporate organic fertilizer within an hour instead of
+ * hours later, use a urea fertilizer with inhibitor from a green-technology plant, and leave the
+ * straw on the field.
+ */
+export const CARBON_MEASURES = ['incorporation', 'mineralBlueFertilizer', 'restStraw'] as const;
+export type CarbonMeasureType = (typeof CARBON_MEASURES)[number];
+
+export interface CarbonMeasure {
+  type: CarbonMeasureType;
+  /** The completed operation the measure changes; null for the straw (a crop-cycle setting). */
+  operationId: string | null;
+  operationTitle: string | null;
+  /** Day of the operation, or of the harvest for the straw. */
+  date: string | null;
+  /** Fertilizer the measure concerns. */
+  productName: string | null;
+  /** kg CO2e saved per hectare of the crop cycle. */
+  savedKgPerHa: number;
+  /** kg CO2e saved on the crop cycle's area. */
+  savedKg: number;
+}
+
+export interface CarbonRecommendationCycle {
+  cropCycleId: string;
+  fieldId: string;
+  fieldName: string;
+  cropId: string;
+  cropName: string;
+  cropColor: string;
+  templateName: string | null;
+  areaHa: number;
+  /** Harvested fresh mass per hectare, else the expected yield; null when unknown. */
+  yieldTHa: number | null;
+  /** Emissions of the crop cycle as in the analysis (field level), kg CO2e. */
+  emissionsKg: number;
+  /** Sum of the measures, kg CO2e. */
+  savingsKg: number;
+  measures: CarbonMeasure[];
+}
+
+export interface CarbonRecommendations {
+  harvestYear: number;
+  /** All crop cycles of the year with emissions, measures or not (the scenarios need the total). */
+  cycles: CarbonRecommendationCycle[];
+  emissionsKg: number;
+  savingsKg: number;
+}
+
+export interface CarbonScenarioMeasure {
+  key: string;
+  savedKg: number;
+}
+
+export interface CarbonScenario {
+  /** Target share of the total emissions, or null for "everything possible". */
+  share: number | null;
+  savedKg: number;
+  remainingKg: number;
+  /** Measures in descending order of saving; the last may count only partly. */
+  measures: (CarbonScenarioMeasure & { countedKg: number })[];
+}
+
+/**
+ * Reduction scenarios of the reference chart: 0 %, 10 %, 20 % and 30 % of the total where the
+ * measures reach them, and the maximum. Measures are taken largest first until the target is met;
+ * the last one counts with the part that is still needed.
+ */
+export function carbonSavingScenarios(
+  totalKg: number,
+  measures: CarbonScenarioMeasure[],
+): CarbonScenario[] {
+  const sorted = [...measures]
+    .filter((m) => m.savedKg > 0)
+    .sort((a, b) => b.savedKg - a.savedKg);
+  const possible = sorted.reduce((s, m) => s + m.savedKg, 0);
+  const pick = (needed: number) => {
+    let remaining = needed;
+    const out: CarbonScenario['measures'] = [];
+    for (const m of sorted) {
+      if (remaining <= 1e-9) break;
+      const counted = Math.min(m.savedKg, remaining);
+      out.push({ ...m, countedKg: counted });
+      remaining -= counted;
+    }
+    return out;
+  };
+  const scenarios: CarbonScenario[] = [
+    { share: 0, savedKg: 0, remainingKg: totalKg, measures: [] },
+  ];
+  if (totalKg <= 0) return scenarios;
+  for (const share of [0.1, 0.2, 0.3]) {
+    const target = share * totalKg;
+    if (possible >= target)
+      scenarios.push({
+        share,
+        savedKg: target,
+        remainingKg: totalKg - target,
+        measures: pick(target),
+      });
+  }
+  scenarios.push({
+    share: null,
+    savedKg: possible,
+    remainingKg: totalKg - possible,
+    measures: pick(possible),
+  });
+  return scenarios;
+}
+
+// ---------------------------------------------------------------------------
+// CO2 report (the analysis' third view: summary text, notes and the printable report)
+// ---------------------------------------------------------------------------
+
+/** Management data of a crop in the report (reference report chapter per crop). */
+export interface CarbonReportCrop {
+  cropId: string;
+  cropCode: string;
+  cropName: string;
+  cropColor: string;
+  carbonCrop: string | null;
+  hasModelData: boolean;
+  areaHa: number;
+  yieldT: number;
+  yieldTHa: number | null;
+  /** Dry-matter content of the calculator, %; null without model data. */
+  dryMatterPct: number | null;
+  /** Fresh mass ratio main product : by-product (straw), t/t; null without model data. */
+  byproductRatio: number | null;
+  mineralNKgHa: number;
+  organicNKgHa: number;
+  /** Share of the organic N incorporated within an hour, %. */
+  incorporated1hPct: number | null;
+  /** 10 % of last year's organic N that counts this year, kg N/ha. */
+  previousYearNKgHa: number;
+  /** Plant protection products, kg and l per hectare. */
+  protectionKgLHa: number;
+}
+
+export interface CarbonReportNotes {
+  harvestYear: number;
+  /** Summary text as edited; null keeps the generated one. */
+  summary: string | null;
+  notes: string;
+  updatedAt: string | null;
+}
+
+export interface CarbonReport {
+  harvestYear: number;
+  crops: CarbonReportCrop[];
+  notes: CarbonReportNotes;
+}
+
+export const CarbonReportNotesInput = z.object({
+  harvestYear: z.int().min(1990).max(2200),
+  summary: z.string().max(20_000).nullable(),
+  notes: z.string().max(20_000),
+});
+export type CarbonReportNotesInput = z.input<typeof CarbonReportNotesInput>;

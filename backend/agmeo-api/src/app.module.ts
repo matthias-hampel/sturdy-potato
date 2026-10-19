@@ -6,6 +6,7 @@ import { ApiExceptionFilter } from './core/errors.js';
 import { DatabaseModule } from './db/database.js';
 import { CarbonController } from './modules/carbon/carbon.controller.js';
 import { CarbonService } from './modules/carbon/carbon.service.js';
+import { CarbonReportService } from './modules/carbon/report.service.js';
 import { ComplianceController } from './modules/compliance/compliance.controller.js';
 import { ComplianceService } from './modules/compliance/compliance.service.js';
 import { CropsController } from './modules/crops/crops.controller.js';
@@ -133,6 +134,7 @@ export const DOMAIN_SERVICES = [
   CommentsService,
   RadarService,
   CarbonService,
+  CarbonReportService,
   YieldService,
   AnnotationsService,
   FieldDocumentsService,
