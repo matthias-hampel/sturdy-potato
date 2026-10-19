@@ -84,16 +84,16 @@ rework:
 | Feature | Reference | Status | Missing |
 |---|---|---|---|
 | Operations | `transactions`, `operations` | present | Action catalogue (diesel l/ha, kWh/ha, h/ha), custom actions, CO2/diesel per row |
-| Operations overview map | `operations/[year]` | partial | Map, field-group menu, byproduct input |
-| Templates | `operations/_components/template-builder` | partial | Survey-based builder, public vs. own, sharing across orgs |
+| Operations overview map | `operations/[year]` | present | — (operations map with field-group filter; template and straw on crop assignment) |
+| Templates | `operations/_components/template-builder` | partial | Public system templates, AI proposal, per-step costs (builder, copies and other organizations' templates ported) |
 | Tasks | `tasks/_board`, `tasks/[id]/comments` | partial | Kanban, tasks on operations, comments, filters, bulk done, delta sync |
 | Crop calendar | `crop-calendar` | partial | Inline edit, crop colours, distribution bar |
-| Seeding, tillage tabs | `seeding/[year]`, `tillage/[year]` | partial | Sowing window, distribute seed, machine/implement/operator columns with diesel/kWh/h, seeding-map button |
-| Plant protection | `protection/[year]` | partial | BBCH phenology with calibration, ISIP disease risk, spray-window column, mix partners, Auflagen, Sachkunde |
+| Seeding, tillage tabs | `seeding/[year]`, `tillage/[year]` | present | — |
+| Plant protection | `protection/[year]` | partial | Inline dose min/max and water checks, Wirkbereich (type) column |
 | Harvest | `harvest/[year]` | partial | — (yield-map upload, batch satellite yield estimate and coverage KPIs ported) |
-| Irrigation | `irrigation/[year]`, `irrigation/water-balances` | partial | FAO-56 water balance, irrigator coverage, external event API |
-| N fertilization (DüV) | `nitrogen/[year]` | partial | agmeo N model (supply, loss, leaching), split strategies, apply strategy |
-| Base fertilization | `base-fertilization/[year]` | partial | Multi-year P2O5 balance, delivered/balance columns |
+| Irrigation | `irrigation/[year]`, `irrigation/water-balances` | partial | Raindancer coverage tracks (integration), external event API |
+| N fertilization (DüV) | `nitrogen/[year]` | present | — (inline per-dose editing stays in the operation form) |
+| Base fertilization | `base-fertilization/[year]` | present | — (application-map shortcut from the tab) |
 | Emission recommendations | `recommendations/[year]` | missing | Whole feature |
 | Voice drafts | `voice-drafts`, `cron/voice-transcription` | missing | Whole feature |
 
@@ -431,4 +431,44 @@ Open:
   reference database; no ESM writeback receiver; ESM runs are started by hand only.
 - DMC: offsets per variety instead of per KWS sales region; no pre-computing job; FAO maturity entered
   in the app.
+
+### Phase 1 — crop-production depth (2026-10-19, migrations 000110–000114)
+
+- **Seeding and tillage tabs**: machine, implement, operator, diesel, electricity (kWh/ha, migration
+  000110) and working time per ha; target density, seed rate, total seed and seed units (reference
+  seed-rate conversions with their tests); "distribute a total" over the selected sowings; seeding-map
+  link to the field's application maps; sowing window per field.
+- **Plant protection**: spray window and ISIP disease risk per field; BBCH at the application date
+  (recorded, else the calibrated model's) with the reference's BBCH dialog (model and calibrated
+  curves, temperature, vernalization, day length, observations and history, model parameters) on the
+  field-table branch's `crop_cycle_bbch_calibrations` and `bbch-observations`; BVL Auflagen with
+  drift-reduction tiers synced into `psm_restrictions` (000112) and shown per product with approval
+  and approved use; NT127 makes the time of day a required record field; tank-mix badge; approval
+  findings per operation (`protection/checks?seasonId`); the DVO 2023/564 dialog with certificate and
+  sprayer inspection; operator, usage type and time columns.
+- **Irrigation**: per crop the FAO-56 balance with the season's irrigation (planned ones included, as in
+  the reference) and a rooting-depth override (000111); KA5 soil class, nFK, soil water as % nFK,
+  sparkline and the detail view; irrigation method; methodology dialog; irrigation map.
+- **Nitrogen**: the agmeo N balance per crop (demand from the yield-N curve; Nmin, spring
+  mineralisation, leaching and target Nmin from the farmer's value, the latest ESM run or the
+  reference's soil-class estimates; DüV deductions), N supply and loss panels, the DüV check, and
+  fertilization strategies (three public, own ones) applied as planned doses (000113).
+- **Base fertilization**: soil values, need by content class, delivered/planned, balance, lime
+  (computed or entered, 000114), straw, and the DüV §6 six-year P2O5 balance with its yearly view.
+  Fixed: MgO classes now use mg Mg (÷ 1.6583); no need without a soil value (as in the reference).
+- **Operations map** with field-group filter; template and straw choice when assigning crops.
+- **Templates**: questionnaire builder, copies, read-only templates of the user's other
+  organizations with "save as own", unique names per crop, used templates are kept, a crop saved as
+  template.
+
+Differences from the reference:
+- Hours are stored per machine line, not per hectare; the tabs show and set time per ha.
+- Seeding keeps grains/m² (drill setting) as the edited value; target density is derived.
+- The irrigation map colours fields by documented water; the reference draws Raindancer irrigator
+  tracks, an integration that is out of scope.
+- Apply strategy writes planned operations directly (one per dose, a month apart) instead of staged
+  table edits; done and running doses are not changed.
+- The questionnaire builder creates relative-dated steps without the reference's KTBL costs, AI
+  proposal or calendar views; there are no public system templates.
+- Public strategies carry no product; the fertilizer is chosen when applying.
 
