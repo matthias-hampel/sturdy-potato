@@ -1,16 +1,27 @@
 /**
- * harmonie — pure DüV export library (ENNI Niedersachsen, ENDO Schleswig-Holstein).
+ * harmonie — pure DüV export library (ENNI Niedersachsen, ENDO Schleswig-Holstein,
+ * webBESyD BB/SN/ST/TH, Sachsen-Anhalt Mitteilungspflicht).
  *
- * Ported from agmeo `src/lib/federalExport/harmonie-export` (BESyD, ST and the
- * PDF report are not part of this port). No database access, no Nest
- * providers, no async: give it `ExportData`, get XML back.
+ * Ported from agmeo `src/lib/federalExport/harmonie-export` (the PDF report is
+ * not part of this port). No database access, no Nest providers, no async:
+ * give it `ExportData`, get XML / TXT files back.
  *
  *   ExportData → buildEnniFromExportData() → EnniExportModel → serializeEnniXml() → XML
  *   ExportData → buildEndoFromExportData() → EndoExportModel → serializeEndoXml() → XML
+ *   ExportData → buildBesydExportModel() → BesydExportModel → serializeBesydModel() → IMP*.TXT
+ *   ExportData + DBE → buildStExportModel() → StExportModel → serializeStModel() → TXT
  *
- * `buildEnniXml` / `buildEndoXml` / `runPreflight` are the one-call entry points.
+ * `buildEnniXml` / `buildEndoXml` / `buildBesydFiles` / `buildStFiles` /
+ * `runPreflight` are the one-call entry points.
  */
 
+import {
+  buildBesydExportModel,
+  derivedSowingDate,
+  generateBesydFilename,
+  serializeBesydModel,
+} from './besyd/builder.js';
+import type { BesydOrgMetadata } from './besyd/types.js';
 import {
   buildEndoFromExportData,
   generateEndoFilename,
@@ -23,10 +34,19 @@ import {
   serializeEnniXml,
 } from './enni/builder.js';
 import type { EnniOrgMetadata } from './enni/types.js';
+import type { DuevDbeResult } from './shared/dbeResult.js';
 import {
+  runBesydPreflightRules,
   runEndoPreflightRules,
   runEnniPreflightRules,
 } from './shared/preflight/index.js';
+import {
+  buildStExportModel,
+  generateStFilename,
+  serializeStModel,
+} from './st/builder.js';
+import { runStPreflightRules } from './st/preflight.js';
+import type { StOrgMetadata } from './st/types.js';
 import type {
   ExportData,
   FederalExportFormat,
@@ -130,8 +150,77 @@ export type {
   N170Transfer,
 } from './shared/n170Types.js';
 export { assignSchlagnummern } from './shared/xmlHelpers.js';
-export { GRASSLAND_CROPS, isGrasslandCrop } from './shared/fruchtklasse.js';
-export { runEndoPreflightRules, runEnniPreflightRules };
+export {
+  GRASSLAND_CROPS,
+  LEGUME_CROPS,
+  isGrasslandCrop,
+} from './shared/fruchtklasse.js';
+export {
+  runBesydPreflightRules,
+  runEndoPreflightRules,
+  runEnniPreflightRules,
+  runStPreflightRules,
+};
+export { FORMAT_STATES } from './shared/preflight/rules/common.js';
+
+// BESyD (webBESyD Brandenburg, Sachsen, Sachsen-Anhalt, Thüringen)
+export type {
+  Berechnungsgrundlage,
+  BesydBundesland,
+  BesydExportModel,
+  BesydOrgMetadata,
+} from './besyd/types.js';
+export {
+  BESYD_BUNDESLAND_NAMES,
+  BESYD_FIELD_SEPARATOR,
+  BESYD_TEXT_DELIMITER,
+} from './besyd/types.js';
+export {
+  DEFAULT_AMT,
+  DEFAULT_BERECHNUNGSGRUNDLAGE,
+  detectBundeslandFromBnr,
+  getEffectiveBesydMetadata,
+  validateBetriebsnummer,
+} from './besyd/defaults.js';
+export type { BesydFruchtartInfo } from './besyd/fruchtartCodes.js';
+export {
+  BESYD_FRUCHTART_CATALOGUE,
+  DEFAULT_CROP_TO_BESYD,
+  getBesydFruchtart,
+} from './besyd/fruchtartCodes.js';
+export type { BodenKlimaRaum } from './besyd/referenzCodes.js';
+export {
+  AMT_CODES,
+  BODEN_KLIMA_RAUM_CODES,
+  getBodenKlimaRaumByBundesland,
+  MINERAL_FERTILIZER_GROUP_CODES,
+  ORGANIC_FERTILIZER_CODES,
+} from './besyd/referenzCodes.js';
+export { getBkrOptionsForBnr, getCropCodeOptions } from './besyd/preflight.js';
+export {
+  buildBesydExportModel,
+  derivedSowingDate,
+  generateBesydFilename,
+  serializeBesydModel,
+};
+
+// Sachsen-Anhalt Mitteilungspflicht (LLG)
+export type {
+  StBewirtschaftung,
+  StExportModel,
+  StOrgMetadata,
+} from './st/types.js';
+export { ST_KREISE, stKreisName } from './st/codes/kreise.js';
+export type { StKultur } from './st/codes/kulturen.js';
+export { ST_KULTUREN, getStKultur } from './st/codes/kulturen.js';
+export {
+  buildStExportModel,
+  generateStFilename,
+  getEffectiveStMetadata,
+  serializeStModel,
+  ST_EXPORTQUELLE,
+  stFileName,
+} from './st/builder.js';
 
 /** ENNI (Niedersachsen) Dube2.5 XML for one Düngejahr. `metadata` overrides `data.integrations.enni`. */
 export function buildEnniXml(
@@ -149,21 +238,46 @@ export function buildEndoXml(
   return serializeEndoXml(buildEndoFromExportData(data, metadata));
 }
 
-/** Export file name (`ENNI_<bnr>_<year>.xml` / `ENDO_…`) for a format. */
+/** The eleven webBESyD IMP*.TXT files (name → content) for one Erntejahr. */
+export function buildBesydFiles(
+  data: ExportData,
+  metadata: BesydOrgMetadata,
+): Record<string, string> {
+  return serializeBesydModel(buildBesydExportModel(data, metadata));
+}
+
+/** The Sachsen-Anhalt TXT files (DBE, Duengungen, and Anl5 / Ertraege for a seat in ST). */
+export function buildStFiles(
+  data: ExportData,
+  metadata: StOrgMetadata,
+  dbeResults: Record<string, DuevDbeResult>,
+): Record<string, string> {
+  return serializeStModel(buildStExportModel(data, metadata, dbeResults));
+}
+
+/** Export file name (`ENNI_<bnr>_<year>.xml`, `ENDO_…`, `BESyD_<bnr>_<year>.zip`, `ST_…`) for a format. */
 export function generateExportFileName(
   format: FederalExportFormat,
   betriebsnummer: string,
   year: number,
 ): string {
-  return format === 'enni'
-    ? generateEnniFilename(betriebsnummer, year)
-    : generateEndoFilename(betriebsnummer, year);
+  switch (format) {
+    case 'enni':
+      return generateEnniFilename(betriebsnummer, year);
+    case 'endo':
+      return generateEndoFilename(betriebsnummer, year);
+    case 'besyd':
+      return generateBesydFilename(betriebsnummer, year);
+    case 'st':
+      return generateStFilename(betriebsnummer, year);
+  }
 }
 
 /**
  * Run the format's preflight rule set (XSD → Pflichtfelder → Stammdaten →
  * Eingaberoutinen → Plausibilität). As in agmeo, the rules read `metadata`
- * only — pass the effective org metadata, not just overrides.
+ * only — pass the effective org metadata, not just overrides. For ST,
+ * `cultivationIdsWithDbe` adds the `st_dbe_missing` check.
  */
 export function runPreflight(
   format: 'enni',
@@ -176,16 +290,43 @@ export function runPreflight(
   metadata?: EndoOrgMetadata,
 ): PreflightResult;
 export function runPreflight(
-  format: FederalExportFormat,
+  format: 'besyd',
   data: ExportData,
-  metadata?: EnniOrgMetadata | EndoOrgMetadata,
+  metadata?: BesydOrgMetadata,
+): PreflightResult;
+export function runPreflight(
+  format: 'st',
+  data: ExportData,
+  metadata?: StOrgMetadata,
+  cultivationIdsWithDbe?: ReadonlySet<string>,
 ): PreflightResult;
 export function runPreflight(
   format: FederalExportFormat,
   data: ExportData,
-  metadata?: EnniOrgMetadata | EndoOrgMetadata,
+  metadata?: PreflightMetadata,
+  cultivationIdsWithDbe?: ReadonlySet<string>,
+): PreflightResult;
+export function runPreflight(
+  format: FederalExportFormat,
+  data: ExportData,
+  metadata?: PreflightMetadata,
+  cultivationIdsWithDbe?: ReadonlySet<string>,
 ): PreflightResult {
-  return format === 'enni'
-    ? runEnniPreflightRules(data, metadata as EnniOrgMetadata | undefined)
-    : runEndoPreflightRules(data, metadata as EndoOrgMetadata | undefined);
+  switch (format) {
+    case 'enni':
+      return runEnniPreflightRules(data, metadata as EnniOrgMetadata);
+    case 'endo':
+      return runEndoPreflightRules(data, metadata as EndoOrgMetadata);
+    case 'besyd':
+      return runBesydPreflightRules(data, metadata as BesydOrgMetadata);
+    case 'st':
+      return runStPreflightRules(
+        data,
+        metadata as StOrgMetadata,
+        cultivationIdsWithDbe,
+      );
+  }
 }
+
+type PreflightMetadata =
+  EnniOrgMetadata | EndoOrgMetadata | BesydOrgMetadata | StOrgMetadata;

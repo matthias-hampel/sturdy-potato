@@ -5,7 +5,7 @@
  * - the Dube2.5 `einheit` the product is documented in (kg / dt, kg / cbm,
  *   kg / t, kg / hl),
  * - the application amount per ha in that unit
- *   (`menge-in-einheit-naehrstofftraeger-pro-ha`),
+ *   (`menge-in-einheit-naehrstofftraeger-pro-ha`, BESyD MENGE),
  * - the nutrient contents per one carrier unit and the resulting kg/ha.
  *
  * Article columns are NOT uniform: MINERAL__ (and every other non-organic)

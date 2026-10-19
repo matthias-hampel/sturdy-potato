@@ -3,13 +3,15 @@
  * Contents are converted to the library's conventions: mineral contents in %, organic ones in kg
  * per m³, and `density` as m³ per tonne (the inverse density).
  */
-import type { FarmRegulatory, FertilizerType, N170Data } from '@agmeo/contracts';
+import type { FarmRegulatory, FertilizerType, N170Data, NNeedResult } from '@agmeo/contracts';
 import { isOrganicFertilizer } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Trx } from '../../db/database.js';
 import {
   CarrierResolutionError,
   cropKeyForCode,
+  type BesydOrgMetadata,
+  type DuevDbeResult,
   type EndoOrgMetadata,
   type EnniOrgMetadata,
   type ExportCultivation,
@@ -20,6 +22,7 @@ import {
   type N170Betriebsdaten,
   type NaehrstofftraegerartType,
   resolveCarrier,
+  type StOrgMetadata,
 } from './harmonie/index.js';
 
 /** Solid organic fertilizers are documented per tonne (Mistdüngung). */
@@ -53,6 +56,7 @@ export function enniMetadata(farm: FarmRegulatory): EnniOrgMetadata {
     duengejahrbeginn: farm.fertilizerYearStart,
     bodenklimaraum: farm.enni.soilClimateArea ?? undefined,
     nKulisse: farm.enni.nitrateZoneFlag,
+    cropCodeOverrides: overrides(farm.enni.cropCodeOverrides),
     betriebsdatenOverrides: betriebsdaten(farm),
     ansprechpartner: { adresse: address(farm) },
     betriebsstaette: { adresse: address(farm) },
@@ -64,9 +68,103 @@ export function endoMetadata(farm: FarmRegulatory): EndoOrgMetadata {
     betriebsnummer: farm.holdingNumber ?? undefined,
     duengejahrbeginn: farm.fertilizerYearStart as EndoOrgMetadata['duengejahrbeginn'],
     naturraum: farm.endo.naturalRegion ?? undefined,
+    cropCodeOverrides: overrides(farm.endo.cropCodeOverrides),
     betriebsdatenOverrides: betriebsdaten(farm),
     ansprechpartner: { adresse: address(farm) },
     betriebsstaette: { adresse: address(farm) },
+  };
+}
+
+/** webBESyD metadata: the 12-digit Betriebsnummer and the farm's contact address. */
+export function besydMetadata(farm: FarmRegulatory): BesydOrgMetadata {
+  const b = farm.besyd;
+  const c = farm.contact;
+  return clean({
+    betriebsnummer: farm.euHoldingNumber ?? undefined,
+    berechnungsgrundlage: b.berechnungsgrundlage ?? (farm.organicCertified ? 'ÖL' : 'DV'),
+    bodenklimaraum: b.bodenklimaraum ?? undefined,
+    amt: b.amt ?? undefined,
+    firma: c.firma ?? farm.farmName,
+    strasse: c.strasse ?? undefined,
+    plz: c.plz ?? undefined,
+    ort: c.ort ?? undefined,
+    email: c.email ?? undefined,
+    cropCodeOverrides: overrides(b.cropCodeOverrides),
+    organicFertilizerCodeOverrides: overrides(b.organicFertilizerCodeOverrides),
+    mineralFertilizerCodeOverrides: overrides(b.mineralFertilizerCodeOverrides),
+  });
+}
+
+/** Sachsen-Anhalt Mitteilungspflicht metadata: EU-Betriebsnummer and the Betriebssitz from the contact address. */
+export function stMetadata(farm: FarmRegulatory): StOrgMetadata {
+  const s = farm.st;
+  const c = farm.contact;
+  return clean({
+    betriebsname: c.firma ?? farm.farmName,
+    euBetriebsnummer: farm.euHoldingNumber ?? undefined,
+    sitzPlz: c.plz ?? undefined,
+    sitzOrt: c.ort ?? undefined,
+    sitzOrtsteil: s.sitzOrtsteil ?? undefined,
+    kreisNr: s.kreisNr ?? undefined,
+    bewirtschaftung: s.bewirtschaftung ?? (farm.organicCertified ? 'o' : 'k'),
+    sitzInSt: s.sitzInSt,
+    cropCodeOverrides: overrides(s.cropCodeOverrides),
+  });
+}
+
+/** Override maps without empty codes. */
+function overrides(map: Record<string, string> | undefined): Record<string, string> {
+  return Object.fromEntries(Object.entries(map ?? {}).filter(([, v]) => v));
+}
+
+/** Drops undefined and empty-string values so the library's defaults and missing-field checks apply. */
+function clean<T extends object>(o: T): T {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as T;
+}
+
+/**
+ * The latest saved fertilizer-need record (Düngebedarfsermittlung) of each crop, in the shape of
+ * agmeo's stored DBE result. Records without an N calculation are left out.
+ */
+export async function loadDbeResults(trx: Trx, cropCycleIds: string[]): Promise<Record<string, DuevDbeResult>> {
+  if (!cropCycleIds.length) return {};
+  const rows = await trx
+    .selectFrom('fertilizer_need_records')
+    .distinctOn('crop_cycle_id')
+    .select(['crop_cycle_id', 'result', 'created_at'])
+    .where('crop_cycle_id', 'in', cropCycleIds)
+    .orderBy('crop_cycle_id')
+    .orderBy('created_at', 'desc')
+    .execute();
+  const out: Record<string, DuevDbeResult> = {};
+  for (const r of rows) {
+    const n = (r.result as { n?: NNeedResult | null } | null)?.n;
+    if (n) out[r.crop_cycle_id] = dbeResultOf(n, new Date(r.created_at as unknown as string).toISOString());
+  }
+  return out;
+}
+
+/** agmeo `DuevDbeResult` from a saved N need: deductions stay positive, yields are in the DüV unit. */
+export function dbeResultOf(n: NNeedResult, snapshotAt: string): DuevDbeResult {
+  return {
+    nRequirementValue: n.nRequirement,
+    referenceYield: n.referenceYield,
+    farmYield: n.expectedYield,
+    yieldUnit: n.yieldUnit,
+    yieldDifference: Math.round((n.expectedYield - n.referenceYield) * 10) / 10,
+    yieldSurcharge: n.yieldCorrection,
+    nmin: n.nmin,
+    humusDeduction: n.humusDeduction,
+    orgPreviousYearDeduction: n.organicPreviousYearDeduction,
+    previousCropDeduction: n.previousCropDeduction,
+    catchCropDeduction: n.catchCropDeduction,
+    foilSurcharge: n.filmSurcharge,
+    nFertilizerNeed: n.needBeforeZone,
+    nitrateZoneReduction: n.zoneReduction,
+    nFertilizerNeedFinal: n.need,
+    // Grassland and multi-cut field forage are assessed in dt dry matter.
+    isGrassland: n.yieldUnit === 'dt TM/ha',
+    snapshotAt,
   };
 }
 
@@ -104,21 +202,29 @@ export function n170Betriebsdaten(data: N170Data | null): N170Betriebsdaten | un
   };
 }
 
-export async function buildExportData(trx: Trx, orgId: string, farm: FarmRegulatory, year: number, n170Data: N170Data | null): Promise<ExportData> {
-  const window = getDuengejahrWindow(year, farm.fertilizerYearStart);
+export interface ExportDataOptions {
+  /** The Düngejahr window; BESyD and Sachsen-Anhalt always report the calendar year (JANUAR). */
+  duengejahrbeginn?: FarmRegulatory['fertilizerYearStart'];
+  /** Bundesland the farm reports in (stored or detected from the FLIKs). */
+  federalState?: string | null;
+}
+
+export async function buildExportData(trx: Trx, orgId: string, farm: FarmRegulatory, year: number, n170Data: N170Data | null, options: ExportDataOptions = {}): Promise<ExportData> {
+  const window = getDuengejahrWindow(year, options.duengejahrbeginn ?? farm.fertilizerYearStart);
+  const federalState = options.federalState === undefined ? (farm.federalState ?? null) : options.federalState;
   const from = window.start.toISOString().slice(0, 10);
   const to = new Date(window.end.getTime() - 12 * 3600_000).toISOString().slice(0, 10);
 
   const fieldRows = await trx
     .selectFrom('fields as f')
     .innerJoin('field_current_geometry as g', 'g.field_id', 'f.id')
-    .select(['f.id', 'f.name', 'f.identifier', 'f.soil_texture', 'f.nitrate_sensitive_zone', sql<number>`coalesce(g.area_ha, 0)`.as('area_ha')])
+    .select(['f.id', 'f.name', 'f.identifier', 'f.parcel_number', 'f.soil_texture', 'f.nitrate_sensitive_zone', sql<number>`coalesce(g.area_ha, 0)`.as('area_ha')])
     .where('f.farm_id', '=', farm.farmId)
     .where('f.status', '=', 'active')
     .orderBy('f.name')
     .execute();
   const fieldIds = fieldRows.map((f) => f.id);
-  if (!fieldIds.length) return { orgId, year, duengejahr: window, federalState: farm.federalState ?? null, integrations: {}, fields: [] };
+  if (!fieldIds.length) return { orgId, year, duengejahr: window, federalState, integrations: integrations(farm, year, n170Data), fields: [] };
 
   const cycles = await trx
     .selectFrom('crop_cycles as cc')
@@ -270,10 +376,16 @@ export async function buildExportData(trx: Trx, orgId: string, farm: FarmRegulat
     const own = cycles.filter((c) => c.field_id === f.id);
     const prevMain = own.find((c) => c.harvest_year === year - 1 && c.role === 'main');
     const prevHarvest = prevMain ? harvests.find((h) => h.crop_cycle_id === prevMain.id) : undefined;
+    const sowingOf = (c: (typeof own)[number]) => c.sowing_date ?? sowings.find((s) => s.crop_cycle_id === c.id)?.day ?? null;
+    const prevSown = prevMain ? sowingOf(prevMain) : null;
+    // A Herbstansaat follows this year's main crop (the largest one).
+    const currentMain = own.filter((c) => c.harvest_year === year && c.role === 'main').sort((a, b) => b.area_ha - a.area_ha)[0];
+    const currentHarvest = currentMain ? harvests.find((h) => h.crop_cycle_id === currentMain.id) : undefined;
+    const currentSown = currentMain ? sowingOf(currentMain) : null;
     const exportCycle = (c: (typeof own)[number], herbstansaat: boolean): ExportCultivation | null => {
       const key = cropKeyForCode(c.code);
       const cl = lines.filter((l) => l.crop_cycle_id === c.id);
-      const inWindow = cl.filter((l) => l.day >= from && l.day <= to);
+      const inWindow = cl.filter((l) => l.day >= from && l.day <= to).sort((a, b) => a.day.localeCompare(b.day));
       if (herbstansaat && !inWindow.length) return null;
       const dropped = cl.filter((l) => l.day < from || l.day > to).sort((a, b) => a.day.localeCompare(b.day));
       const ferts: ExportFertilization[] = [];
@@ -284,7 +396,9 @@ export async function buildExportData(trx: Trx, orgId: string, farm: FarmRegulat
         else ferts.push(r);
       }
       const h = harvests.find((x) => x.crop_cycle_id === c.id);
-      const sown = c.sowing_date ?? sowings.find((s) => s.crop_cycle_id === c.id)?.day ?? null;
+      const sownOn = sowingOf(c);
+      // As in agmeo, a Herbstansaat carries its sowing date only when it falls into the Düngejahr.
+      const sown = herbstansaat && sownOn && (sownOn < from || sownOn > to) ? null : sownOn;
       const nminSample = samples.find((s) => s.field_id === f.id && s.kind === 'nmin' && s.sampled_on >= c.start_date && s.sampled_on <= c.end_date);
       const need = needs.find((n) => n.crop_cycle_id === c.id)?.inputs as { nmin?: { value: number | null } } | undefined;
       const layers = nminSample
@@ -305,9 +419,17 @@ export async function buildExportData(trx: Trx, orgId: string, farm: FarmRegulat
         ...(herbstansaat ? { herbstansaat: true as const } : {}),
         sowingDate: sown ? berlin(sown) : null,
         harvest: !herbstansaat && h && h.ha ? { date: berlin(h.day), yieldDtPerHa: (Number(h.t) / Number(h.ha)) * 10, proteinPercent: c.protein_pct } : null,
-        previousCrop: prevMain ? (cropKeyForCode(prevMain.code) ?? prevMain.code) : null,
-        previousCropSowingDate: null,
-        previousCropYieldDtPerHa: prevHarvest && prevHarvest.ha ? (Number(prevHarvest.t) / Number(prevHarvest.ha)) * 10 : null,
+        ...(herbstansaat
+          ? {
+              previousCrop: currentMain ? (cropKeyForCode(currentMain.code) ?? currentMain.code) : null,
+              previousCropSowingDate: currentSown ? berlin(currentSown) : null,
+              previousCropYieldDtPerHa: currentHarvest && currentHarvest.ha ? (Number(currentHarvest.t) / Number(currentHarvest.ha)) * 10 : null,
+            }
+          : {
+              previousCrop: prevMain ? (cropKeyForCode(prevMain.code) ?? prevMain.code) : null,
+              previousCropSowingDate: prevSown ? berlin(prevSown) : null,
+              previousCropYieldDtPerHa: prevHarvest && prevHarvest.ha ? (Number(prevHarvest.t) / Number(prevHarvest.ha)) * 10 : null,
+            }),
         nmin: herbstansaat
           ? null
           : nminSample && layers.length
@@ -330,7 +452,7 @@ export async function buildExportData(trx: Trx, orgId: string, farm: FarmRegulat
       id: f.id,
       name: f.name,
       areaInHa: f.area_ha,
-      parcelId: null,
+      parcelId: f.parcel_number,
       flik: f.identifier,
       soilTypeLufa: f.soil_texture,
       nitrateSensitiveZone: f.nitrate_sensitive_zone,
@@ -353,13 +475,16 @@ export async function buildExportData(trx: Trx, orgId: string, farm: FarmRegulat
     };
   });
 
+  return { orgId, year, duengejahr: window, federalState, integrations: integrations(farm, year, n170Data), fields };
+}
+
+function integrations(farm: FarmRegulatory, year: number, n170Data: N170Data | null): ExportData['integrations'] {
   const n170 = n170Betriebsdaten(n170Data);
   return {
-    orgId,
-    year,
-    duengejahr: window,
-    federalState: farm.federalState ?? null,
-    integrations: { enni: enniMetadata(farm), endo: endoMetadata(farm), ...(n170 ? { n170: { [String(year)]: n170 } } : {}) },
-    fields,
+    enni: enniMetadata(farm),
+    endo: endoMetadata(farm),
+    besyd: besydMetadata(farm),
+    st: stMetadata(farm),
+    ...(n170 ? { n170: { [String(year)]: n170 } } : {}),
   };
 }

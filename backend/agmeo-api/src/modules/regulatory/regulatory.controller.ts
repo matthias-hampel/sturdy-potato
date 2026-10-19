@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Patch, Put, Query, Res } from '@nestjs/common';
-import { AGRARANTRAG_PRESETS, type AgrarantragPreset, FarmRegulatoryInput, LandUseCodeInput, N170Input } from '@agmeo/contracts';
+import { AGRARANTRAG_PRESETS, type AgrarantragPreset, FarmRegulatoryInput, FEDERAL_EXPORT_FORMATS, FEDERAL_STATES, type FederalExportFormat, type FederalState, LandUseCodeInput, N170Input } from '@agmeo/contracts';
 import type { Response } from 'express';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { badRequest } from '../../core/errors.js';
@@ -65,8 +65,36 @@ export class RegulatoryController {
 
   @Get('regulatory/preflight')
   preflight(@OrgCtx() ctx: Ctx, @Query('format') format: string, @Query('farmId', ParseUUIDPipe) farmId: string, @Query('year', ParseIntPipe) year: number) {
-    if (format !== 'enni' && format !== 'endo') throw badRequest('unknown_format', 'Unknown export format');
-    return this.regulatory.preflight(ctx, format, farmId, year);
+    if (!(FEDERAL_EXPORT_FORMATS as readonly string[]).includes(format)) throw badRequest('unknown_format', 'Unknown export format');
+    return this.regulatory.preflight(ctx, format as FederalExportFormat, farmId, year);
+  }
+
+  /** The Bundesland the farm reports in, the formats offered there with deadline and upload guide. */
+  @Get('regulatory/region')
+  region(@OrgCtx() ctx: Ctx, @Query('farmId', ParseUUIDPipe) farmId: string, @Query('year', new ParseIntPipe({ optional: true })) year?: number) {
+    return this.regulatory.region(ctx, farmId, year);
+  }
+
+  /** Exports archived in Files (system folder "exports") for the year, newest first. */
+  @Get('regulatory/exports/history')
+  exportHistory(@OrgCtx() ctx: Ctx, @Query('year', ParseIntPipe) year: number) {
+    return this.regulatory.exportHistory(ctx, year);
+  }
+
+  @Get('regulatory/code-lists')
+  codeLists(@Query('format') format: string, @Query('state') state?: string) {
+    if (format !== 'besyd' && format !== 'st') throw badRequest('unknown_format', 'Unknown export format');
+    if (state && !(FEDERAL_STATES as readonly string[]).includes(state)) throw badRequest('unknown_state', 'Unknown federal state');
+    return this.regulatory.codeLists(format, state as FederalState | undefined);
+  }
+
+  @Get('exports/:format.zip')
+  async exportZip(@OrgCtx() ctx: Ctx, @Param('format') format: string, @Query('farmId', ParseUUIDPipe) farmId: string, @Query('year', ParseIntPipe) year: number, @Res() res: Response) {
+    if (format !== 'besyd' && format !== 'st') throw badRequest('unknown_format', 'Unknown export format');
+    const file = await this.regulatory.exportZip(ctx, format, farmId, year);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.send(file.body);
   }
 
   @Get('exports/:format.xml')
