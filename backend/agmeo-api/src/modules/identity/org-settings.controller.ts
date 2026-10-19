@@ -49,6 +49,12 @@ export class OrgSettingsController {
     res.send(file.data);
   }
 
+  /** Settings → Data processing: who processes data for this deployment. */
+  @Get('orgs/:orgId/data-processing')
+  dataProcessing(@OrgCtx() _ctx: Ctx) {
+    return this.settings.dataProcessors();
+  }
+
   @Get('me/notifications')
   notifications(@CurrentUser() user: AuthUser) {
     return this.settings.notifications(user.userId);

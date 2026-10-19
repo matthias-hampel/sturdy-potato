@@ -103,6 +103,13 @@ describe('organization settings', () => {
     await http().post(`/v1/notifications/unsubscribe/one-click?token=${encodeURIComponent(token)}`).expect(200)
   })
 
+  it('lists the services that process data for this deployment', async () => {
+    const u = await signIn('dpa')
+    const org = (await u.post('/orgs', { name: `DPA ${run}` }).expect(201)).body
+    const rows = (await u.get(`/orgs/${org.id}/data-processing`).expect(200)).body as { id: string }[]
+    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(['hosting', 'database', 'email', 'weather', 'geocoding']))
+  })
+
   it('switches organization settings and the onboarding step', async () => {
     const u = await signIn('orgflags')
     const org = (await u.post('/orgs', { name: `Flags ${run}` }).expect(201)).body

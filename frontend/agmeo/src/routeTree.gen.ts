@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as OOrgIdRouteImport } from './routes/o.$orgId'
+import { Route as UnsubscribeTokenRouteImport } from './routes/unsubscribe.$token'
 import { Route as OOrgIdIndexRouteImport } from './routes/o.$orgId.index'
 import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdCarbonRouteImport } from './routes/o.$orgId.carbon'
@@ -73,6 +74,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 const OOrgIdRoute = OOrgIdRouteImport.update({
   id: '/o/$orgId',
   path: '/o/$orgId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeTokenRoute = UnsubscribeTokenRouteImport.update({
+  id: '/unsubscribe/$token',
+  path: '/unsubscribe/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
+  '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
+  '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/auth/callback'
     | '/o/$orgId'
+    | '/unsubscribe/$token'
     | '/o/$orgId/calendar'
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
@@ -429,6 +439,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/auth/callback'
+    | '/unsubscribe/$token'
     | '/o/$orgId/calendar'
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/auth/callback'
     | '/o/$orgId'
+    | '/unsubscribe/$token'
     | '/o/$orgId/calendar'
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
@@ -514,6 +526,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   OOrgIdRoute: typeof OOrgIdRouteWithChildren
+  UnsubscribeTokenRoute: typeof UnsubscribeTokenRoute
   ShareSoilTokenRoute: typeof ShareSoilTokenRoute
 }
 
@@ -552,6 +565,13 @@ declare module '@tanstack/react-router' {
       path: '/o/$orgId'
       fullPath: '/o/$orgId'
       preLoaderRoute: typeof OOrgIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe/$token': {
+      id: '/unsubscribe/$token'
+      path: '/unsubscribe/$token'
+      fullPath: '/unsubscribe/$token'
+      preLoaderRoute: typeof UnsubscribeTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/o/$orgId/': {
@@ -885,6 +905,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   OOrgIdRoute: OOrgIdRouteWithChildren,
+  UnsubscribeTokenRoute: UnsubscribeTokenRoute,
   ShareSoilTokenRoute: ShareSoilTokenRoute,
 }
 export const routeTree = rootRouteImport

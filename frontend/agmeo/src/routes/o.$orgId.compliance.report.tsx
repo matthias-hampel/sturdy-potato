@@ -18,6 +18,7 @@ import { ArrowLeft, FileText, Printer } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { PrintLogo } from '#/components/OrgLogo'
 import { z } from 'zod'
 import { monthLabel, NUTRIENT_GROUPS, nutrientGroupLabel, useDefaultYear } from '#/components/compliance/shared'
 import { NLedger, PkTable } from '#/components/nutrients/FertilizerNeedDialog'
@@ -208,11 +209,14 @@ function DuevReport({ data }: { data: ReportData }) {
 
   return (
     <div className="text-fg">
-      <header className="border-b-2 border-fg pb-3">
-        <h1 className="text-xl font-semibold">{t('regulatory.report.title', { year: totals.year })}</h1>
-        <p className="text-xs text-muted mt-0.5">
-          {t('regulatory.report.meta', { from: fmt.date(totals.window.from), to: fmt.date(totals.window.to), date: fmt.dateTime(new Date().toISOString()) })}
-        </p>
+      <header className="border-b-2 border-fg pb-3 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">{t('regulatory.report.title', { year: totals.year })}</h1>
+          <p className="text-xs text-muted mt-0.5">
+            {t('regulatory.report.meta', { from: fmt.date(totals.window.from), to: fmt.date(totals.window.to), date: fmt.dateTime(new Date().toISOString()) })}
+          </p>
+        </div>
+        <PrintLogo />
       </header>
 
       <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">

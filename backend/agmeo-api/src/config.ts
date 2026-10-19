@@ -127,6 +127,15 @@ export const config = {
       timeoutMs: Number(env('ISIP_TIMEOUT_MS', '60000')),
     },
   },
+  /**
+   * Who hosts this deployment, for Settings → Data processing: "Legal name|location|URL" each
+   * (location and URL optional). Empty rows are shown as "not stated by the operator".
+   */
+  dataProcessing: {
+    hosting: env('DATA_PROCESSING_HOSTING', ''),
+    database: env('DATA_PROCESSING_DATABASE', ''),
+    email: env('DATA_PROCESSING_EMAIL', ''),
+  },
   // Address search for farms. The public Photon instance allows fair use only; self-host it for more load.
   geocoding: {
     photonUrl: env('PHOTON_URL', 'https://photon.komoot.io'),

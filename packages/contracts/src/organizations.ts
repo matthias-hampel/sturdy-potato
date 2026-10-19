@@ -160,6 +160,24 @@ export interface UnsubscribeResult {
   email: string;
 }
 
+/** Data categories a processor receives. */
+export const DATA_CATEGORIES = ['account', 'farm_records', 'documents', 'field_locations', 'emails'] as const;
+export type DataCategory = (typeof DATA_CATEGORIES)[number];
+
+/**
+ * A service that processes data on this deployment's behalf (Settings → Data processing). The
+ * list is built from the running configuration, so it names only services that are switched on.
+ */
+export interface DataProcessor {
+  /** Stable id; the purpose text is translated in the app (`settings.dataProcessing.purpose.<id>`). */
+  id: string;
+  name: string;
+  categories: DataCategory[];
+  /** Processing location as far as known; null when the operator has not stated it. */
+  location: string | null;
+  url: string | null;
+}
+
 /** How the web app signs in, served by `GET /auth/config`. */
 export type AuthConfig = { mode: 'dev' } | { mode: 'oidc'; issuer: string; clientId: string };
 

@@ -50,6 +50,7 @@ import { Menu, MenuItem, MenuSeparator, MenuTrigger } from '#/ui/Overlay'
 import { cx, focusRing } from '#/ui/utils'
 import { GlobalSearch } from './GlobalSearch'
 import { Logo } from './Logo'
+import { useOrgLogo } from './OrgLogo'
 
 interface NavItem {
   to: string
@@ -197,14 +198,21 @@ function Sidebar({ user, onNavigate }: { user: CurrentUser; onNavigate?: () => v
 function OrgSwitcher({ user }: { user: CurrentUser }) {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const logo = useOrgLogo(org)
   const navigate = useNavigate()
   return (
     <div className="px-3">
       <MenuTrigger>
         <AriaButton className={cx('w-full flex items-center gap-3 rounded-lg bg-white/6 hover:bg-white/10 px-3 py-2.5 text-left', focusRing)}>
-          <span className="size-8 rounded-md bg-[#a8d08d]/20 text-[#cfe6bf] flex items-center justify-center shrink-0">
-            <Building2 className="size-4" aria-hidden />
-          </span>
+          {logo ? (
+            <span className="size-8 rounded-md bg-white flex items-center justify-center shrink-0 overflow-hidden">
+              <img src={logo} alt="" className="max-h-7 max-w-7 object-contain" />
+            </span>
+          ) : (
+            <span className="size-8 rounded-md bg-[#a8d08d]/20 text-[#cfe6bf] flex items-center justify-center shrink-0">
+              <Building2 className="size-4" aria-hidden />
+            </span>
+          )}
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium text-white truncate">{org.name}</span>
             <span className="block text-xs text-sidebar-muted">{roleLabel(org.role)}</span>

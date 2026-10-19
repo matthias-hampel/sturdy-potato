@@ -13,32 +13,69 @@ import { useOrg } from '#/lib/org'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { Button, Link } from '#/ui/Button'
 import { DatePicker, Option, Select, TextField } from '#/ui/Field'
-import { Badge, Card, PageHeader } from '#/ui/Layout'
+import { Badge, Card, PageHeader, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
+import { DataProcessingTab, ExportCard, LogoCard, NotificationsTab, RegionTab, SoilTab } from '#/components/settings/SettingsTabs'
+import { z } from 'zod'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
-export const Route = createFileRoute('/o/$orgId/settings')({ component: Settings })
+const SETTINGS_TABS = ['general', 'region', 'notifications', 'export', 'soil', 'dataProcessing'] as const
+type SettingsTab = (typeof SETTINGS_TABS)[number]
+
+export const Route = createFileRoute('/o/$orgId/settings')({
+  validateSearch: z.object({ tab: z.enum(SETTINGS_TABS).optional().catch(undefined) }),
+  component: Settings,
+})
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, name: new Date(2026, i, 1).toLocaleDateString(LOCALE, { month: 'long' }) }))
 const CURRENCIES = ['EUR', 'CHF', 'PLN', 'DKK', 'CZK', 'GBP'].map((c) => ({ id: c, name: c }))
 
 function Settings() {
   const { org, can } = useOrg()
+  const { tab = 'general' } = Route.useSearch()
+  const navigate = Route.useNavigate()
   return (
     <>
       <PageHeader title={t('nav.settings')} subtitle={org.name} />
-      <div className="grid xl:grid-cols-2 gap-6 items-start">
-        <OrganizationCard org={org} editable={can('org.manage')} />
-        <SeasonsCard />
-        <div className="xl:col-span-2">
-          <FarmsCard />
-        </div>
-        {org.country === 'DE' && (
-          <div className="xl:col-span-2">
-            <FertilizerReportsLinkCard />
+      <Tabs selectedKey={tab} onSelectionChange={(k) => void navigate({ search: { tab: k === 'general' ? undefined : (k as SettingsTab) }, replace: true })}>
+        <TabList aria-label={t('nav.settings')}>
+          {SETTINGS_TABS.map((id) => (
+            <Tab key={id} id={id}>
+              {t(`settings.tab.${id}`)}
+            </Tab>
+          ))}
+        </TabList>
+        <TabPanel id="general">
+          <div className="grid xl:grid-cols-2 gap-6 items-start">
+            <OrganizationCard org={org} editable={can('org.manage')} />
+            <div className="space-y-6">
+              <LogoCard />
+              <SeasonsCard />
+            </div>
+            <div className="xl:col-span-2">
+              <FarmsCard />
+            </div>
           </div>
-        )}
-      </div>
+        </TabPanel>
+        <TabPanel id="region">
+          <RegionTab />
+        </TabPanel>
+        <TabPanel id="notifications">
+          <NotificationsTab />
+        </TabPanel>
+        <TabPanel id="export">
+          <div className="grid xl:grid-cols-2 gap-6 items-start">
+            <ExportCard />
+            {org.country === 'DE' && <FertilizerReportsLinkCard />}
+          </div>
+        </TabPanel>
+        <TabPanel id="soil">
+          <SoilTab />
+        </TabPanel>
+        <TabPanel id="dataProcessing">
+          <DataProcessingTab />
+        </TabPanel>
+      </Tabs>
     </>
   )
 }

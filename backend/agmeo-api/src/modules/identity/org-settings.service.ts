@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { NOTIFICATION_KEYS, type NotificationSettings, type UnsubscribeResult, type UpdateNotificationSettingsInput } from '@agmeo/contracts';
+import { type DataProcessor, NOTIFICATION_KEYS, type NotificationSettings, type UnsubscribeResult, type UpdateNotificationSettingsInput } from '@agmeo/contracts';
 import type { MultiPolygon, Polygon } from 'geojson';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
@@ -7,6 +7,7 @@ import { toCsv as csvDocument } from '../../core/csv.js';
 import { badRequest, notFound } from '../../core/errors.js';
 import { record } from '../../core/events.js';
 import { decodePng, imageInfo } from '../../core/images.js';
+import { config } from '../../config.js';
 import { Database, type Trx } from '../../db/database.js';
 import { verifyUnsubscribeToken } from '../../mail/unsubscribe.js';
 import { polygonShapefile } from '../vra/export/shapefile.js';
@@ -109,6 +110,42 @@ export class OrgSettingsService {
     const settings = Object.fromEntries(NOTIFICATION_KEYS.map((k) => [k, true])) as NotificationSettings;
     for (const r of rows) if ((NOTIFICATION_KEYS as readonly string[]).includes(r.key)) settings[r.key as keyof NotificationSettings] = r.enabled;
     return settings;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Data processing
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Services that process data for this deployment, built from the running configuration: the
+   * operator's own rows, then every external service the API is set up to call.
+   */
+  dataProcessors(): DataProcessor[] {
+    const operator = (id: string, value: string, categories: DataProcessor['categories']): DataProcessor => {
+      const [name, location, url] = value.split('|').map((x) => x.trim());
+      return { id, name: name || '', categories, location: location || null, url: url || null };
+    };
+    const host = (u: string) => {
+      try {
+        return new URL(u).hostname;
+      } catch {
+        return null;
+      }
+    };
+    const rows: DataProcessor[] = [
+      operator('hosting', config.dataProcessing.hosting, ['account', 'farm_records', 'documents', 'field_locations']),
+      operator('database', config.dataProcessing.database, ['account', 'farm_records', 'field_locations']),
+      operator('email', config.dataProcessing.email, ['account', 'emails']),
+    ];
+    if (config.storage.driver === 's3') rows.push({ id: 'storage', name: host(config.storage.s3.endpoint) ?? 'S3', categories: ['documents'], location: config.storage.s3.region || null, url: null });
+    rows.push({ id: 'weather', name: 'Open-Meteo (APIs) GmbH', categories: ['field_locations'], location: 'EU', url: 'https://open-meteo.com/en/terms' });
+    rows.push({ id: 'geocoding', name: host(config.geocoding.photonUrl) === 'photon.komoot.io' ? 'komoot GmbH (Photon)' : (host(config.geocoding.photonUrl) ?? 'Photon'), categories: ['field_locations'], location: 'DE', url: config.geocoding.photonUrl });
+    if (config.openai.apiKey) rows.push({ id: 'openai', name: 'OpenAI Ireland Ltd.', categories: ['farm_records'], location: 'EU/US', url: 'https://openai.com/policies/data-processing-addendum' });
+    if (config.thuenen.apiKey) rows.push({ id: 'thuenen', name: 'Johann Heinrich von Thünen-Institut', categories: ['farm_records'], location: 'DE', url: config.thuenen.baseUrl });
+    if (config.models.isip.username) rows.push({ id: 'isip', name: 'ISIP e.V.', categories: ['farm_records', 'field_locations'], location: 'DE', url: 'https://www.isip.de' });
+    if (config.models.esm.url || config.maizeDmc.apiUrl || config.models.grassland.url)
+      rows.push({ id: 'agvolution', name: 'AGVOLUTION GmbH', categories: ['farm_records', 'field_locations'], location: 'DE', url: 'https://agvolution.com' });
+    return rows;
   }
 
   // ---------------------------------------------------------------------------
