@@ -1,4 +1,4 @@
-import { ROLES, type Employee, type EmployeeInput, type InviteMemberInput, type Member, type Role, type UpdateMemberInput } from '@agmeo/contracts'
+import { EMPLOYEE_ROLES, ROLES, type Employee, type EmployeeInput, type EmployeeRole, type InviteMemberInput, type Member, type Role, type UpdateMemberInput } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
 import { HardHat, KeyRound, Mail, Pencil, Phone, Trash2, UserCheck, UserPlus, UserX, Users } from 'lucide-react'
 import { useState } from 'react'
@@ -303,7 +303,7 @@ function EmployeesTab() {
           <Table aria-label={t('team.employees.tableLabel')}>
             <TableHeader>
               <Column isRowHeader>{t('common.name')}</Column>
-              <Column>{t('team.employees.jobTitle')}</Column>
+              <Column>{t('team.employees.role')}</Column>
               <Column>{t('team.employees.appUser')}</Column>
               <Column align="end">{t('team.employees.hourlyRate')}</Column>
               <Column align="end">{t('team.employees.hoursThisYear')}</Column>
@@ -339,7 +339,12 @@ function EmployeesTab() {
                       </div>
                     </div>
                   </Cell>
-                  <Cell className="whitespace-nowrap">{e.jobTitle ?? <span className="text-muted">—</span>}</Cell>
+                  <Cell className="whitespace-nowrap">
+                    <div>{t(`team.employees.roles.${e.role}`)}</div>
+                    {(e.jobTitle || e.staffNumber) && (
+                      <div className="text-xs text-muted">{[e.jobTitle, e.staffNumber && t('team.employees.staffNumberShort', { number: e.staffNumber })].filter(Boolean).join(' · ')}</div>
+                    )}
+                  </Cell>
                   <Cell className="whitespace-nowrap">{memberName(e.userId) ?? <span className="text-muted">{t('team.employees.noAppAccess')}</span>}</Cell>
                   <Cell align="end">{e.hourlyRate != null ? `${fmt.money(e.hourlyRate, org.currency, 2)} / h` : <span className="text-muted">—</span>}</Cell>
                   <Cell align="end">{fmt.num(e.hoursThisYear, 1)} h</Cell>
@@ -375,6 +380,9 @@ function EmployeeForm({ employee, members, employees, close }: { employee?: Empl
   const { org } = useOrg()
   const [name, setName] = useState(employee?.name ?? '')
   const [jobTitle, setJobTitle] = useState(employee?.jobTitle ?? '')
+  const [role, setRole] = useState<EmployeeRole>(employee?.role ?? 'field_worker')
+  const [staffNumber, setStaffNumber] = useState(employee?.staffNumber ?? '')
+  const [notes, setNotes] = useState(employee?.notes ?? '')
   const [email, setEmail] = useState(employee?.email ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
   const [hourlyRate, setHourlyRate] = useState(employee?.hourlyRate ?? NaN)
@@ -400,6 +408,9 @@ function EmployeeForm({ employee, members, employees, close }: { employee?: Empl
         e.preventDefault()
         save.mutate({
           name: name.trim(),
+          role,
+          staffNumber: textOrNull(staffNumber),
+          notes: textOrNull(notes),
           jobTitle: textOrNull(jobTitle),
           email: textOrNull(email),
           phone: textOrNull(phone),
@@ -410,7 +421,16 @@ function EmployeeForm({ employee, members, employees, close }: { employee?: Empl
       }}
     >
       <TextField label={t('common.name')} isRequired autoFocus value={name} onChange={setName} />
+      <Select
+        label={t('team.employees.role')}
+        items={EMPLOYEE_ROLES.map((id) => ({ id, name: t(`team.employees.roles.${id}`) }))}
+        value={role}
+        onChange={(v) => v && setRole(v as EmployeeRole)}
+      >
+        {(r) => <Option id={r.id}>{r.name}</Option>}
+      </Select>
       <TextField label={t('team.employees.jobTitle')} value={jobTitle} onChange={setJobTitle} placeholder={t('team.employees.jobTitlePlaceholder')} />
+      <TextField label={t('team.employees.staffNumber')} value={staffNumber} onChange={setStaffNumber} />
       <TextField label={t('team.email')} type="email" value={email} onChange={setEmail} />
       <TextField label={t('team.employees.phone')} type="tel" value={phone} onChange={setPhone} />
       <NumberField
@@ -443,6 +463,7 @@ function EmployeeForm({ employee, members, employees, close }: { employee?: Empl
           </Option>
         )}
       </Select>
+      <TextField label={t('common.notes')} multiline rows={2} value={notes} onChange={setNotes} className="sm:col-span-2" placeholder={t('team.employees.notesPlaceholder')} />
       <div className="sm:col-span-2">
         <Switch isSelected={active} onChange={setActive}>
           {t('team.employees.active')}

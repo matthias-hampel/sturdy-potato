@@ -53,7 +53,7 @@ describe('economics and carbon', () => {
 
     const kas = (await u.post(`${base}/products`, { category: 'fertilizer', name: 'KAS', baseUnit: 'kg', unitCost: 0.4, nPct: 27, fertilizerType: 'can' }).expect(201)).body
     await u.post(`${base}/stock/movements`, { productId: kas.id, kind: 'receipt', quantityDelta: 10_000 }).expect(201)
-    const tractor = (await u.post(`${base}/equipment`, { name: 'Schlepper', kind: 'tractor', hourlyCost: 50, fuelLPerH: 12 }).expect(201)).body
+    const tractor = (await u.post(`${base}/equipment`, { name: 'Schlepper', class: 'machine', category: 'tractor_medium', hourlyCost: 50, fuelLPerH: 12 }).expect(201)).body
     expect(tractor.fuelLPerH).toBe(12)
     const worker = (await u.post(`${base}/employees`, { name: 'Lena', hourlyRate: 20 }).expect(201)).body
 

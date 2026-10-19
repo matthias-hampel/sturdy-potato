@@ -365,6 +365,8 @@ export class OperationsService {
       responsible_employee_id: input.responsibleEmployeeId ?? null,
       contractor_name: input.contractorName ?? null,
       contractor_cost: input.contractorCost ?? null,
+      action_id: input.actionId ?? null,
+      diesel_l_per_ha: input.dieselLPerHa ?? null,
       bbch_stage: input.bbchStage ?? null,
       target_organism: input.targetOrganism ?? null,
       weather_conditions: input.weatherConditions ?? null,
@@ -530,7 +532,7 @@ export class OperationsService {
 
   /**
    * Emissions of a completion by source, split over the treated fields by area. Diesel is the
-   * recorded fuel, else machine hours × the machine's consumption per hour.
+   * recorded fuel, else the operation's diesel per hectare, else machine hours × consumption per hour.
    */
   private async writeEmissions(trx: Trx, ctx: Ctx, operationId: string, seq: number, seasonId: string | null, details: Record<string, unknown>) {
     const inputs = await trx
@@ -540,7 +542,18 @@ export class OperationsService {
       .where('oi.operation_id', '=', operationId)
       .execute();
     const fuel = inputs.filter((i) => i.category === 'fuel' && (i.base_unit === 'l' || i.base_unit === 'm3')).reduce((s, i) => s + i.total_quantity * (i.base_unit === 'm3' ? 1000 : 1), 0);
-    const machineFuel = fuel > 0
+    // Diesel: recorded fuel, else the operation's diesel per hectare, else machine hours × consumption.
+    const perHa = fuel > 0
+      ? 0
+      : Number(
+          (await trx
+            .selectFrom('operations as o')
+            .innerJoin('operation_fields as ofl', 'ofl.operation_id', 'o.id')
+            .select(sql<number | null>`max(o.diesel_l_per_ha) * sum(ofl.treated_area_ha)`.as('l'))
+            .where('o.id', '=', operationId)
+            .executeTakeFirst())?.l ?? 0,
+        );
+    const machineFuel = fuel > 0 || perHa > 0
       ? 0
       : Number(
           (await trx
@@ -551,7 +564,7 @@ export class OperationsService {
             .executeTakeFirst())?.l ?? 0,
         );
     const emissions = operationEmissions({
-      dieselL: fuel + machineFuel,
+      dieselL: fuel + perHa + machineFuel,
       technique: (details.applicationTechnique as ApplicationTechnique | undefined) ?? null,
       incorporationHours: typeof details.incorporationHours === 'number' ? details.incorporationHours : null,
       inputs: inputs.map((i) => ({
@@ -745,6 +758,8 @@ export class OperationsService {
         responsibleEmployee: o.responsible_employee_id ? { id: o.responsible_employee_id, name: o.employee_name! } : null,
         contractorName: o.contractor_name,
         contractorCost: o.contractor_cost,
+        actionId: o.action_id,
+        dieselLPerHa: o.diesel_l_per_ha,
         bbchStage: o.bbch_stage,
         targetOrganism: o.target_organism,
         weatherConditions: o.weather_conditions,

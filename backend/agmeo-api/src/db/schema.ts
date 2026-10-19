@@ -217,29 +217,68 @@ export interface Employees {
   id: Generated<string>;
   job_title: string | null;
   name: string;
+  notes: string | null;
   organization_id: string;
   phone: string | null;
+  role: Generated<string>;
+  staff_number: string | null;
   updated_at: Generated<Timestamp>;
   user_id: string | null;
 }
 
 export interface Equipment {
+  acquisition_type: string | null;
+  archived_at: Timestamp | null;
+  catalogue_id: string | null;
+  category: string;
+  class: Generated<string>;
   created_at: Generated<Timestamp>;
+  default_employee_id: string | null;
+  depreciation_method: string | null;
+  empty_mass_kg: number | null;
   farm_id: string | null;
+  financing_end_date: string | null;
+  financing_monthly_payment: Numeric | null;
+  financing_type: string | null;
+  front_axle_fraction: Numeric | null;
+  front_tyre: Json | null;
   fuel_l_per_h: Numeric | null;
   hour_meter: Generated<Numeric>;
   hourly_cost: Numeric | null;
   id: Generated<string>;
-  kind: string;
+  inspection_until: string | null;
+  insurance_annual: Numeric | null;
+  insurance_until: string | null;
+  inventory_number: string | null;
+  irrigation_coverage_ha: Numeric | null;
+  irrigation_flow_l_per_min: number | null;
+  irrigation_pressure_bar: Numeric | null;
+  irrigation_type: string | null;
+  /** Derived from the category by a trigger. */
+  kind: Generated<string>;
+  lease_end_date: string | null;
+  machine_ring_member_number: string | null;
   manufacturer: string | null;
+  max_fill_mass_kg: number | null;
   model: string | null;
   model_year: number | null;
+  mount_type: string | null;
   name: string;
   notes: string | null;
+  operating_mass_kg: number | null;
   organization_id: string;
+  power_kw: number | null;
+  purchase_date: string | null;
+  purchase_price_net: Numeric | null;
+  rear_tyre: Json | null;
   registration: string | null;
+  residual_value: Numeric | null;
+  serial_number: string | null;
   status: Generated<string>;
+  tank_capacity_l: number | null;
   updated_at: Generated<Timestamp>;
+  useful_life_years: number | null;
+  working_width_m: Numeric | null;
 }
 
 export interface FarmOverheads {
@@ -577,6 +616,22 @@ export interface NminReferenceValues {
   year: number;
 }
 
+export interface OperationActions {
+  archived_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  diesel_l_per_ha: Numeric | null;
+  employee_id: string | null;
+  hours_per_ha: Numeric | null;
+  id: Generated<string>;
+  implement_id: string | null;
+  machine_id: string | null;
+  name: string;
+  notes: string | null;
+  operation_type: string;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface OperationEquipment {
   equipment_id: string;
   hourly_cost: Numeric | null;
@@ -618,6 +673,7 @@ export interface OperationLabor {
 }
 
 export interface Operations {
+  action_id: string | null;
   bbch_stage: string | null;
   completed_at: Timestamp | null;
   completed_by: string | null;
@@ -627,6 +683,7 @@ export interface Operations {
   created_at: Generated<Timestamp>;
   created_by: string | null;
   details: Generated<Json>;
+  diesel_l_per_ha: Numeric | null;
   due_on: string | null;
   farm_id: string;
   id: Generated<string>;
@@ -1016,6 +1073,7 @@ export interface DB {
   memberships: Memberships;
   n170_inputs: N170Inputs;
   nmin_reference_values: NminReferenceValues;
+  operation_actions: OperationActions;
   operation_equipment: OperationEquipment;
   operation_fields: OperationFields;
   operation_inputs: OperationInputs;

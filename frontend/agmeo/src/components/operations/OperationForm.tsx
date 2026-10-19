@@ -1,5 +1,6 @@
 import {
   APPLICATION_TECHNIQUES,
+  EQUIPMENT_GONE_STATUSES,
   NUTRIENT_KEYS,
   OPERATION_TYPES,
   isOrganicFertilizer,
@@ -11,6 +12,7 @@ import {
   type Farm,
   type Field,
   type Operation,
+  type OperationAction,
   type OperationType,
   type Product,
   type ProductCategory,
@@ -113,6 +115,8 @@ export interface OperationFormState {
   equipment: HoursLine[]
   contractorName: string
   contractorCost: number
+  actionId: string | null
+  dieselLPerHa: number
   bbchStage: string
   targetOrganism: string
   weatherConditions: string
@@ -144,6 +148,8 @@ export function initialState(opts: { farmId: string | null; fieldIds?: string[];
       equipment: op.equipment.map((e) => ({ key: nextKey(), id: e.equipmentId, hours: e.hours })),
       contractorName: op.contractorName ?? '',
       contractorCost: op.contractorCost ?? NaN,
+      actionId: op.actionId,
+      dieselLPerHa: op.dieselLPerHa ?? NaN,
       bbchStage: op.bbchStage ?? '',
       targetOrganism: op.targetOrganism ?? '',
       weatherConditions: op.weatherConditions ?? '',
@@ -168,6 +174,8 @@ export function initialState(opts: { farmId: string | null; fieldIds?: string[];
     equipment: [],
     contractorName: '',
     contractorCost: NaN,
+    actionId: null,
+    dieselLPerHa: NaN,
     bbchStage: '',
     targetOrganism: '',
     weatherConditions: '',
@@ -201,6 +209,8 @@ export function toPayload(s: OperationFormState, fields: Field[], version?: numb
     responsibleEmployeeId: s.responsibleEmployeeId,
     contractorName: s.contractorName.trim() || null,
     contractorCost: num(s.contractorCost),
+    actionId: s.actionId,
+    dieselLPerHa: num(s.dieselLPerHa),
     bbchStage: s.bbchStage.trim() || null,
     targetOrganism: s.targetOrganism.trim() || null,
     weatherConditions: s.weatherConditions.trim() || null,
@@ -249,6 +259,7 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
   const employees = useOrgQuery<Employee[]>('/employees')
   const equipment = useOrgQuery<Equipment[]>('/equipment')
   const storage = useOrgQuery<StorageLocation[]>('/storage-locations')
+  const actions = useOrgQuery<OperationAction[]>('/operation-actions')
   const [allProducts, setAllProducts] = useState(false)
   const set = (patch: Partial<OperationFormState>) => onChange({ ...s, ...patch })
 
@@ -259,7 +270,7 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
   const productItems = (products.data ?? []).filter((p) => allProducts || categories.length === 0 || categories.includes(p.category))
   const productById = new Map((products.data ?? []).map((p) => [p.id, p]))
   const activeEmployees = (employees.data ?? []).filter((e) => e.active)
-  const activeEquipment = (equipment.data ?? []).filter((e) => e.status !== 'retired')
+  const activeEquipment = (equipment.data ?? []).filter((e) => !EQUIPMENT_GONE_STATUSES.includes(e.status))
   const selectedIds = new Set(s.fields.map((f) => f.fieldId))
   const shortages = error instanceof ApiRequestError && error.code === 'insufficient_stock' ? (error.details as StockShortage[]) : null
   const organicInput = s.inputs.some((i) => i.productId && isOrganicFertilizer(productById.get(i.productId)?.fertilizerType))
@@ -276,6 +287,26 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
   const setType = (type: OperationType) =>
     set({ type, title: s.titleTouched ? s.title : operationTypeLabel(type), details: {}, inputs: TYPE_CATEGORIES[type].length === 0 && type !== 'other' ? [] : s.inputs })
 
+  /** Takes over an action's type, diesel and default machine, implement and operator (hours from the treated area). */
+  const applyAction = (id: string | null) => {
+    const a = actions.data?.find((x) => x.id === id)
+    if (!a) return set({ actionId: null })
+    const hours = a.hoursPerHa != null && totalArea > 0 ? Math.round(a.hoursPerHa * totalArea * 100) / 100 : NaN
+    const withLine = (lines: HoursLine[], lineId: string | null) =>
+      !lineId || lines.some((l) => l.id === lineId) ? lines : [...lines.filter((l) => l.id), { key: nextKey(), id: lineId, hours: Number.isNaN(hours) ? 0 : hours }]
+    onChange({
+      ...s,
+      actionId: a.id,
+      type: a.operationType,
+      title: s.titleTouched ? s.title : a.name,
+      details: a.operationType === s.type ? s.details : {},
+      inputs: TYPE_CATEGORIES[a.operationType].length === 0 && a.operationType !== 'other' ? [] : s.inputs,
+      dieselLPerHa: a.dieselLPerHa ?? s.dieselLPerHa,
+      equipment: withLine(withLine(s.equipment, a.machineId), a.implementId),
+      labor: withLine(s.labor, a.employeeId),
+    })
+  }
+
   return (
     <Form
       className="space-y-6"
@@ -286,6 +317,18 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
     >
       <Card title={t('operations.form.what')}>
         <div className="space-y-5">
+          {(actions.data?.length ?? 0) > 0 && (
+            <Select
+              label={t('operations.form.action')}
+              items={[{ id: '__none', name: t('operations.form.noAction') }, ...(actions.data ?? []).filter((a) => !a.archivedAt || a.id === s.actionId)]}
+              value={s.actionId ?? '__none'}
+              onChange={(v) => applyAction(v && v !== '__none' ? String(v) : null)}
+              description={t('operations.form.actionHint')}
+              className="max-w-md"
+            >
+              {(a) => <Option id={a.id}>{a.name}</Option>}
+            </Select>
+          )}
           <div role="radiogroup" aria-label={t('operations.typeLabel')} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {OPERATION_TYPES.map((ty) => {
               const Icon = OPERATION_ICONS[ty]
@@ -456,6 +499,16 @@ export function OperationForm({ value: s, onChange, onSubmit, isPending, submitL
           />
           <TextField label={t('operations.contractor')} value={s.contractorName} onChange={(contractorName) => set({ contractorName })} placeholder={t('operations.form.contractorPlaceholder')} />
           <NumberField label={t('operations.form.contractorCost')} unit="€" minValue={0} value={s.contractorCost} onChange={(contractorCost) => set({ contractorCost })} />
+          <NumberField
+            label={t('operations.form.dieselPerHa')}
+            unit="l/ha"
+            minValue={0}
+            maxValue={1000}
+            formatOptions={{ maximumFractionDigits: 2 }}
+            value={s.dieselLPerHa}
+            onChange={(dieselLPerHa) => set({ dieselLPerHa })}
+            description={!Number.isNaN(s.dieselLPerHa) && totalArea > 0 ? t('operations.form.dieselTotal', { litres: fmt.num(s.dieselLPerHa * totalArea, 1) }) : t('operations.form.dieselHint')}
+          />
         </div>
       </Card>
 

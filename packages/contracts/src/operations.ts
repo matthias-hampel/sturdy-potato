@@ -98,6 +98,10 @@ export const OperationInput = z.object({
   responsibleEmployeeId: id.nullish(),
   contractorName: shortText,
   contractorCost: amount.nullish(),
+  /** The catalogue action the operation was planned from. */
+  actionId: id.nullish(),
+  /** Diesel per treated hectare; without it, diesel is estimated from machine hours. */
+  dieselLPerHa: z.number().min(0).max(1000).nullish(),
   bbchStage: shortText,
   targetOrganism: shortText,
   weatherConditions: shortText,
@@ -195,6 +199,8 @@ export interface Operation {
   responsibleEmployee: Ref | null;
   contractorName: string | null;
   contractorCost: number | null;
+  actionId: string | null;
+  dieselLPerHa: number | null;
   bbchStage: string | null;
   targetOrganism: string | null;
   weatherConditions: string | null;
