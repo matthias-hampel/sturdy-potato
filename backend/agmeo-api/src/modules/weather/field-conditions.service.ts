@@ -221,7 +221,8 @@ export class FieldConditionsService {
         const day = (d: { date: string; value: number | null; reasons?: { key: string; value: number; dimension?: string }[] }): ConditionDay => ({ date: d.date, value: d.value as ConditionDay['value'], reasons: toReasons(d.reasons) });
         return {
           ...base,
-          gdd: phen?.gdd != null ? Math.round(phen.gdd) : null,
+          // Since a known sowing only (the reference's column), not from the crop calendar's typical date.
+          gdd: sowingDate && sowingDate <= today && phen?.gdd != null ? Math.round(phen.gdd) : null,
           bbch: phen?.currentBbch ?? null,
           bbchSource: phen?.bbchSource ?? null,
           bbchCalibrated: phen?.calibrated ?? false,

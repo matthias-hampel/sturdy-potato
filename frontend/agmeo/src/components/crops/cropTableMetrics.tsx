@@ -290,7 +290,7 @@ function BbchCell({ row, canObserve }: { row: CropTableConditionsRow; canObserve
       {row.bbchCalibrated && <span className="ml-0.5 align-super text-[0.6rem] text-primary" aria-hidden>●</span>}
     </span>
   )
-  if (!canObserve || !row.bbchCalibratable) return value
+  if (!canObserve || !row.bbchCalibratable || row.bbch == null) return value
   return (
     <span className="inline-flex items-center gap-1">
       {value}
