@@ -1705,7 +1705,7 @@
   "fertilizerNeed.noteHint": "Wird mit der dokumentierten Berechnung gespeichert.",
   "fertilizerNeed.pk.factor": "Faktor",
   "fertilizerNeed.pk.need": "Bedarf",
-  "fertilizerNeed.pk.noSample": "Keine Grunduntersuchung: Bedarf in Höhe der Abfuhr",
+  "fertilizerNeed.pk.noSample": "Keine Grunduntersuchung: ohne Bodenwerte wird kein Bedarf berechnet, nur die Abfuhr",
   "fertilizerNeed.pk.none": "Ohne Ertragsniveau lässt sich die Grunddüngung nicht berechnen.",
   "fertilizerNeed.pk.nutrient": "Nährstoff",
   "fertilizerNeed.pk.removal": "Abfuhr kg/ha",

@@ -170,9 +170,10 @@ export interface PkNeedResult {
   nutrient: 'p2o5' | 'k2o' | 'mgo';
   removal: number;
   contentClass: ContentClass | null;
-  factor: number;
-  /** kg/ha */
-  need: number;
+  /** null without a soil value for the nutrient. */
+  factor: number | null;
+  /** kg/ha; null without a soil value for the nutrient (no recommendation, as in the reference). */
+  need: number | null;
 }
 
 export interface FertilizerNeedInputs {

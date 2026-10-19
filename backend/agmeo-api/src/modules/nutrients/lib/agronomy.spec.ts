@@ -1,5 +1,5 @@
 import { availableN, soilClassOf } from '@agmeo/contracts';
-import { baseFertilizationNeed, kClass, limeRequirement, mgClass, pClass, phClass } from './base-fertilization.js';
+import { baseFertilizationNeed, kClass, limeRequirement, mgClass, P2O5_TO_P, pClass, phClass } from './base-fertilization.js';
 import { closedPeriod, inClosedPeriod, restrictedByClosedPeriod } from './closed-periods.js';
 import { catchCropDeduction, nitrogenNeed, type NNeedInput } from './duev.js';
 
@@ -58,7 +58,9 @@ describe('P, K, Mg and lime', () => {
     // 15 mg P2O5 = 6.5 mg P → D; 10 mg P2O5 = 4.4 mg P → C.
     expect([pClass(15), pClass(10), pClass(2)]).toEqual(['D', 'C', 'A']);
     expect([kClass(15, 'medium'), kClass(15, 'light'), kClass(45, 'heavy')]).toEqual(['C', 'C', 'D']);
-    expect(mgClass(6, 'medium')).toBe('C');
+    // Mg classes are in mg Mg/100 g: 6 mg MgO = 3.6 mg Mg → B on medium soils; 10 mg MgO = 6 mg Mg → C.
+    expect(mgClass(6, 'medium')).toBe('B');
+    expect(mgClass(10, 'medium')).toBe('C');
     expect(soilClassOf('sU')).toBe('light');
     expect(soilClassOf('L')).toBe('medium');
     expect(soilClassOf('tL')).toBe('heavy');
@@ -66,11 +68,22 @@ describe('P, K, Mg and lime', () => {
 
   it('scales removal by the class factor, with straw only when it leaves the field', () => {
     const kept = baseFertilizationNeed('winter_wheat', 8, false, 'medium', null);
-    expect(kept.map((r) => [r.nutrient, r.removal, r.need])).toEqual([['p2o5', 64, 64], ['k2o', 44, 44], ['mgo', 16, 16]]);
+    // Without soil values: removal, but no need.
+    expect(kept.map((r) => [r.nutrient, r.removal, r.need])).toEqual([['p2o5', 64, null], ['k2o', 44, null], ['mgo', 16, null]]);
     const removed = baseFertilizationNeed('winter_wheat', 8, true, 'medium', { p2o5Mg100g: 5, k2oMg100g: 45, mgoMg100g: null });
     // Straw 64 dt: +19.2 P2O5, +108.8 K2O; P class B (2.2 mg P) ×1.5, K class E ×0.
     expect(removed[0]).toMatchObject({ removal: 83.2, contentClass: 'B', need: 124.8 });
     expect(removed[1]).toMatchObject({ removal: 152.8, contentClass: 'E', need: 0 });
+    expect(removed[2]).toMatchObject({ contentClass: null, factor: null, need: null });
+  });
+
+  // Reference lib/farmalyzer/__tests__/duev-stress.test.ts, "P/K/Mg Grunddüngung" (soil values in mg P/100 g there).
+  it('matches the reference P cases', () => {
+    const p = (mgP: number | null, strawRemoved = false) => baseFertilizationNeed('winter_wheat', 8, strawRemoved, 'medium', { p2o5Mg100g: mgP == null ? null : mgP / P2O5_TO_P, k2oMg100g: null, mgoMg100g: null })[0];
+    expect(p(4)).toMatchObject({ removal: 64, contentClass: 'C', need: 64 });
+    expect(p(4, true)).toMatchObject({ removal: 83.2, need: 83.2 });
+    expect(p(15)).toMatchObject({ contentClass: 'E', need: 0 });
+    expect(p(10)).toMatchObject({ contentClass: 'D', factor: 0.5, need: 32 });
   });
 
   it('computes the lime requirement towards the target pH', () => {

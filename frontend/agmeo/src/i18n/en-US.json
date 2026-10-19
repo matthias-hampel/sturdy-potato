@@ -1705,7 +1705,7 @@
   "fertilizerNeed.noteHint": "Saved with the documented calculation.",
   "fertilizerNeed.pk.factor": "Factor",
   "fertilizerNeed.pk.need": "Need",
-  "fertilizerNeed.pk.noSample": "No basic analysis: need equals removal",
+  "fertilizerNeed.pk.noSample": "No basic analysis: without soil values only the removal is given, no need",
   "fertilizerNeed.pk.none": "Base fertilization needs an expected yield.",
   "fertilizerNeed.pk.nutrient": "Nutrient",
   "fertilizerNeed.pk.removal": "Removal kg/ha",

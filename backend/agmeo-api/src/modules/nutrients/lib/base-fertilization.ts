@@ -61,11 +61,12 @@ const classOf = (value: number, bounds: Bounds): ContentClass => {
 };
 
 export const P2O5_TO_P = 0.4364;
+export const MG_TO_MGO = 1.6583;
 /** mg P/100 g (CAL), normal and dry (< 550 mm) sites. */
 const P_BOUNDS: Record<'normal' | 'dry', Bounds> = { normal: [1.5, 3, 6, 12], dry: [2.5, 5, 7.5, 12] };
 /** mg K2O/100 g (CAL) by soil class. */
 const K_BOUNDS: Record<SoilClass, Bounds> = { light: [4, 10, 20, 35], medium: [5, 12, 25, 40], heavy: [6, 15, 30, 50] };
-/** mg MgO/100 g (CaCl2) by soil class. */
+/** mg Mg/100 g (CaCl2) by soil class; lab values in mg MgO/100 g are converted. */
 const MG_BOUNDS: Record<SoilClass, Bounds> = { light: [2, 4, 8, 15], medium: [3, 5, 10, 20], heavy: [4, 8, 15, 25] };
 const P_FACTOR: Record<ContentClass, number> = { A: 2, B: 1.5, C: 1, D: 0.5, E: 0 };
 const K_FACTOR: Record<ContentClass, number> = { A: 1.8, B: 1.3, C: 1, D: 0.5, E: 0 };
@@ -73,7 +74,7 @@ const MG_FACTOR = P_FACTOR;
 
 export const pClass = (p2o5Mg100g: number, site: 'normal' | 'dry' = 'normal') => classOf(p2o5Mg100g * P2O5_TO_P, P_BOUNDS[site]);
 export const kClass = (k2oMg100g: number, soil: SoilClass) => classOf(k2oMg100g, K_BOUNDS[soil]);
-export const mgClass = (mgoMg100g: number, soil: SoilClass) => classOf(mgoMg100g, MG_BOUNDS[soil]);
+export const mgClass = (mgoMg100g: number, soil: SoilClass) => classOf(mgoMg100g / MG_TO_MGO, MG_BOUNDS[soil]);
 
 /** Target pH (CaCl2) of arable mineral soils; lowered on humus-rich soils. */
 const PH_TARGET: Record<SoilClass, number> = { light: 5.4, medium: 6.3, heavy: 6.8 };
@@ -102,7 +103,8 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
 
 /**
  * P2O5, K2O and MgO need: removal by the expected yield (with by-products when they leave the field)
- * times the factor of the soil content class. Without a soil analysis the removal is the need (class C).
+ * times the factor of the soil content class. A nutrient without a soil value gets no need, as in
+ * the reference (the removal is still given).
  */
 export function baseFertilizationNeed(
   cropCode: string,
@@ -116,9 +118,9 @@ export function baseFertilizationNeed(
   const dt = expectedYieldTHa * 10;
   const removal = (k: keyof Contents) => r1(crop.main[k] * dt + (byProductRemoved && crop.byProduct ? crop.byProduct[k] * dt * crop.ratio : 0));
   const row = (nutrient: PkNeedResult['nutrient'], cls: ContentClass | null, factors: Record<ContentClass, number>): PkNeedResult => {
-    const factor = factors[cls ?? 'C'];
+    const factor = cls ? factors[cls] : null;
     const rem = removal(nutrient);
-    return { nutrient, removal: rem, contentClass: cls, factor, need: r1(rem * factor) };
+    return { nutrient, removal: rem, contentClass: cls, factor, need: factor == null ? null : r1(rem * factor) };
   };
   return [
     row('p2o5', analysis?.p2o5Mg100g != null ? pClass(analysis.p2o5Mg100g) : null, P_FACTOR),
