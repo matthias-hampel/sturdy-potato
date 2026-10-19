@@ -70,6 +70,9 @@ import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
+import { MaizeDmcClient } from './modules/maize-dmc/client.js';
+import { MaizeDmcController } from './modules/maize-dmc/maize-dmc.controller.js';
+import { MaizeDmcService } from './modules/maize-dmc/maize-dmc.service.js';
 import { NewsController } from './modules/news/news.controller.js';
 import { NewsService } from './modules/news/news.service.js';
 import { FieldDocumentsController } from './modules/documents/field-documents.controller.js';
@@ -120,6 +123,7 @@ export const DOMAIN_SERVICES = [
   YieldService,
   AnnotationsService,
   FieldDocumentsService,
+  MaizeDmcService,
 ];
 
 /**
@@ -164,10 +168,12 @@ export const DOMAIN_SERVICES = [
     YieldController,
     AnnotationsController,
     FieldDocumentsController,
+    MaizeDmcController,
   ],
   providers: [
     TokenService,
     ObjectStorage,
+    MaizeDmcClient,
     ...DOMAIN_SERVICES,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: OrgGuard },

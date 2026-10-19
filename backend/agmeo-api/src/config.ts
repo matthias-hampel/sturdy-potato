@@ -65,4 +65,15 @@ export const config = {
     baseUrl: env('THUENEN_BASE_URL', 'https://agrighg-tool.thuenen.de/api/v1'),
     apiKey: env('THUENEN_API_KEY', ''),
   },
+  // AGVOLUTION's maize dry-matter service (maize-dmc-api). Without a URL the DMC routes answer
+  // "not configured" and the harvest detection job skips itself.
+  maizeDmc: {
+    apiUrl: env('MAIZE_DMC_API_URL', '').trim().replace(/\/+$/, ''),
+    /** Bearer token; empty sends no Authorization header (the service enforces auth only when its own DMC_API_TOKEN is set). */
+    apiToken: env('MAIZE_DMC_API_TOKEN', ''),
+    /** Per attempt; a predict takes 5–30 s depending on resolution. */
+    timeoutMs: Number(env('MAIZE_DMC_API_TIMEOUT_MS', '120000')),
+    /** Send our stored daily weather so the service fetches only the gaps. */
+    supplyWeather: env('DMC_SUPPLY_CACHED_WEATHER', 'on') !== 'off',
+  },
 };
