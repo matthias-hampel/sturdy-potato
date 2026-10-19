@@ -54,6 +54,8 @@ import { TeamController } from './modules/team/team.controller.js';
 import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
+import { YieldController } from './modules/yield/yield.controller.js';
+import { YieldService } from './modules/yield/yield.service.js';
 
 export const DOMAIN_SERVICES = [
   IdentityService,
@@ -82,6 +84,7 @@ export const DOMAIN_SERVICES = [
   FilesService,
   BoardService,
   CommentsService,
+  YieldService,
 ];
 
 /**
@@ -116,6 +119,7 @@ export const DOMAIN_SERVICES = [
     FilesController,
     BoardController,
     CommentsController,
+    YieldController,
   ],
   providers: [
     TokenService,

@@ -3,6 +3,7 @@ import type { DB } from '../db/schema.js';
 import { SEND_EMAIL, sendEmailHandler } from '../mail/mail.js';
 import { PURGE_OBJECTS } from '../modules/files/files.service.js';
 import { WEATHER_CELL, WEATHER_SCAN, weatherCellHandler, weatherScanHandler } from '../modules/weather/weather-store.js';
+import { YIELD_SWEEP, yieldJobHandlers } from '../modules/yield/yield-builder.js';
 import { createStorageDriver } from '../storage/object-storage.js';
 import type { JobHandler } from './runner.js';
 import type { Schedule } from './scheduler.js';
@@ -16,6 +17,8 @@ export function jobHandlers(db: Kysely<DB>): Record<string, JobHandler> {
     [SEND_EMAIL]: sendEmailHandler(),
     [WEATHER_SCAN]: weatherScanHandler(db),
     [WEATHER_CELL]: weatherCellHandler(db),
+    // Yield maps: build a crop cycle's rasters; the sweep re-queues sources a lost job left behind.
+    ...yieldJobHandlers(db, storage),
     // Objects of files deleted from the trash; deleting a missing object is not an error.
     [PURGE_OBJECTS]: async (job) => {
       for (const key of (job.payload.keys as string[] | undefined) ?? []) await storage.delete(key);
@@ -40,4 +43,5 @@ export const schedules: Schedule[] = [
   { kind: CLEANUP_JOBS, everyMinutes: 24 * 60, offsetMinutes: 3 * 60 },
   // At :30 like the reference's crawler, so each morning slot (04:30–05:30 local) is hit once.
   { kind: WEATHER_SCAN, everyMinutes: 60, offsetMinutes: 30 },
+  { kind: YIELD_SWEEP, everyMinutes: 15, offsetMinutes: 7 },
 ];
