@@ -251,3 +251,33 @@ Differences from the reference that remain deliberate or open:
 - Units: forms that take input in hectares or kg/ha still take metric values; they convert as their screens
   are reworked in the following phases.
 - Languages: German and English only; the other nine follow in phase 5.
+
+### Phase 1 — core workflow gaps (in progress, 2026-10-19)
+
+Done:
+- **Field manager** (migration 000031): archive and restore, delete, renumber (parcel numbers), merge with
+  preview; boundary versions with reason and restore; advanced drawing (cut, holes, simplify); field groups;
+  crop rotation page and carry-forward of crop cycles into the next season.
+- **Task board** (000032): operations by status with priority, due date and assignee; comments; delta sync
+  for tasks.
+- **Crop calendar** (000033): several years at once with drag editing, seed multiplication (lot,
+  generation, usage), own crop colours.
+- **BESyD and Sachsen-Anhalt** (000034): builders ported from the reference (byte-identical files on
+  test data), farm data per format, region detection with deadlines and upload guides, export history;
+  ENNI, ENDO, BESyD, ST and Agrarantrag downloads are archived into the Exports folder.
+- **Warehouse and prices** (000035): receipts and issues with lot, expiry, supplier or buyer, invoice,
+  total price and VAT; voids as compensating movements; stocktake; CSV exports; expiry warnings and
+  category totals; harvests booked into stock as harvested goods. Prices per year: own price, else the
+  year's weighted receipt average, else the latest earlier year, else the product default
+  (`app.product_price`); operations and economics value inputs with it. Products gain humus C,
+  N effectiveness, website and datasheet. Read-only calculation parameters (emission factors).
+
+Open in phase 1: fertilizer-report wizard UI (region, formats, deadlines, readiness, BESyD/ST farm data,
+upload guide, export history), machinery details (machine vs implement, SCI and irrigation data,
+purchase and depreciation), operator details, operation action catalogue (diesel and hours per ha),
+field-table column configuration, PSM record after EU 2023/564.
+
+Differences from the reference:
+- BESyD/ST: grazing is not modelled (IMPWEIDE stays empty); ST Phosphorgebiet is always false as in the
+  reference; no Regierungsbezirk or centroid fallback for the federal state.
+- Expiry of stock on hand assumes first in, first out, since outflows carry no lot.
