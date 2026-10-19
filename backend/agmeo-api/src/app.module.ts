@@ -33,6 +33,8 @@ import { FieldPartsService } from './modules/fields/field-parts.service.js';
 import { FieldsService } from './modules/fields/fields.service.js';
 import { IdentityController } from './modules/identity/identity.controller.js';
 import { IdentityService } from './modules/identity/identity.service.js';
+import { OrgSettingsController } from './modules/identity/org-settings.controller.js';
+import { OrgSettingsService } from './modules/identity/org-settings.service.js';
 import { InventoryController } from './modules/inventory/inventory.controller.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
 import { KtblController } from './modules/ktbl/ktbl.controller.js';
@@ -101,6 +103,7 @@ import { YieldService } from './modules/yield/yield.service.js';
 
 export const DOMAIN_SERVICES = [
   IdentityService,
+  OrgSettingsService,
   FarmsService,
   FieldsService,
   FieldPartsService,
@@ -159,6 +162,7 @@ export const DOMAIN_SERVICES = [
   imports: [DatabaseModule],
   controllers: [
     IdentityController,
+    OrgSettingsController,
     FarmsController,
     FieldsController,
     FieldPartsController,

@@ -14,16 +14,19 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as OOrgIdRouteImport } from './routes/o.$orgId'
+import { Route as UnsubscribeTokenRouteImport } from './routes/unsubscribe.$token'
 import { Route as OOrgIdIndexRouteImport } from './routes/o.$orgId.index'
 import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdCarbonRouteImport } from './routes/o.$orgId.carbon'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
 import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
+import { Route as OOrgIdHelpRouteImport } from './routes/o.$orgId.help'
 import { Route as OOrgIdImportRouteImport } from './routes/o.$orgId.import'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdMaizeDmcRouteImport } from './routes/o.$orgId.maize-dmc'
 import { Route as OOrgIdNewsRouteImport } from './routes/o.$orgId.news'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
+import { Route as OOrgIdOnboardingRouteImport } from './routes/o.$orgId.onboarding'
 import { Route as OOrgIdPricesRouteImport } from './routes/o.$orgId.prices'
 import { Route as OOrgIdRotationsRouteImport } from './routes/o.$orgId.rotations'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
@@ -76,6 +79,11 @@ const OOrgIdRoute = OOrgIdRouteImport.update({
   path: '/o/$orgId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UnsubscribeTokenRoute = UnsubscribeTokenRouteImport.update({
+  id: '/unsubscribe/$token',
+  path: '/unsubscribe/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -101,6 +109,11 @@ const OOrgIdFilesRoute = OOrgIdFilesRouteImport.update({
   path: '/files',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdHelpRoute = OOrgIdHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdImportRoute = OOrgIdImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -124,6 +137,11 @@ const OOrgIdNewsRoute = OOrgIdNewsRouteImport.update({
 const OOrgIdNutrientsRoute = OOrgIdNutrientsRouteImport.update({
   id: '/nutrients',
   path: '/nutrients',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdOnboardingRoute = OOrgIdOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdPricesRoute = OOrgIdPricesRouteImport.update({
@@ -266,15 +284,18 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
+  '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
+  '/o/$orgId/help': typeof OOrgIdHelpRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/onboarding': typeof OOrgIdOnboardingRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -308,15 +329,18 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
+  '/o/$orgId/help': typeof OOrgIdHelpRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/onboarding': typeof OOrgIdOnboardingRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -352,15 +376,18 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
+  '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/carbon': typeof OOrgIdCarbonRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
   '/o/$orgId/files': typeof OOrgIdFilesRoute
+  '/o/$orgId/help': typeof OOrgIdHelpRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/maize-dmc': typeof OOrgIdMaizeDmcRoute
   '/o/$orgId/news': typeof OOrgIdNewsRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/onboarding': typeof OOrgIdOnboardingRoute
   '/o/$orgId/prices': typeof OOrgIdPricesRoute
   '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
@@ -397,15 +424,18 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/auth/callback'
     | '/o/$orgId'
+    | '/unsubscribe/$token'
     | '/o/$orgId/calendar'
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
+    | '/o/$orgId/help'
     | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/onboarding'
     | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
@@ -439,15 +469,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/auth/callback'
+    | '/unsubscribe/$token'
     | '/o/$orgId/calendar'
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
+    | '/o/$orgId/help'
     | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/onboarding'
     | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
@@ -482,15 +515,18 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/auth/callback'
     | '/o/$orgId'
+    | '/unsubscribe/$token'
     | '/o/$orgId/calendar'
     | '/o/$orgId/carbon'
     | '/o/$orgId/economics'
     | '/o/$orgId/files'
+    | '/o/$orgId/help'
     | '/o/$orgId/import'
     | '/o/$orgId/inventory'
     | '/o/$orgId/maize-dmc'
     | '/o/$orgId/news'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/onboarding'
     | '/o/$orgId/prices'
     | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
@@ -526,6 +562,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   OOrgIdRoute: typeof OOrgIdRouteWithChildren
+  UnsubscribeTokenRoute: typeof UnsubscribeTokenRoute
   ShareSoilTokenRoute: typeof ShareSoilTokenRoute
 }
 
@@ -566,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/unsubscribe/$token': {
+      id: '/unsubscribe/$token'
+      path: '/unsubscribe/$token'
+      fullPath: '/unsubscribe/$token'
+      preLoaderRoute: typeof UnsubscribeTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/o/$orgId/': {
       id: '/o/$orgId/'
       path: '/'
@@ -601,6 +645,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdFilesRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/help': {
+      id: '/o/$orgId/help'
+      path: '/help'
+      fullPath: '/o/$orgId/help'
+      preLoaderRoute: typeof OOrgIdHelpRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/import': {
       id: '/o/$orgId/import'
       path: '/import'
@@ -634,6 +685,13 @@ declare module '@tanstack/react-router' {
       path: '/nutrients'
       fullPath: '/o/$orgId/nutrients'
       preLoaderRoute: typeof OOrgIdNutrientsRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/onboarding': {
+      id: '/o/$orgId/onboarding'
+      path: '/onboarding'
+      fullPath: '/o/$orgId/onboarding'
+      preLoaderRoute: typeof OOrgIdOnboardingRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/prices': {
@@ -826,11 +884,13 @@ interface OOrgIdRouteChildren {
   OOrgIdCarbonRoute: typeof OOrgIdCarbonRoute
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
   OOrgIdFilesRoute: typeof OOrgIdFilesRoute
+  OOrgIdHelpRoute: typeof OOrgIdHelpRoute
   OOrgIdImportRoute: typeof OOrgIdImportRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdMaizeDmcRoute: typeof OOrgIdMaizeDmcRoute
   OOrgIdNewsRoute: typeof OOrgIdNewsRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
+  OOrgIdOnboardingRoute: typeof OOrgIdOnboardingRoute
   OOrgIdPricesRoute: typeof OOrgIdPricesRoute
   OOrgIdRotationsRoute: typeof OOrgIdRotationsRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
@@ -864,11 +924,13 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdCarbonRoute: OOrgIdCarbonRoute,
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
   OOrgIdFilesRoute: OOrgIdFilesRoute,
+  OOrgIdHelpRoute: OOrgIdHelpRoute,
   OOrgIdImportRoute: OOrgIdImportRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdMaizeDmcRoute: OOrgIdMaizeDmcRoute,
   OOrgIdNewsRoute: OOrgIdNewsRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
+  OOrgIdOnboardingRoute: OOrgIdOnboardingRoute,
   OOrgIdPricesRoute: OOrgIdPricesRoute,
   OOrgIdRotationsRoute: OOrgIdRotationsRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
@@ -906,6 +968,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   OOrgIdRoute: OOrgIdRouteWithChildren,
+  UnsubscribeTokenRoute: UnsubscribeTokenRoute,
   ShareSoilTokenRoute: ShareSoilTokenRoute,
 }
 export const routeTree = rootRouteImport

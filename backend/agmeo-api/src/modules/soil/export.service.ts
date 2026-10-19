@@ -11,6 +11,7 @@ import { Database, type Trx } from '../../db/database.js';
 import { FilesService } from '../files/files.service.js';
 import { type DbfField, polygonShapefile, type ShapeRecord } from '../vra/export/shapefile.js';
 import { zip } from '../vra/export/zip.js';
+import { pdfImage } from '../../core/images.js';
 import { resultsPdf, type SheetField, zonationPdf } from './export/sheets.js';
 import { CONTOUR_FIELDS, contourRows, SAMPLE_CARD_FIELDS, sampleCardRows, tgisShapefile } from './export/tgis.js';
 import { type ZoneRow, zoneOut, zonesOf } from './soil-rows.js';
@@ -123,7 +124,8 @@ export class SoilExportService {
             geometry: f.geometry,
             zones: byField(f).map((z) => this.sheetZone(z, f.soil_texture as SoilTexture | null)),
           });
-          const opts = { locale: input.locale, orgName: org.name, date };
+          const logo = await trx.selectFrom('organization_logos').select('content').where('organization_id', '=', ctx.orgId).executeTakeFirst();
+          const opts = { locale: input.locale, orgName: org.name, date, logo: logo ? pdfImage(logo.content) : null };
           if (input.format === 'zonationPdf') {
             data = zonationPdf(
               zoned.map(sheet),

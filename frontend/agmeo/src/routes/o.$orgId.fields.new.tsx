@@ -10,6 +10,7 @@ import { ParcelPicker } from '#/components/cadastral/ParcelPicker'
 import { FieldDetailsForm, detailsPayload, emptyDetails, type FieldDetails } from '#/components/fields/FieldDetailsForm'
 import { guessProperty, parseBoundaryFile, propertyKeys, type ImportCandidate } from '#/components/fields/importFile'
 import { useGeometryCheck } from '#/components/fields/useGeometryCheck'
+import { useOnboardingStep } from '#/components/onboarding/useOnboardingStep'
 import { DrawField, type DrawnGeometry } from '#/components/map/DrawField'
 import { FieldMap } from '#/components/map/FieldMap'
 import { farmView } from '#/components/map/useMap'
@@ -47,7 +48,7 @@ function NewField() {
   return (
     <>
       <PageHeader
-        eyebrow={onboarding ? t('fields.new.onboardingStep', { step: 3, total: 4 }) : <Link to="/o/$orgId/fields" params={{ orgId }}>{t('fields.list')}</Link>}
+        eyebrow={onboarding ? t('fields.new.onboardingStep', { step: 4, total: 5 }) : <Link to="/o/$orgId/fields" params={{ orgId }}>{t('fields.list')}</Link>}
         title={t('fields.new.title')}
         subtitle={t('fields.new.subtitle')}
         actions={
@@ -79,6 +80,8 @@ function DrawMode({ farms, fields, onboarding }: { farms: Farm[]; fields: Field[
   const { t } = useTranslation()
   const { orgId } = useOrg()
   const navigate = useNavigate()
+  const setStep = useOnboardingStep()
+  const finishStep = () => setStep('invite')
   const [geometry, setGeometry] = useState<DrawnGeometry | null>(null)
   const [details, setDetails] = useState<FieldDetails>(() => emptyDetails(farms[0]?.id ?? null))
   const { result, checking } = useGeometryCheck(geometry)
@@ -87,7 +90,7 @@ function DrawMode({ farms, fields, onboarding }: { farms: Farm[]; fields: Field[
     success: (f) => t('fields.new.saved', { name: f.name, area: fmt.ha(f.areaHa) }),
     onSuccess: (f) =>
       onboarding
-        ? navigate({ to: '/o/$orgId/crops', params: { orgId } })
+        ? finishStep().then(() => navigate({ to: '/o/$orgId/onboarding', params: { orgId } }))
         : navigate({ to: '/o/$orgId/fields/$fieldId', params: { orgId, fieldId: f.id } }),
   })
   const canSave = geometry && result?.valid && details.name.trim() && details.farmId
@@ -109,7 +112,7 @@ function DrawMode({ farms, fields, onboarding }: { farms: Farm[]; fields: Field[
           <FieldDetailsForm value={details} onChange={setDetails} farms={farms} />
           <GeometryStatus geometry={geometry} result={result} checking={checking} />
           <div className="flex justify-end gap-2 pt-2">
-            {onboarding && <Link to="/o/$orgId/crops" params={{ orgId }} variant="ghost">{t('fields.new.skip')}</Link>}
+            {onboarding && <Button variant="ghost" onPress={() => void finishStep().then(() => navigate({ to: '/o/$orgId/onboarding', params: { orgId } }))}>{t('fields.new.skip')}</Button>}
             <Button type="submit" variant="primary" isDisabled={!canSave} isPending={create.isPending}>
               {t('fields.new.save')}
             </Button>
@@ -144,6 +147,8 @@ function ImportMode({ farms, fields, onboarding }: { farms: Farm[]; fields: Fiel
   const { t } = useTranslation()
   const { orgId } = useOrg()
   const navigate = useNavigate()
+  const setStep = useOnboardingStep()
+  const finishStep = () => setStep('invite')
   const [file, setFile] = useState<{ name: string; format: string; skipped: number } | null>(null)
   const [candidates, setCandidates] = useState<ImportCandidate[]>([])
   const [nameKey, setNameKey] = useState<string | null>(null)
@@ -255,7 +260,7 @@ function ImportMode({ farms, fields, onboarding }: { farms: Farm[]; fields: Fiel
               )}
               <div className="flex gap-2 justify-end">
                 <Button onPress={() => { setResult(null); setCandidates([]); setFile(null) }}>{t('fields.import.another')}</Button>
-                <Button variant="primary" onPress={() => navigate(onboarding ? { to: '/o/$orgId/crops', params: { orgId } } : { to: '/o/$orgId/fields', params: { orgId } })}>
+                <Button variant="primary" onPress={() => (onboarding ? void finishStep().then(() => navigate({ to: '/o/$orgId/onboarding', params: { orgId } })) : void navigate({ to: '/o/$orgId/fields', params: { orgId } }))}>
                   {onboarding ? t('fields.import.continueToCrops') : t('fields.import.viewFields')}
                 </Button>
               </div>

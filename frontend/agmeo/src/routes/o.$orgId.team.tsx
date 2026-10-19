@@ -1,10 +1,11 @@
-import { EMPLOYEE_ROLES, ROLES, type Employee, type EmployeeInput, type EmployeeRole, type InviteMemberInput, type Member, type Role, type UpdateMemberInput } from '@agmeo/contracts'
+import { EMPLOYEE_ROLES, ROLES, type Employee, type Farm, type EmployeeInput, type EmployeeRole, type InviteMemberInput, type Member, type Role, type UpdateMemberInput } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
-import { HardHat, KeyRound, Mail, Pencil, Phone, Trash2, UserCheck, UserPlus, UserX, Users } from 'lucide-react'
+import { HardHat, KeyRound, Mail, MapPinned, Pencil, Phone, Trash2, UserCheck, UserPlus, UserX, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Form, type Key } from 'react-aria-components'
 import { Trans, useTranslation } from 'react-i18next'
 import { FormActions, NONE, keyOrNull, textOrNull } from '#/components/resources/form'
+import { FarmAccessPicker, farmAccessText } from '#/components/team/FarmAccess'
 import { DataTable } from '#/components/table/DataTable'
 import { useTableView, type ColumnDef } from '#/components/table/tableTools'
 import { t } from '#/i18n'
@@ -70,6 +71,8 @@ function MembersTab() {
   const { user } = useAuth()
   const canManage = can('members.manage')
   const members = useOrgQuery<Member[]>('/members')
+  const farms = useOrgQuery<Farm[]>('/farms')
+  const [farmsOf, setFarmsOf] = useState<Member | null>(null)
 
   const update = useOrgMutation((base, { userId, ...input }: UpdateMemberInput & { userId: string }) => api.patch<Member>(`${base}/members/${userId}`, input), {
     success: (m) => t('team.members.updated', { name: m.displayName }),
@@ -125,6 +128,16 @@ function MembersTab() {
           ),
       },
       {
+        id: 'farms',
+        label: t('team.farmAccess.column'),
+        value: (m) => farmAccessText(m, farms.data ?? [], t),
+        render: (m) => (
+          <span className={cx('text-sm', m.farmIds === null ? 'text-muted' : 'text-fg')}>
+            {farmAccessText(m, farms.data ?? [], t)}
+          </span>
+        ),
+      },
+      {
         id: 'status',
         label: t('common.status'),
         filter: 'select',
@@ -141,7 +154,7 @@ function MembersTab() {
         render: (m) => (m.lastLoginAt ? fmt.dateTime(m.lastLoginAt) : <span className="text-muted">{t('team.members.never')}</span>),
       },
     ],
-    [t, canManage, user?.id, update.isPending, update.mutate],
+    [t, canManage, user?.id, update.isPending, update.mutate, farms.data],
   )
   const view = useTableView(columns, sorted)
 
@@ -173,6 +186,13 @@ function MembersTab() {
                 ? (m) =>
                     m.userId !== user?.id && (
                       <span className="flex items-center justify-end gap-1">
+                        {m.role !== 'owner' && (
+                          <Tooltip content={t('team.farmAccess.edit')}>
+                            <Button size="icon-sm" variant="ghost" aria-label={t('team.farmAccess.editFor', { name: m.displayName })} onPress={() => setFarmsOf(m)}>
+                              <MapPinned />
+                            </Button>
+                          </Tooltip>
+                        )}
                         {m.status === 'disabled' ? (
                           <Tooltip content={t('team.members.enableTooltip')}>
                             <Button size="icon-sm" variant="ghost" aria-label={t('team.members.enable', { name: m.displayName })} onPress={() => update.mutate({ userId: m.userId, status: 'active' })}>
@@ -204,7 +224,25 @@ function MembersTab() {
           />
         )}
       </Card>
+      {farmsOf && <FarmAccessDialog member={farmsOf} onClose={() => setFarmsOf(null)} />}
     </div>
+  )
+}
+
+function FarmAccessDialog({ member, onClose }: { member: Member; onClose: () => void }) {
+  const { t } = useTranslation()
+  const [farmIds, setFarmIds] = useState<string[] | null>(member.farmIds)
+  const save = useOrgMutation((base, _: void) => api.patch<Member[]>(`${base}/members/${member.userId}`, { farmIds }), {
+    success: t('team.members.updated', { name: member.displayName }),
+    onSuccess: onClose,
+  })
+  return (
+    <ModalDialog isOpen onOpenChange={(o) => !o && onClose()} title={t('team.farmAccess.editFor', { name: member.displayName })} size="sm">
+      <Form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save.mutate() }}>
+        <FarmAccessPicker value={farmIds} onChange={setFarmIds} />
+        <FormActions close={onClose} isPending={save.isPending} submitLabel={t('common.save')} />
+      </Form>
+    </ModalDialog>
   )
 }
 
@@ -242,6 +280,7 @@ function InviteForm({ close }: { close: () => void }) {
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [role, setRole] = useState<Role>('worker')
+  const [farmIds, setFarmIds] = useState<string[] | null>(null)
   const invite = useOrgMutation((base, input: InviteMemberInput) => api.post<Member>(`${base}/members`, input), {
     success: (m) => t('team.invite.invited', { name: m.displayName }),
     onSuccess: close,
@@ -252,11 +291,11 @@ function InviteForm({ close }: { close: () => void }) {
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault()
-        invite.mutate({ email: email.trim(), displayName: displayName.trim(), role })
+        invite.mutate({ email: email.trim(), displayName: displayName.trim() || undefined, role, farmIds: role === 'owner' ? null : farmIds })
       }}
     >
       <TextField label={t('team.email')} type="email" isRequired autoFocus value={email} onChange={setEmail} placeholder="name@example.com" />
-      <TextField label={t('common.name')} isRequired value={displayName} onChange={setDisplayName} />
+      <TextField label={t('common.name')} value={displayName} onChange={setDisplayName} description={t('team.invite.nameHint')} />
       <Select label={t('team.role')} items={roleItems()} value={role} onChange={(v) => v && setRole(v as Role)} description={roleDescription(role)}>
         {(r) => (
           <Option id={r.id} description={r.description}>
@@ -264,6 +303,7 @@ function InviteForm({ close }: { close: () => void }) {
           </Option>
         )}
       </Select>
+      {role !== 'owner' && <FarmAccessPicker value={farmIds} onChange={setFarmIds} />}
       <p className="text-xs text-muted">{t('team.invite.hint')}</p>
       <FormActions close={close} isPending={invite.isPending} submitLabel={t('team.invite.submit')} />
     </Form>

@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { PrintLogo } from '#/components/OrgLogo'
 import { baseUnitLabel, operationTypeLabel } from '#/i18n/labels'
 import { fmt } from '#/lib/format'
 import { useSeason } from '#/lib/org'
@@ -87,7 +88,10 @@ function OverviewSheet({
         <h1 className="text-xl font-semibold">
           {field.name} — {year}
         </h1>
-        <span className="text-base font-semibold tracking-wide text-[#3d5a2a]">agmeo</span>
+        <span className="flex items-center gap-3">
+          <PrintLogo />
+          <span className="text-base font-semibold tracking-wide text-[#3d5a2a]">agmeo</span>
+        </span>
       </div>
       <p className="mt-0.5 text-xs text-neutral-500">
         {field.farmName}

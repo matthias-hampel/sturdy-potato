@@ -4,6 +4,7 @@ import { AlertTriangle, Check, CheckCircle2, History, Printer, RotateCcw } from 
 import { type ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { PrintLogo } from '#/components/OrgLogo'
 import { CropTag } from '#/components/labels'
 import { t as tt } from '#/i18n'
 import { needSourceLabel, soilTextureItems, soilTextureLabel } from '#/i18n/labels.agronomy'
@@ -542,7 +543,10 @@ function PrintSheet({ need, note }: { need: FertilizerNeed; note: string }) {
   return createPortal(
     <div className="agmeo-print hidden print:block bg-white text-black p-8 text-sm">
       <style>{'@media print { body > :not(.agmeo-print) { display: none !important } }'}</style>
-      <h1 className="text-xl font-semibold">{t('fertilizerNeed.title')}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-xl font-semibold">{t('fertilizerNeed.title')}</h1>
+        <PrintLogo />
+      </div>
       <p className="mt-1">
         {need.fieldName} · {i.cropName} · {fmt.ha(i.areaHa)}
       </p>

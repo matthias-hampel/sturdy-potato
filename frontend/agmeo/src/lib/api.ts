@@ -68,8 +68,8 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
 
 export const api = {
   /** Uploads a file as multipart form data. */
-  async upload<T>(path: string, form: FormData): Promise<T> {
-    const res = await authedFetch(url(path), { method: 'POST', body: form })
+  async upload<T>(path: string, form: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
+    const res = await authedFetch(url(path), { method, body: form })
     const text = await res.text()
     const data = text ? JSON.parse(text) : null
     if (!res.ok) {

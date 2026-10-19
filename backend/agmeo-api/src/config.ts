@@ -43,6 +43,12 @@ export const config = {
     // Local development delivers to Mailpit (docker compose), web UI on http://localhost:8025.
     smtpUrl: env('SMTP_URL', 'smtp://localhost:1025'),
     from: env('MAIL_FROM', 'agmeo <no-reply@agmeo.local>'),
+    /** Signs the unsubscribe links of notification e-mails; falls back to the dev auth secret outside production. */
+    unsubscribeSecret: env('EMAIL_UNSUBSCRIBE_SECRET', process.env.NODE_ENV === 'production' ? '' : 'agmeo-dev-unsubscribe-secret'),
+    /** Weekly storage overview for operations (comma-separated addresses); empty sends none. */
+    storageOverviewTo: env('STORAGE_DIGEST_RECIPIENTS', ''),
+    /** Language of the operations overview. */
+    storageOverviewLocale: env('STORAGE_DIGEST_LOCALE', 'de'),
   },
   storage: {
     // 'local' keeps objects in a directory (development, tests); 's3' uses an S3-compatible bucket.
@@ -120,6 +126,15 @@ export const config = {
       clientSecret: env('ISIP_CLIENT_SECRET', ''),
       timeoutMs: Number(env('ISIP_TIMEOUT_MS', '60000')),
     },
+  },
+  /**
+   * Who hosts this deployment, for Settings → Data processing: "Legal name|location|URL" each
+   * (location and URL optional). Empty rows are shown as "not stated by the operator".
+   */
+  dataProcessing: {
+    hosting: env('DATA_PROCESSING_HOSTING', ''),
+    database: env('DATA_PROCESSING_DATABASE', ''),
+    email: env('DATA_PROCESSING_EMAIL', ''),
   },
   // Address search for farms. The public Photon instance allows fair use only; self-host it for more load.
   geocoding: {

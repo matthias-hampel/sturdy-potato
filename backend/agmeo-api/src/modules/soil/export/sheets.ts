@@ -6,6 +6,7 @@
  */
 import { SOIL_PARAM_META, type SoilParameter } from '@agmeo/contracts';
 import type { MultiPolygon, Position } from 'geojson';
+import type { PdfImage } from '../../../core/images.js';
 import { hexToRgb, PdfDoc, type Rgb } from './pdf.js';
 
 export type Locale = 'de' | 'en';
@@ -92,7 +93,9 @@ function header(pdf: PdfDoc, title: string, subtitle: string, date: string) {
   pdf.text('agmeo', MARGIN, MARGIN + 10, { size: 14, bold: true, color: [0.24, 0.42, 0.18] });
   pdf.text(title, MARGIN + 70, MARGIN + 10, { size: 14, bold: true, color: NAVY });
   pdf.text(pdf.fit(subtitle, pdf.width - 2 * MARGIN - 260, 9), MARGIN + 70, MARGIN + 23, { size: 9, color: GRAY });
-  pdf.text(date, pdf.width - MARGIN, MARGIN + 10, { size: 9, color: GRAY, align: 'right' });
+  // The organization's logo at the top right, the date to its left.
+  const logoWidth = pdf.logo(pdf.width - MARGIN, MARGIN - 6, 110, 30);
+  pdf.text(date, pdf.width - MARGIN - (logoWidth ? logoWidth + 10 : 0), MARGIN + 10, { size: 9, color: GRAY, align: 'right' });
   pdf.line(MARGIN, MARGIN + 30, pdf.width - MARGIN, MARGIN + 30, LINE, 0.8);
 }
 
@@ -223,9 +226,9 @@ function overviewPage(pdf: PdfDoc, locale: Locale, title: string, orgName: strin
 }
 
 /** Zonation map: an overview page and one page per field with zones, probe numbers and sampling points. */
-export function zonationPdf(fields: SheetField[], others: SheetField[], opts: { locale: Locale; orgName: string; date: string }): Buffer {
+export function zonationPdf(fields: SheetField[], others: SheetField[], opts: { locale: Locale; orgName: string; date: string; logo?: PdfImage | null }): Buffer {
   const l = L[opts.locale];
-  const pdf = new PdfDoc();
+  const pdf = new PdfDoc(undefined, { logo: opts.logo });
   const date = day(opts.locale, opts.date);
   overviewPage(pdf, opts.locale, l.zonationTitle, opts.orgName, date, fields, others, 2);
   fields.forEach((field, i) => {
@@ -253,9 +256,9 @@ export function zonationPdf(fields: SheetField[], others: SheetField[], opts: { 
 }
 
 /** Results: per field the zones coloured by their pH class and a table of the measured values. */
-export function resultsPdf(fields: SheetField[], params: SoilParameter[], opts: { locale: Locale; orgName: string; date: string; paramLabel: (p: SoilParameter) => string }): Buffer {
+export function resultsPdf(fields: SheetField[], params: SoilParameter[], opts: { locale: Locale; orgName: string; date: string; paramLabel: (p: SoilParameter) => string; logo?: PdfImage | null }): Buffer {
   const l = L[opts.locale];
-  const pdf = new PdfDoc();
+  const pdf = new PdfDoc(undefined, { logo: opts.logo });
   const date = day(opts.locale, opts.date);
   overviewPage(pdf, opts.locale, l.resultsTitle, opts.orgName, date, fields, [], 2);
   const classKey: Partial<Record<SoilParameter, SoilParameter>> = { ph: 'ph', p2o5: 'p2o5', k2o: 'k2o', mgo: 'mgo' };

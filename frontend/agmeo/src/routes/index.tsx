@@ -10,5 +10,7 @@ function Home() {
   if (!tokenStore.get()) return <Navigate to="/login" />
   if (isLoading || !user) return <div className="p-8 max-w-md"><Loading /></div>
   const org = user.organizations[0]
-  return org ? <Navigate to="/o/$orgId" params={{ orgId: org.id }} /> : <Navigate to="/onboarding" />
+  if (!org) return <Navigate to="/onboarding" />
+  // An unfinished setup resumes where it was left.
+  return org.onboardingStep ? <Navigate to="/o/$orgId/onboarding" params={{ orgId: org.id }} /> : <Navigate to="/o/$orgId" params={{ orgId: org.id }} />
 }

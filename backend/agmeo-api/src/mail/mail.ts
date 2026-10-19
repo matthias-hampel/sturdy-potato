@@ -14,6 +14,8 @@ interface SendEmailPayload<K extends MailTemplate = MailTemplate> {
   template: K;
   locale: MailLocale;
   params: MailTemplates[K];
+  /** Extra headers, e.g. List-Unsubscribe. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -22,9 +24,9 @@ interface SendEmailPayload<K extends MailTemplate = MailTemplate> {
  */
 export function queueEmail<K extends MailTemplate>(
   trx: Kysely<DB> | Transaction<DB>,
-  mail: { to: string; template: K; locale: string | null | undefined; params: MailTemplates[K]; organizationId?: string; dedupeKey?: string },
+  mail: { to: string; template: K; locale: string | null | undefined; params: MailTemplates[K]; organizationId?: string; dedupeKey?: string; headers?: Record<string, string> },
 ) {
-  const payload: SendEmailPayload<K> = { to: mail.to, template: mail.template, locale: mailLocale(mail.locale), params: mail.params };
+  const payload: SendEmailPayload<K> = { to: mail.to, template: mail.template, locale: mailLocale(mail.locale), params: mail.params, headers: mail.headers };
   return enqueue(trx, { kind: SEND_EMAIL, payload: { ...payload }, organizationId: mail.organizationId, dedupeKey: mail.dedupeKey });
 }
 
@@ -40,7 +42,7 @@ export function sendEmailHandler(transport: Transporter = nodemailer.createTrans
     } catch (e) {
       throw new PermanentJobError((e as Error).message);
     }
-    await transport.sendMail({ from: config.mail.from, to: payload.to, subject: rendered.subject, text: rendered.text, html: rendered.html });
+    await transport.sendMail({ from: config.mail.from, to: payload.to, subject: rendered.subject, text: rendered.text, html: rendered.html, headers: payload.headers });
     logger.log(`Sent ${payload.template} e-mail (job #${job.id})`);
   };
 }
