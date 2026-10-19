@@ -286,7 +286,40 @@ Done:
 - **Crop table columns**: column picker with quick views (overview, planning, application, all),
   remembered per browser; new columns parcel number, field group, usage and land-use code.
 
-Open in phase 1: PSM record after EU 2023/564 (in progress on its own branch).
+- **PSM record** (000037): EU 2023/564 record with readiness check, certificate of competence and
+  sprayer inspection, CSV/JSON generation archived to Files, history.
+- **KTBL action defaults** (000039): the reference's KTBL snapshot (693 actions, grid and formula
+  estimators) fills diesel and hours per hectare of an organization's actions by crop group, field
+  size, distance and power.
+
+Phase 1 is complete.
+
+### Phase 2 — weather and models (2026-10-19)
+
+- **F5 stored weather** (000038): 0.01° grid cells of active fields; new cells backfill from the
+  start of their seasons (ERA5 archive with `OPEN_METEO_API_KEY`, else the last ~92 days of the free
+  forecast API, development only) plus the forecast window; known cells refresh once a day in the
+  04:30–05:30 local slot of their farms. Daily values are aggregated from hourly data.
+- **Models** (src/models, 495 ported tests): condition bars (spraying with Delta T, sowing, weather
+  risk, trafficability), hourly spray score, GDD and BBCH (ESM model or crop calendar), FAO-56 water
+  balance with irrigation recommendation, trafficability/SCI, climate baseline. Served per field
+  (`fields/:id/conditions`, `fields/:id/trafficability`) and shown in the field's new
+  "Wetter & Bedingungen" tab.
+- **Radar** (000040): DWD RADOLAN RY analyses and the RV 2-hour nowcast rendered by the worker while
+  someone looks at the radar; animated layer on the field map.
+
+Differences: the reference's disease risk comes from an external ISIP crawler service that is not in
+the repository, so there is no disease bar yet; soil texture fractions are mid-points of the LUFA
+class until measured texture exists; microclimate and climavi stations stay out of scope.
+
+### Phase 4 — economics (partly, 2026-10-19)
+
+- Profitability by field, crop or field group with the reference's waterfall down to the farm
+  result, coverage of the records, ranking, detail dialog and DB I map; multi-year view; benchmarks;
+  EU Agri-food market quotes (000044; the feed was suspended at the time of writing, which the
+  job logs and tolerates); the remaining farm-economics settings and a lease per field.
+- In progress on their own branches: full CO2 calculator, CO2 analysis and RothC tab (carbon),
+  soil suite (phase 3), yield maps (phase 3).
 
 Differences from the reference:
 - BESyD/ST: grazing is not modelled (IMPWEIDE stays empty); ST Phosphorgebiet is always false as in the
