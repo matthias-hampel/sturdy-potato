@@ -5,15 +5,20 @@ import {
   BatchZonationInput,
   SamplingPlanInput,
   SaveZonesInput,
+  SoilExportInput,
   UpdateZoneInput,
 } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { type Out, ZBody } from '../../core/validation.js';
+import { SoilExportService } from './export.service.js';
 import { SoilZonationService } from './zonation.service.js';
 
 @Controller('orgs/:orgId')
 export class SoilController {
-  constructor(private readonly zonations: SoilZonationService) {}
+  constructor(
+    private readonly zonations: SoilZonationService,
+    private readonly exports: SoilExportService,
+  ) {}
 
   @Get('soil/fields')
   overview(@OrgCtx() ctx: Ctx) {
@@ -91,5 +96,12 @@ export class SoilController {
   @Requires('field.write')
   probeNumbers(@OrgCtx() ctx: Ctx, @ZBody(AssignProbeNumbersInput) input: Out<typeof AssignProbeNumbersInput>) {
     return this.zonations.assignProbeNumbers(ctx, input);
+  }
+
+  /** Sample card, zonation or results PDF, GeoJSON or shapefile; archived under "Soil exports". */
+  @Post('soil/exports')
+  @Requires('field.write')
+  export(@OrgCtx() ctx: Ctx, @ZBody(SoilExportInput) input: Out<typeof SoilExportInput>) {
+    return this.exports.export(ctx, input);
   }
 }

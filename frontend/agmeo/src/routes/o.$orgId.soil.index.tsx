@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { type Selection } from 'react-aria-components'
 import { z } from 'zod'
 import { BatchZonationDialog } from '#/components/soil/BatchZonationDialog'
+import { ExportDialog } from '#/components/soil/ExportDialog'
 import { methodLabel, paramLabel, paramValue, statusText } from '#/components/soil/soilLabels'
 import { SelectionBar, selectedIds } from '#/components/table/tableTools'
 import { api } from '#/lib/api'
@@ -63,6 +64,7 @@ function Overview() {
   const [query, setQuery] = useState('')
   const [batchOpen, setBatchOpen] = useState(false)
   const [numbersOpen, setNumbersOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const writable = can('field.write')
 
   const shown = useMemo(() => {
@@ -148,6 +150,9 @@ function Overview() {
         <Button size="sm" onPress={() => setNumbersOpen(true)} isDisabled={!selected.some((r) => r.zonation)}>
           {t('soil.page.assignNumbers')}
         </Button>
+        <Button size="sm" onPress={() => setExportOpen(true)}>
+          {t('soil.export.button', { count: selected.length })}
+        </Button>
       </SelectionBar>
 
       <BatchZonationDialog
@@ -155,6 +160,7 @@ function Overview() {
         onOpenChange={setBatchOpen}
         fields={selected.map((r) => ({ fieldId: r.fieldId, fieldName: r.fieldName, areaHa: r.areaHa, hasZonation: !!r.zonation }))}
       />
+      <ExportDialog isOpen={exportOpen} onOpenChange={setExportOpen} fieldIds={selected.map((r) => r.fieldId)} />
       <ProbeNumbersDialog isOpen={numbersOpen} onOpenChange={setNumbersOpen} fieldIds={selected.filter((r) => r.zonation).map((r) => r.fieldId)} />
     </div>
   )

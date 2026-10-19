@@ -13,10 +13,11 @@ import {
 } from '@agmeo/contracts'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Brush, Grid3x3, Hand, PaintBucket, Pencil, Plus, Redo2, Satellite, Trash2, Undo2 } from 'lucide-react'
+import { Brush, Download, Grid3x3, Hand, PaintBucket, Pencil, Plus, Redo2, Satellite, Trash2, Undo2 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BatchZonationDialog, PlanSettings } from '#/components/soil/BatchZonationDialog'
+import { ExportDialog } from '#/components/soil/ExportDialog'
 import { type LngLat, type MapTool, type MapZone, SoilZoneMap } from '#/components/soil/SoilZoneMap'
 import { methodLabel, NO_DATA_COLOR, paramLabel, paramValue, sourceLabel, STAGE_COLORS, statusText } from '#/components/soil/soilLabels'
 import { areaHa, brushSizesForArea, type EditZone, EMPTY, fillAt, History, nonEmpty, paint, strokeBrush } from '#/components/soil/zoneEdit'
@@ -47,6 +48,7 @@ function SoilFieldPage() {
   })
   const [mode, setMode] = useState<Mode>('view')
   const [zonationOpen, setZonationOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const remove = useOrgMutation((base, _: void) => api.delete(`${base}/fields/${fieldId}/soil/zonation`), { success: t('soil.batch.deleted') })
 
   if (data.isLoading) return <Loading />
@@ -83,6 +85,11 @@ function SoilFieldPage() {
                 <Brush /> {t('soil.field.editZones')}
               </Button>
               {d.zonation && (
+                <Button onPress={() => setExportOpen(true)}>
+                  <Download /> {t('soil.export.run')}
+                </Button>
+              )}
+              {d.zonation && (
                 <ConfirmButton
                   title={t('soil.field.removeTitle')}
                   message={t('soil.field.removeMessage')}
@@ -109,6 +116,7 @@ function SoilFieldPage() {
       {mode === 'view' && <ViewMode data={d} writable={writable} />}
       {mode === 'plan' && <PlanMode data={d} onDone={() => setMode('view')} />}
       {mode === 'edit' && <EditMode data={d} onDone={() => setMode('view')} />}
+      <ExportDialog isOpen={exportOpen} onOpenChange={setExportOpen} fieldIds={[d.field.id]} />
       <BatchZonationDialog
         isOpen={zonationOpen}
         onOpenChange={setZonationOpen}

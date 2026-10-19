@@ -277,3 +277,33 @@ export interface SamplingPlanPreview {
   lines: [number, number][][];
   tooMany: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Exports: sample cards and zone maps
+// ---------------------------------------------------------------------------
+
+export const SOIL_EXPORT_FORMATS = ['sampleCard', 'zonationPdf', 'resultsPdf', 'geojson', 'shapefile'] as const;
+export type SoilExportFormat = (typeof SOIL_EXPORT_FORMATS)[number];
+
+export const SoilExportInput = z.object({
+  fieldIds: z.array(id).min(1).max(1000),
+  format: z.enum(SOIL_EXPORT_FORMATS),
+  /** KUNDE column of the sample card: the farm's customer number at the lab. */
+  customerNumber: z.string().trim().max(10).nullish(),
+  /** Renumber the sample card from here; default keep numbers and continue after the highest. */
+  startProbeNr: z.int().min(1).max(99_999_999).nullish(),
+  /** Language of PDF sheets. */
+  locale: z.enum(['de', 'en']).default('de'),
+  /** Result columns of the results PDF; default pH, P, K, Mg, humus, Nmin. */
+  params: z.array(z.enum(SOIL_PARAMETERS)).max(20).nullish(),
+});
+export type SoilExportInput = z.input<typeof SoilExportInput>;
+
+export interface SoilExportResult {
+  /** The archived file (system folder "Soil exports"). */
+  file: import('./files.js').FileItem;
+  /** Fields without an active zonation, left out (or listed separately in the zonation PDF). */
+  skippedFieldIds: string[];
+  /** Probe numbers stamped on the zones for the sample card. */
+  probeNumbers: number;
+}
