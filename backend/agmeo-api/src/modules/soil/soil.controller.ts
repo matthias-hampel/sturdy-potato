@@ -7,6 +7,7 @@ import {
   BatchSamplingPlanInput,
   BatchZonationInput,
   SamplingPlanInput,
+  RestoreZonationsInput,
   SaveZonesInput,
   SoilExportInput,
   UpdateZoneInput,
@@ -15,6 +16,7 @@ import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { badRequest } from '../../core/errors.js';
 import { type Out, ZBody } from '../../core/validation.js';
 import { SoilExportService } from './export.service.js';
+import { SoilHistoryService } from './history.service.js';
 import { type LabUpload, SoilLabService } from './lab.service.js';
 import { SoilZonationService } from './zonation.service.js';
 
@@ -52,6 +54,7 @@ export class SoilController {
     private readonly zonations: SoilZonationService,
     private readonly exports: SoilExportService,
     private readonly lab: SoilLabService,
+    private readonly histories: SoilHistoryService,
   ) {}
 
   @Get('soil/fields')
@@ -162,5 +165,34 @@ export class SoilController {
   @Get('soil/lab-imports')
   labImports(@OrgCtx() ctx: Ctx) {
     return this.lab.imports(ctx);
+  }
+
+  // ---------------------------------------------------------------------------
+  // History, compare, analysis
+  // ---------------------------------------------------------------------------
+
+  @Get('fields/:id/soil/history')
+  fieldHistory(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string) {
+    return this.histories.fieldHistory(ctx, id);
+  }
+
+  /** Past states of the zone maps of the fields (comma-separated ids). */
+  @Get('soil/history/states')
+  states(@OrgCtx() ctx: Ctx, @Query('fieldIds') fieldIds = '') {
+    const ids = z.array(z.uuid()).min(1).max(1000).safeParse(fieldIds.split(',').filter(Boolean));
+    if (!ids.success) throw badRequest('invalid_fields', 'fieldIds must list field ids');
+    return this.histories.states(ctx, ids.data);
+  }
+
+  @Post('soil/history/restore')
+  @HttpCode(200)
+  @Requires('field.write')
+  restoreMany(@OrgCtx() ctx: Ctx, @ZBody(RestoreZonationsInput) input: Out<typeof RestoreZonationsInput>) {
+    return this.histories.restoreMany(ctx, input.zonationIds);
+  }
+
+  @Get('soil/analysis')
+  analysis(@OrgCtx() ctx: Ctx) {
+    return this.histories.analysis(ctx);
   }
 }

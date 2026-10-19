@@ -45,6 +45,12 @@ interface PlannedZone {
 const RELAX_ITERATIONS = 12;
 
 /**
+ * PostGIS functions carry high cost estimates that trigger JIT compilation (~100 ms per query)
+ * for what are millisecond queries on a few fields.
+ */
+export const noJit = (trx: Trx) => sql`SET LOCAL jit = off`.execute(trx);
+
+/**
  * The soil sampling planner: zonations per field (satellite runs queued for agmeo-geo, grid and
  * Voronoi plans computed here in PostGIS, productivity zones taken over, the zone editor's
  * result), the active one per field and its history.
@@ -59,6 +65,7 @@ export class SoilZonationService {
 
   overview(ctx: Ctx): Promise<SoilFieldRow[]> {
     return this.db.run(ctx, async (trx) => {
+      await noJit(trx);
       const { rows } = await sql<{
         id: string;
         name: string;
@@ -275,6 +282,7 @@ export class SoilZonationService {
   }
 
   private async plan(trx: Trx, field: FieldGeometry, input: Out<typeof SamplingPlanInput>): Promise<SamplingPlanPreview> {
+    await noJit(trx);
     if (input.mode === 'grid') return this.gridPlan(trx, field, input.cellHa, (input.axis as GridAxis | null) ?? null);
     if (input.mode === 'voronoi') return this.voronoiPlan(trx, field, input.cellHa, (input.axis as GridAxis | null) ?? null, (input.points as LngLat[] | null) ?? null);
     const zoningId = input.zoningId ?? (await this.latestZoning(trx, field.id));
@@ -439,6 +447,7 @@ export class SoilZonationService {
    */
   saveZones(ctx: Ctx, fieldId: string, input: Out<typeof SaveZonesInput>): Promise<FieldSoilZonation> {
     return this.db.run(ctx, async (trx) => {
+      await noJit(trx);
       const field = await this.field(trx, fieldId);
       let zonation = await trx
         .selectFrom('soil_zonations')

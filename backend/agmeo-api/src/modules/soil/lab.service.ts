@@ -17,6 +17,7 @@ import { Database, type Trx } from '../../db/database.js';
 import { FilesService } from '../files/files.service.js';
 import { dedupeRows, LabFileError, type LabRow, parseLabFile } from './lab/parse.js';
 import { zoneStrings, zoneValues } from './soil-rows.js';
+import { noJit } from './zonation.service.js';
 
 export interface LabUpload {
   name: string;
@@ -98,6 +99,7 @@ export class SoilLabService {
   }
 
   private async match(trx: Trx, rows: LabRow[]): Promise<{ fields: LabPreviewField[]; unmatched: LabRow[]; zones: Map<string, CandidateZone> }> {
+    await noJit(trx);
     const zoneColumns = sql`z.id AS zone_id, z.label AS zone_label, z.probe_nr, z.properties, z.property_methods, z.property_dates, z.lab_extras,
       n.id AS zonation_id, f.id AS field_id, f.name AS field_name, coalesce(g.area_ha, 0)::float8 AS area_ha`;
     const probeNrs = [...new Set(rows.map((r) => r.probeNr).filter((n): n is number => n != null))];

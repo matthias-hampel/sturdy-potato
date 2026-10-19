@@ -14,7 +14,7 @@ import { zip } from '../vra/export/zip.js';
 import { resultsPdf, type SheetField, zonationPdf } from './export/sheets.js';
 import { CONTOUR_FIELDS, contourRows, SAMPLE_CARD_FIELDS, sampleCardRows, tgisShapefile } from './export/tgis.js';
 import { type ZoneRow, zoneOut, zonesOf } from './soil-rows.js';
-import { SoilZonationService } from './zonation.service.js';
+import { noJit, SoilZonationService } from './zonation.service.js';
 
 interface ExportField {
   id: string;
@@ -69,6 +69,7 @@ export class SoilExportService {
 
   async export(ctx: Ctx, input: Out<typeof SoilExportInput>): Promise<SoilExportResult> {
     const built = await this.db.run(ctx, async (trx) => {
+      await noJit(trx);
       let probeNumbers = 0;
       if (input.format === 'sampleCard') {
         // The numbers on the card are what the lab echoes back: stamp them on the zones first.

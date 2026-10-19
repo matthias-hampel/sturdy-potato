@@ -367,3 +367,197 @@ export interface SoilLabImport {
   fields: { id: string; name: string }[];
   sampledOn: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// History, compare and analysis
+// ---------------------------------------------------------------------------
+
+/** A zonation of a field with its zones and the area-weighted means of their measured values. */
+export interface SoilCampaign {
+  zonationId: string;
+  method: SoilZonationMethod;
+  source: string;
+  createdAt: string;
+  active: boolean;
+  /** Latest sampling date of its zones; null for a zonation without lab values. */
+  sampledOn: string | null;
+  means: Partial<Record<SoilParameter, number>>;
+  zones: SoilZone[];
+}
+
+export interface FieldSoilHistory {
+  field: { id: string; name: string; areaHa: number; geometry: MultiPolygon };
+  /** Newest first. */
+  campaigns: SoilCampaign[];
+  /** Soil samples of the field (manual and from lab imports), newest first. */
+  samples: import('./agronomy.js').SoilSample[];
+}
+
+/** A past state of the zone maps of several fields: a batch run or the end of a day. */
+export interface SoilHistoryState {
+  key: string;
+  kind: 'batch' | 'day';
+  at: string;
+  /** The zonation each field had in this state. */
+  fields: { fieldId: string; zonationId: string }[];
+  willChange: number;
+  unchanged: number;
+  noZonation: number;
+}
+
+export const RestoreZonationsInput = z.object({ zonationIds: z.array(id).min(1).max(1000) });
+export type RestoreZonationsInput = z.input<typeof RestoreZonationsInput>;
+
+export const ANALYSIS_PARAMS = ['ph', 'p2o5', 'k2o', 'mgo', 'humus'] as const;
+export type AnalysisParam = (typeof ANALYSIS_PARAMS)[number];
+export type StageCount = Record<ContentClass, number>;
+type ClassKey = 'ph' | 'p' | 'k' | 'mg';
+export const CLASS_KEYS: Record<'ph' | 'p2o5' | 'k2o' | 'mgo', ClassKey> = { ph: 'ph', p2o5: 'p', k2o: 'k', mgo: 'mg' };
+
+/** One zone of an active zonation, as the analysis dashboard aggregates it. */
+export interface SoilAnalysisZone {
+  fieldId: string;
+  year: number | null;
+  areaHa: number;
+  values: Partial<Record<AnalysisParam, number>>;
+  classes: Record<ClassKey, ContentClass | null>;
+  /** Lime need of the zone in dt CaO (rate × area), over three years. */
+  limeDt: number | null;
+}
+
+export interface SoilAnalysisField {
+  id: string;
+  name: string;
+  sampleCount: number;
+  soilTexture: string | null;
+  bbox: [number, number, number, number] | null;
+  /** Content classes of the field's area-weighted means. */
+  classes: Record<ClassKey, ContentClass | null>;
+}
+
+export interface SoilAnalysisPayload {
+  zones: SoilAnalysisZone[];
+  /** Fields with at least one sampled zone. */
+  fields: SoilAnalysisField[];
+  totalFieldCount: number;
+}
+
+export type HumusClass = 'veryLow' | 'low' | 'mid' | 'high' | 'veryHigh';
+
+export interface SoilAnalysisRecommendation {
+  key: 'lowP' | 'lowK' | 'lowMg' | 'lowPh' | 'highP' | 'highK' | 'highMg' | 'positivePh' | 'positiveHumus' | 'positiveBase';
+  priority: 'high' | 'mid' | 'positive';
+  fields: string[];
+}
+
+export interface SoilAnalysisSummary {
+  sampleCount: number;
+  fieldCount: number;
+  totalFieldCount: number;
+  avg: Record<AnalysisParam, number | null>;
+  dominantSoilTexture: string | null;
+  stages: Record<'ph' | 'p2o5' | 'k2o' | 'mgo', StageCount>;
+  humusClass: HumusClass | null;
+  perField: { fieldId: string; fieldName: string; sampleCount: number; avg: Record<AnalysisParam, number | null>; limeDt: number | null }[];
+  earliestYear: number | null;
+  latestYear: number | null;
+  bbox: [number, number, number, number] | null;
+  totalLimeT: number | null;
+  recommendations: SoilAnalysisRecommendation[];
+}
+
+const HUMUS_BOUNDS = [1.5, 2, 3, 4] as const;
+const humusClassOf = (v: number | null): HumusClass | null =>
+  v == null ? null : v <= HUMUS_BOUNDS[0] ? 'veryLow' : v <= HUMUS_BOUNDS[1] ? 'low' : v <= HUMUS_BOUNDS[2] ? 'mid' : v <= HUMUS_BOUNDS[3] ? 'high' : 'veryHigh';
+const emptyStages = (): StageCount => ({ A: 0, B: 0, C: 0, D: 0, E: 0 });
+const roundTo = (v: number | null, d: number) => (v == null || !Number.isFinite(v) ? null : Math.round(v * 10 ** d) / 10 ** d);
+
+/**
+ * The analysis dashboard's numbers for a selection of fields (ported from the reference's
+ * soilAnalyseShared.ts): per-zone means, VDLUFA class distribution, per-field averages, lime need
+ * and the recommendations derived from the fields' mean classes.
+ */
+export function buildSoilAnalysisSummary(payload: SoilAnalysisPayload, selected: ReadonlySet<string>): SoilAnalysisSummary {
+  const fields = payload.fields.filter((f) => selected.has(f.id));
+  const zones = payload.zones.filter((z) => selected.has(z.fieldId));
+  const sums: Record<AnalysisParam, [number, number]> = { ph: [0, 0], p2o5: [0, 0], k2o: [0, 0], mgo: [0, 0], humus: [0, 0] };
+  const stages = { ph: emptyStages(), p2o5: emptyStages(), k2o: emptyStages(), mgo: emptyStages() };
+  const textures = new Map<string, number>();
+  const perField = new Map(fields.map((f) => [f.id, { f, count: 0, sums: { ph: [0, 0], p2o5: [0, 0], k2o: [0, 0], mgo: [0, 0], humus: [0, 0] } as Record<AnalysisParam, [number, number]>, lime: 0, limeZones: 0 }]));
+  let earliest: number | null = null;
+  let latest: number | null = null;
+  let lime = 0;
+  let limeZones = 0;
+  for (const z of zones) {
+    const agg = perField.get(z.fieldId);
+    if (!agg) continue;
+    agg.count++;
+    for (const p of ANALYSIS_PARAMS) {
+      const v = z.values[p];
+      if (v == null) continue;
+      sums[p][0] += v;
+      sums[p][1]++;
+      agg.sums[p][0] += v;
+      agg.sums[p][1]++;
+    }
+    for (const p of ['ph', 'p2o5', 'k2o', 'mgo'] as const) {
+      const cls = z.classes[CLASS_KEYS[p]];
+      if (cls) stages[p][cls]++;
+    }
+    if (z.year != null) {
+      earliest = earliest == null ? z.year : Math.min(earliest, z.year);
+      latest = latest == null ? z.year : Math.max(latest, z.year);
+    }
+    if (z.limeDt != null) {
+      lime += z.limeDt;
+      limeZones++;
+      agg.lime += z.limeDt;
+      agg.limeZones++;
+    }
+  }
+  for (const f of fields) if (f.soilTexture) textures.set(f.soilTexture, (textures.get(f.soilTexture) ?? 0) + (perField.get(f.id)?.count ?? 0));
+  const avgOf = (s: Record<AnalysisParam, [number, number]>) =>
+    Object.fromEntries(ANALYSIS_PARAMS.map((p) => [p, s[p][1] ? roundTo(s[p][0] / s[p][1], 2) : null])) as Record<AnalysisParam, number | null>;
+  const avg = avgOf(sums);
+  const rows = [...perField.values()]
+    .filter((a) => a.count > 0)
+    .map((a) => ({ fieldId: a.f.id, fieldName: a.f.name, sampleCount: a.count, avg: avgOf(a.sums), limeDt: a.limeZones ? roundTo(a.lime, 1) : null }))
+    .sort((a, b) => a.fieldName.localeCompare(b.fieldName));
+  const sampled = new Set(rows.map((r) => r.fieldId));
+
+  const recommendations: SoilAnalysisRecommendation[] = [];
+  const atClasses = (key: ClassKey, wanted: ContentClass[]) => fields.filter((f) => sampled.has(f.id) && f.classes[key] && wanted.includes(f.classes[key]!)).map((f) => f.name);
+  const push = (key: SoilAnalysisRecommendation['key'], cls: ClassKey, wanted: ContentClass[], priority: 'high' | 'mid') => {
+    const names = atClasses(cls, wanted);
+    if (names.length) recommendations.push({ key, priority, fields: names });
+  };
+  push('lowP', 'p', ['A', 'B'], 'high');
+  push('lowK', 'k', ['A', 'B'], 'high');
+  push('lowMg', 'mg', ['A', 'B'], 'high');
+  push('lowPh', 'ph', ['A', 'B'], 'high');
+  push('highP', 'p', ['D', 'E'], 'mid');
+  push('highK', 'k', ['D', 'E'], 'mid');
+  push('highMg', 'mg', ['D', 'E'], 'mid');
+  const total = (c: StageCount) => c.A + c.B + c.C + c.D + c.E;
+  if (total(stages.ph) > 0 && (stages.ph.C + stages.ph.D) / total(stages.ph) >= 2 / 3) recommendations.push({ key: 'positivePh', priority: 'positive', fields: [] });
+  const humusClass = humusClassOf(avg.humus);
+  if (humusClass === 'mid' || humusClass === 'high') recommendations.push({ key: 'positiveHumus', priority: 'positive', fields: [] });
+  if (!recommendations.some((r) => r.priority === 'high') && stages.p2o5.C + stages.k2o.C + stages.mgo.C > 0) recommendations.push({ key: 'positiveBase', priority: 'positive', fields: [] });
+
+  const boxes = fields.map((f) => f.bbox).filter((b): b is [number, number, number, number] => !!b);
+  return {
+    sampleCount: zones.length,
+    fieldCount: rows.length,
+    totalFieldCount: payload.totalFieldCount,
+    avg,
+    dominantSoilTexture: [...textures.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+    stages,
+    humusClass,
+    perField: rows,
+    earliestYear: earliest,
+    latestYear: latest,
+    bbox: boxes.length ? [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[2])), Math.max(...boxes.map((b) => b[3]))] : null,
+    totalLimeT: limeZones ? roundTo(lime / 10, 1) : null,
+    recommendations,
+  };
+}
