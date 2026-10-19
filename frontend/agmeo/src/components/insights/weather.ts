@@ -101,24 +101,24 @@ export function noticeMessage(n: WeatherNotice, w: Pick<WeatherForecast, 'daily'
   if (n.kind === 'dry_spell') {
     const last7 = w.precipitationLast7dMm ?? w.past.reduce((s, d) => s + (d.precipitationMm ?? 0), 0)
     const next5 = w.daily.slice(0, 5).reduce((s, d) => s + (d.precipitationMm ?? 0), 0)
-    return t('weather.notice.drySpell', { last7: fmt.num(last7, 1), next5: fmt.num(next5, 1) })
+    return t('weather.notice.drySpell', { last7: fmt.measure(last7, 'precipDepth'), next5: fmt.measure(next5, 'precipDepth') })
   }
   const day = w.daily.find((d) => d.date === n.date)
   switch (n.kind) {
     case 'frost':
       if (day?.tempMinC == null) break
       return n.severity === 'warning'
-        ? t('weather.notice.frost', { value: fmt.num(day.tempMinC, 1) })
-        : t('weather.notice.groundFrost', { value: fmt.num(day.tempMinC, 1) })
+        ? t('weather.notice.frost', { value: fmt.measure(day.tempMinC, 'temperature') })
+        : t('weather.notice.groundFrost', { value: fmt.measure(day.tempMinC, 'temperature') })
     case 'heavy_rain':
       if (day?.precipitationMm == null) break
-      return t('weather.notice.heavyRain', { value: fmt.num(day.precipitationMm, 1) })
+      return t('weather.notice.heavyRain', { value: fmt.measure(day.precipitationMm, 'precipDepth') })
     case 'strong_wind':
       if (day?.gustMaxKmh == null) break
-      return t('weather.notice.strongWind', { value: fmt.num(day.gustMaxKmh) })
+      return t('weather.notice.strongWind', { value: fmt.measure(day.gustMaxKmh, 'speed', { digits: 0 }) })
     case 'heat':
       if (day?.tempMaxC == null) break
-      return t('weather.notice.heat', { value: fmt.num(day.tempMaxC, 1) })
+      return t('weather.notice.heat', { value: fmt.measure(day.tempMaxC, 'temperature') })
   }
   return n.message
 }

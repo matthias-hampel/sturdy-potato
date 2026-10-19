@@ -13,8 +13,13 @@ import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { EconomicsController } from './modules/economics/economics.controller.js';
 import { EconomicsService } from './modules/economics/economics.service.js';
 import { FarmsController } from './modules/farms/farms.controller.js';
+import { FilesController } from './modules/files/files.controller.js';
+import { FilesService } from './modules/files/files.service.js';
+import { ObjectStorage } from './storage/object-storage.js';
 import { FarmsService } from './modules/farms/farms.service.js';
-import { FieldPartsController, FieldsController } from './modules/fields/fields.controller.js';
+import { FieldGroupsController, FieldPartsController, FieldsController } from './modules/fields/fields.controller.js';
+import { FieldGroupsService } from './modules/fields/field-groups.service.js';
+import { FieldManagementService } from './modules/fields/field-management.service.js';
 import { FieldPartsService } from './modules/fields/field-parts.service.js';
 import { FieldsService } from './modules/fields/fields.service.js';
 import { IdentityController } from './modules/identity/identity.controller.js';
@@ -29,6 +34,8 @@ import { PlanningController } from './modules/planning/planning.controller.js';
 import { PlanningService } from './modules/planning/planning.service.js';
 import { ProtectionController } from './modules/protection/protection.controller.js';
 import { ProtectionService } from './modules/protection/protection.service.js';
+import { PsmRecordController } from './modules/protection/record/psm-record.controller.js';
+import { PsmRecordService } from './modules/protection/record/psm-record.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
 import { ExplainerService } from './modules/recommendations/explainer.service.js';
@@ -39,6 +46,10 @@ import { RegulatoryService } from './modules/regulatory/regulatory.service.js';
 import { SearchController } from './modules/search/search.controller.js';
 import { SearchService } from './modules/search/search.service.js';
 import { OperationsController } from './modules/operations/operations.controller.js';
+import { BoardController } from './modules/operations/board.controller.js';
+import { BoardService } from './modules/operations/board.service.js';
+import { CommentsController } from './modules/comments/comments.controller.js';
+import { CommentsService } from './modules/comments/comments.service.js';
 import { OperationsService } from './modules/operations/operations.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
 import { VraService } from './modules/vra/vra.service.js';
@@ -54,6 +65,8 @@ export const DOMAIN_SERVICES = [
   FarmsService,
   FieldsService,
   FieldPartsService,
+  FieldManagementService,
+  FieldGroupsService,
   CropsService,
   InventoryService,
   TeamService,
@@ -61,6 +74,7 @@ export const DOMAIN_SERVICES = [
   TasksService,
   PlanningService,
   ProtectionService,
+  PsmRecordService,
   NutrientsService,
   RegulatoryService,
   EconomicsService,
@@ -73,6 +87,9 @@ export const DOMAIN_SERVICES = [
   RecommendationsService,
   DashboardService,
   SearchService,
+  FilesService,
+  BoardService,
+  CommentsService,
 ];
 
 /**
@@ -86,6 +103,7 @@ export const DOMAIN_SERVICES = [
     FarmsController,
     FieldsController,
     FieldPartsController,
+    FieldGroupsController,
     CropsController,
     InventoryController,
     TeamController,
@@ -93,6 +111,7 @@ export const DOMAIN_SERVICES = [
     TasksController,
     PlanningController,
     ProtectionController,
+    PsmRecordController,
     NutrientsController,
     RegulatoryController,
     EconomicsController,
@@ -104,9 +123,13 @@ export const DOMAIN_SERVICES = [
     RecommendationsController,
     DashboardController,
     SearchController,
+    FilesController,
+    BoardController,
+    CommentsController,
   ],
   providers: [
     TokenService,
+    ObjectStorage,
     ...DOMAIN_SERVICES,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: OrgGuard },

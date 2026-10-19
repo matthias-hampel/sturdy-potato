@@ -1,7 +1,7 @@
 import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
-import { ApplyTemplateInput, AssignRotationInput, RollOverInput, RotationInput, TemplateInput } from '@agmeo/contracts';
+import { ApplyTemplateInput, AssignRotationInput, CalendarYearsQuery, CarryForwardInput, RollOverInput, RotationInput, TemplateInput } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
-import { type Out, ZBody } from '../../core/validation.js';
+import { type Out, ZBody, ZQuery } from '../../core/validation.js';
 import { PlanningService } from './planning.service.js';
 
 @Controller('orgs/:orgId')
@@ -80,10 +80,21 @@ export class PlanningController {
     return this.planning.unassignRotation(ctx, id);
   }
 
+  @Post('crop-cycles/carry-forward')
+  @Requires('crop.write')
+  carryForward(@OrgCtx() ctx: Ctx, @ZBody(CarryForwardInput) input: Out<typeof CarryForwardInput>) {
+    return this.planning.carryForward(ctx, input);
+  }
+
   @Post('rotations/roll-over')
   @Requires('crop.write')
   rollOver(@OrgCtx() ctx: Ctx, @ZBody(RollOverInput) input: Out<typeof RollOverInput>) {
     return this.planning.rollOver(ctx, input);
+  }
+
+  @Get('crop-calendar/years')
+  calendarYears(@OrgCtx() ctx: Ctx, @ZQuery(CalendarYearsQuery) query: Out<typeof CalendarYearsQuery>) {
+    return this.planning.calendarYears(ctx, query);
   }
 
   @Get('crop-calendar')

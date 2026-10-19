@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { id, isoDate, type Ref } from './common.js';
 import type { OperationStatus, OperationType } from './operations.js';
-import type { TaskPriority } from './tasks.js';
+import type { TaskPriority } from './operations.js';
 
 /**
  * Field recommendations: typed, bounded decisions ("what, when, where, why") of a versioned rule

@@ -1,13 +1,15 @@
-import type { ComplianceIssue, ComplianceReport, Farm } from '@agmeo/contracts'
+import { type ComplianceIssue, type ComplianceReport, type Farm, FEDERAL_EXPORT_FORMATS } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Download, FileWarning, Info, OctagonAlert, ShieldCheck, Tractor } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Download, FileWarning, Info, OctagonAlert, ScrollText, ShieldCheck, Tractor } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { AnnualTotalsTab } from '#/components/compliance/AnnualTotals'
-import { ExportsTab } from '#/components/compliance/Exports'
+import { AgrarantragTab } from '#/components/compliance/Agrarantrag'
 import { FarmRegulatoryTab } from '#/components/compliance/FarmRegulatoryForm'
 import { N170Tab } from '#/components/compliance/N170'
+import { FertilizerReportsTab } from '#/components/compliance/reports/FertilizerReports'
+import { REPORT_STEPS, type ReportNavigation } from '#/components/compliance/reports/formats'
 import { useDefaultYear } from '#/components/compliance/shared'
 import { OperationTypeLabel } from '#/components/labels'
 import { api, errorMessage } from '#/lib/api'
@@ -20,12 +22,20 @@ import { Badge, Card, EmptyState, ErrorNotice, Loading, Notice, PageHeader, Stat
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { toast } from '#/ui/Toast'
 
-const TABS = ['records', 'farm', 'annual', 'n170', 'exports'] as const
+const TABS = ['records', 'farm', 'annual', 'n170', 'reports', 'agrarantrag'] as const
 type ComplianceTab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/compliance/')({
-  // Farm and year are kept in the URL so the regulatory tabs and the printed report share them.
-  validateSearch: z.object({ tab: z.enum(TABS).optional(), farmId: z.string().optional(), year: z.number().int().optional() }),
+  // Farm and year are kept in the URL so the regulatory tabs and the printed report share them; the
+  // fertilizer-report wizard keeps its step, format and the field to focus there too.
+  validateSearch: z.object({
+    tab: z.enum(TABS).optional().catch(undefined),
+    farmId: z.string().optional(),
+    year: z.number().int().optional(),
+    step: z.enum(REPORT_STEPS).optional().catch(undefined),
+    format: z.enum(FEDERAL_EXPORT_FORMATS).optional().catch(undefined),
+    focus: z.string().max(40).optional(),
+  }),
   component: CompliancePage,
 })
 
@@ -48,16 +58,34 @@ function SeverityBadge({ severity }: { severity: ComplianceIssue['severity'] }) 
 
 function CompliancePage() {
   const { t } = useTranslation()
+  const { orgId } = useOrg()
   const { season } = useSeason()
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const tab = search.tab ?? 'records'
+  // Wizard steps are history entries, so the browser's back button returns to the previous step.
+  const navigateReport = (next: ReportNavigation) =>
+    navigate({
+      search: (s) => ({
+        ...s,
+        step: next.step ?? s.step,
+        format: next.format ?? s.format,
+        focus: next.focus === null ? undefined : (next.focus ?? s.focus),
+      }),
+    })
   return (
     <>
       <PageHeader
         title={t('compliance.title')}
         subtitle={season ? t('compliance.subtitleSeason', { season: season.harvestYear }) : t('compliance.subtitle')}
-        actions={tab === 'records' && <ExportRecordsButton />}
+        actions={
+          <>
+            <Link to="/o/$orgId/compliance/psm-record" params={{ orgId }} variant="secondary">
+              <ScrollText /> {t('psmRecord.title')}
+            </Link>
+            {tab === 'records' && <ExportRecordsButton />}
+          </>
+        }
       />
       <Tabs
         selectedKey={tab}
@@ -68,7 +96,8 @@ function CompliancePage() {
           <Tab id="farm">{t('regulatory.tabs.farm')}</Tab>
           <Tab id="annual">{t('regulatory.tabs.annual')}</Tab>
           <Tab id="n170">{t('regulatory.tabs.n170')}</Tab>
-          <Tab id="exports">{t('regulatory.tabs.exports')}</Tab>
+          <Tab id="reports">{t('regulatory.tabs.reports')}</Tab>
+          <Tab id="agrarantrag">{t('regulatory.tabs.agrarantrag')}</Tab>
         </TabList>
         <TabPanel id="records">
           <RecordsTab />
@@ -82,8 +111,11 @@ function CompliancePage() {
         <TabPanel id="n170">
           <FarmScope withYear>{(farmId, year) => <N170Tab farmId={farmId} year={year} />}</FarmScope>
         </TabPanel>
-        <TabPanel id="exports">
-          <FarmScope withYear>{(farmId, year) => <ExportsTab farmId={farmId} year={year} />}</FarmScope>
+        <TabPanel id="reports">
+          <FarmScope withYear>{(farmId, year) => <FertilizerReportsTab farmId={farmId} year={year} search={search} onNavigate={navigateReport} />}</FarmScope>
+        </TabPanel>
+        <TabPanel id="agrarantrag">
+          <FarmScope>{(farmId) => <AgrarantragTab farmId={farmId} />}</FarmScope>
         </TabPanel>
       </Tabs>
     </>

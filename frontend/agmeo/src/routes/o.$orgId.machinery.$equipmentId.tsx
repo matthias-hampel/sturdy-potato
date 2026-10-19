@@ -13,10 +13,9 @@ import { type ReactNode, useState } from 'react'
 import { Form } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { OperationStatusBadge, OperationTypeLabel } from '#/components/labels'
-import { EquipmentDialog, EquipmentIcon, EquipmentStatusBadge, NextMaintenance } from '#/components/resources/equipment'
+import { EquipmentDialog, EquipmentIcon, EquipmentStatusBadge, NextMaintenance, SciBadge, equipmentCategoryLabel, irrigationTypeLabel, mountTypeLabel } from '#/components/resources/equipment'
 import { FormActions } from '#/components/resources/form'
 import { t } from '#/i18n'
-import { equipmentKindLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
@@ -53,7 +52,7 @@ function EquipmentPage() {
     )
 
   const e = equipment.data
-  const subtitle = [equipmentKindLabel(e.kind), [e.manufacturer, e.model].filter(Boolean).join(' '), e.modelYear && String(e.modelYear)].filter(Boolean).join(' · ')
+  const subtitle = [equipmentCategoryLabel(e), [e.manufacturer, e.model].filter(Boolean).join(' '), e.modelYear && String(e.modelYear)].filter(Boolean).join(' · ')
   const farm = farms.data?.find((f) => f.id === e.farmId)
   const next = e.nextMaintenance
 
@@ -66,6 +65,7 @@ function EquipmentPage() {
             <EquipmentIcon kind={e.kind} className="size-9" />
             {e.name}
             <EquipmentStatusBadge status={e.status} />
+            <SciBadge equipment={e} />
           </span>
         }
         subtitle={subtitle}
@@ -114,18 +114,38 @@ function EquipmentPage() {
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-6 mb-6 items-start">
         <Card title={t('common.details')}>
           <DescriptionList
+            // Only what is recorded; machinery carries many optional details.
             items={[
-              { label: t('machinery.field.kind'), value: equipmentKindLabel(e.kind) },
+              { label: e.class === 'machine' ? t('machinery.field.category') : t('machinery.field.implementType'), value: equipmentCategoryLabel(e) },
+              { label: t('machinery.field.mountType'), value: e.mountType ? mountTypeLabel(e.mountType) : null },
+              { label: t('machinery.field.defaultOperator'), value: e.defaultEmployeeName },
               { label: t('machinery.field.farm'), value: farm?.name ?? (e.farmId ? null : t('machinery.detail.notAssigned')) },
               { label: t('machinery.field.manufacturer'), value: e.manufacturer },
               { label: t('machinery.field.model'), value: e.model },
               { label: t('machinery.field.modelYear'), value: e.modelYear },
               { label: t('machinery.field.registration'), value: e.registration },
+              { label: t('machinery.field.serialNumber'), value: e.serialNumber },
+              { label: t('machinery.field.inventoryNumber'), value: e.inventoryNumber },
+              { label: t('machinery.field.power'), value: e.powerKw != null ? `${fmt.num(e.powerKw)} kW` : null },
+              { label: t('machinery.field.workingWidth'), value: e.workingWidthM != null ? `${fmt.num(e.workingWidthM, 2)} m` : null },
+              { label: t('machinery.field.emptyMass'), value: e.emptyMassKg != null ? `${fmt.num(e.emptyMassKg)} kg` : null },
+              { label: t('machinery.field.operatingMass'), value: e.operatingMassKg != null ? `${fmt.num(e.operatingMassKg)} kg` : null },
+              { label: t('machinery.field.maxFillMass'), value: e.maxFillMassKg != null ? `${fmt.num(e.maxFillMassKg)} kg` : null },
+              { label: t('machinery.field.frontAxleShare'), value: e.frontAxleFraction != null ? `${fmt.num(e.frontAxleFraction * 100, 1)} %` : null },
+              { label: t('machinery.tyre.front'), value: e.frontTyre?.size ?? null },
+              { label: t('machinery.tyre.rear'), value: e.rearTyre?.size ?? null },
+              { label: t('machinery.field.irrigationType'), value: e.irrigationType ? irrigationTypeLabel(e.irrigationType) : null },
+              { label: t('machinery.field.irrigationCoverage'), value: e.irrigationCoverageHa != null ? fmt.ha(e.irrigationCoverageHa) : null },
+              { label: t('machinery.field.purchaseDate'), value: e.purchaseDate ? fmt.date(e.purchaseDate) : null },
+              { label: t('machinery.field.purchasePrice'), value: e.purchasePriceNet != null ? fmt.money(e.purchasePriceNet, org.currency) : null },
+              { label: t('machinery.field.usefulLife'), value: e.usefulLifeYears != null ? t('machinery.yearsCount', { count: e.usefulLifeYears }) : null },
+              { label: t('machinery.field.inspectionUntil'), value: e.inspectionUntil ? fmt.date(e.inspectionUntil) : null },
+              { label: t('machinery.field.insuranceUntil'), value: e.insuranceUntil ? fmt.date(e.insuranceUntil) : null },
               { label: t('machinery.field.hourlyCost'), value: e.hourlyCost != null ? `${fmt.money(e.hourlyCost, org.currency, 2)} / h` : null },
               { label: t('machinery.field.fuelLPerH'), value: e.fuelLPerH != null ? `${fmt.num(e.fuelLPerH, 1)} l/h` : null },
               { label: t('machinery.nextService'), value: <NextMaintenance next={next} /> },
               { label: t('common.notes'), value: e.notes ? <span className="whitespace-pre-line">{e.notes}</span> : null },
-            ]}
+            ].filter((item) => item.value != null && item.value !== '')}
           />
         </Card>
         <MaintenanceLog equipment={e} canWrite={canWrite} currency={org.currency} />

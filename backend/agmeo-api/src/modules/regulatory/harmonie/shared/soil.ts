@@ -1,5 +1,6 @@
 /**
- * Soil-analysis conversions for the ENNI/ENDO `bodenuntersuchung`.
+ * Soil-analysis conversions shared by the ENNI/ENDO `bodenuntersuchung` and
+ * the BESyD IMPMAKRO builders.
  */
 
 import type { HumusklasseType } from '../types.js';
@@ -53,4 +54,54 @@ export function bodenartgruppeFromLufa(
 ): string | null {
   if (!soilTypeLufa) return null;
   return LUFA_BODENARTGRUPPE[soilTypeLufa] ?? soilTypeLufa;
+}
+
+/**
+ * BESyD Tabelle 5 Bodenart codes keyed by LUFA group. BESyD distinguishes
+ * S / Sl / lS / SL / sL / L / LT / T (Tabelle 5); the closest code is used.
+ */
+const LUFA_TO_BESYD_BODENART: Record<string, string> = {
+  S: '1',
+  lS: '3',
+  sU: '3',
+  ssL: '4',
+  lU: '5',
+  sL: '5',
+  uL: '6',
+  L: '6',
+  utL: '7',
+  tL: '7',
+  T: '8',
+};
+
+export function besydBodenartFromLufa(
+  soilTypeLufa: string | null,
+): string | null {
+  if (!soilTypeLufa) return null;
+  return LUFA_TO_BESYD_BODENART[soilTypeLufa] ?? null;
+}
+
+/**
+ * Bodengruppe 1–6 of the Sachsen-Anhalt Richtwertsammlung (BG1 Sand … BG5
+ * toniger Lehm bis Ton, BG6 Moor) keyed by LUFA group.
+ */
+const LUFA_TO_ST_BODENGRUPPE: Record<string, number> = {
+  S: 1,
+  lS: 2,
+  sU: 2,
+  ssL: 3,
+  lU: 4,
+  sL: 4,
+  uL: 4,
+  L: 4,
+  utL: 5,
+  tL: 5,
+  T: 5,
+};
+
+export function stBodengruppeFromLufa(
+  soilTypeLufa: string | null,
+): number | null {
+  if (!soilTypeLufa) return null;
+  return LUFA_TO_ST_BODENGRUPPE[soilTypeLufa] ?? null;
 }

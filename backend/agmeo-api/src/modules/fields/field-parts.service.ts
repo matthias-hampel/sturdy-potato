@@ -8,7 +8,7 @@ import { record } from '../../core/events.js';
 import { round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
-import { cropName } from '../crops/crop-name.js';
+import { cropColor, cropName } from '../crops/crop-name.js';
 import { resolveSeason } from '../crops/seasons.js';
 
 type Input = Out<typeof SplitFieldInput>;
@@ -250,7 +250,7 @@ export class FieldPartsService {
       ? await trx
           .selectFrom('crop_cycles as cc')
           .innerJoin('crops as c', 'c.id', 'cc.crop_id')
-          .select(['cc.id', 'cc.field_part_id', cropName('c').as('name'), 'c.color', 'cc.status'])
+          .select(['cc.id', 'cc.field_part_id', cropName('c').as('name'), cropColor('c').as('color'), 'cc.status'])
           .where('cc.field_part_id', 'in', rows.map((r) => r.id))
           .orderBy('cc.created_at')
           .execute()

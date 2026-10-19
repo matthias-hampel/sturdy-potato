@@ -62,7 +62,7 @@ export class MonitoringService {
         FROM fields f
         JOIN field_current_geometry g ON g.field_id = f.id
         LEFT JOIN LATERAL (
-          SELECT coalesce(c.name_de, c.name) AS crop_name, c.color FROM crop_cycles cc JOIN crops c ON c.id = cc.crop_id
+          SELECT coalesce(c.name_de, c.name) AS crop_name, coalesce((SELECT occ.color FROM org_crop_colors occ WHERE occ.crop_id = c.id), c.color) AS color FROM crop_cycles cc JOIN crops c ON c.id = cc.crop_id
           WHERE cc.field_id = f.id AND cc.season_id = ${season?.id ?? null}::uuid LIMIT 1
         ) cur ON true
         LEFT JOIN LATERAL (

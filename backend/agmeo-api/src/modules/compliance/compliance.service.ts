@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { ComplianceIssue, ComplianceReport, Operation, OperationType } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
+import { csvCell } from '../../core/csv.js';
 import { record } from '../../core/events.js';
 import { dateIn, round, today } from '../../core/mappers.js';
 import { Database } from '../../db/database.js';
@@ -230,12 +231,4 @@ function fieldLabel(f: Operation['fields'][number]) {
 
 function daysBetween(from: string, to: string) {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
-}
-
-function csvCell(v: string | number | null): string {
-  if (v == null) return '';
-  const s = String(v);
-  // Quote when needed; prefix formula-like text so spreadsheets do not execute it.
-  const safe = /^[=+\-@]/.test(s) && typeof v === 'string' ? `'${s}` : s;
-  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }

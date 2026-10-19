@@ -1,7 +1,8 @@
 import type { CalendarDateSource, CalendarOperation, CalendarRow, CropCalendar } from '@agmeo/contracts'
 import { Link as RouterLink, createFileRoute } from '@tanstack/react-router'
 import { CalendarRange, Plus, Sprout } from 'lucide-react'
-import { type CSSProperties, useMemo } from 'react'
+import { type CSSProperties, useMemo, useState } from 'react'
+import { MultiYearCalendar } from '#/components/calendar/MultiYearCalendar'
 import { useTranslation } from 'react-i18next'
 import { CropRoleBadge, CropTag, OPERATION_ICONS } from '#/components/labels'
 import { LOCALE } from '#/i18n'
@@ -9,11 +10,30 @@ import { operationTypeLabel } from '#/i18n/labels'
 import { fmt, today } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
-import { Link } from '#/ui/Button'
+import { Link, SegmentedControl } from '#/ui/Button'
 import { Card, EmptyState, ErrorNotice, Loading, PageHeader } from '#/ui/Layout'
 import { cx, focusRing } from '#/ui/utils'
 
-export const Route = createFileRoute('/o/$orgId/calendar')({ component: CropCalendarPage })
+export const Route = createFileRoute('/o/$orgId/calendar')({ component: CalendarPage })
+
+/** Multi-year crop plan (edit) or one season in detail with its operations. */
+function CalendarPage() {
+  const { t } = useTranslation()
+  const [view, setView] = useState<'years' | 'season'>('years')
+  return view === 'years' ? (
+    <>
+      <PageHeader title={t('calendar.title')} subtitle={t('calendarPlan.subtitle')} actions={<CalendarViewSwitch value={view} onChange={setView} />} />
+      <MultiYearCalendar />
+    </>
+  ) : (
+    <CropCalendarPage switcher={<CalendarViewSwitch value={view} onChange={setView} />} />
+  )
+}
+
+function CalendarViewSwitch({ value, onChange }: { value: 'years' | 'season'; onChange: (v: 'years' | 'season') => void }) {
+  const { t } = useTranslation()
+  return <SegmentedControl aria-label={t('calendarPlan.view')} value={value} onChange={onChange} items={[{ id: 'years', label: t('calendarPlan.viewYears') }, { id: 'season', label: t('calendarPlan.viewSeason') }]} />
+}
 
 /** Label column and timeline share one grid template so rows, header and overlay line up. */
 const GRID = 'grid grid-cols-[9rem_1fr] sm:grid-cols-[14rem_1fr]'
@@ -38,7 +58,7 @@ function barStyle(color: string, source: CalendarDateSource): CSSProperties {
   return { background: `color-mix(in srgb, ${color} 15%, transparent)`, borderColor: color, borderStyle: 'dashed' }
 }
 
-function CropCalendarPage() {
+function CropCalendarPage({ switcher }: { switcher: React.ReactNode }) {
   const { t } = useTranslation()
   const { orgId } = useOrg()
   const { season, seasonId, isLoading } = useSeason()
@@ -52,9 +72,12 @@ function CropCalendarPage() {
         title={t('calendar.title')}
         subtitle={season ? `${season.harvestYear} · ${fmt.date(season.startDate)} – ${fmt.date(season.endDate)}` : t('calendar.subtitle')}
         actions={
-          <Link to="/o/$orgId/templates" params={{ orgId }} variant="secondary">
-            {t('nav.templates')}
-          </Link>
+          <>
+            {switcher}
+            <Link to="/o/$orgId/templates" params={{ orgId }} variant="secondary">
+              {t('nav.templates')}
+            </Link>
+          </>
         }
       />
       {!season ? (

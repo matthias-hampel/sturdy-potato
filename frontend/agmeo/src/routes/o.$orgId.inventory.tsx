@@ -10,6 +10,7 @@ import {
   type Farm,
   type FertilizerCatalogueEntry,
   type FertilizerType,
+  type FileItem,
   type FromCatalogueInput,
   type FromPsmInput,
   type Product,
@@ -18,12 +19,14 @@ import {
   type PsmProductSummary,
   type StockMovement,
   type StockMovementInput,
+  type StockBalance,
   type StockMovementKind,
+  type StocktakeInput,
   type StorageLocation,
   type StorageLocationInput,
 } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, BookOpen, Coins, Ellipsis, History, Package, PackagePlus, Pencil, Plus, Scale, ShieldCheck, TriangleAlert, Warehouse } from 'lucide-react'
+import { Archive, ArchiveRestore, BookOpen, CalendarClock, ClipboardCheck, Coins, Ellipsis, FileDown, FileText, History, Package, PackageMinus, PackagePlus, Pencil, Plus, Scale, ShieldCheck, TriangleAlert, Undo2, Upload, Warehouse, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Form, Header, ListBoxSection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
@@ -56,21 +59,29 @@ const DEFAULT_UNIT: Record<ProductCategory, BaseUnit> = {
   crop_protection: 'l',
   fuel: 'l',
   consumable: 'unit',
+  harvest: 't',
   other: 'unit',
 }
 
 const KIND_TONES: Record<StockMovementKind, BadgeTone> = {
   receipt: 'success',
+  issue: 'warning',
   adjustment: 'info',
   consumption: 'accent',
   reversal: 'warning',
+  void: 'neutral',
 }
 
 const movementKindLabel = (kind: StockMovementKind) => t(`inventory.movementKind.${kind}`)
 
-type DialogState = { kind: 'product'; product?: Product } | { kind: 'receive'; product?: Product } | { kind: 'adjust'; product?: Product } | { kind: 'location' } | { kind: 'catalogue' } | { kind: 'psm' } | null
+type MovementDialog = 'receive' | 'issue' | 'adjust' | 'stocktake'
+type DialogState = { kind: 'product'; product?: Product } | { kind: MovementDialog; product?: Product } | { kind: 'location' } | { kind: 'catalogue' } | { kind: 'psm' } | null
 
 const unitLabel = (u: BaseUnit) => baseUnitLabel(u)
+
+/** Products whose stock expires within this many days are flagged. */
+const EXPIRY_WARNING_DAYS = 60
+const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T12:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
 
 function InventoryPage() {
   const { t } = useTranslation()
@@ -136,6 +147,9 @@ function InventoryPage() {
       >
         {(close) => <MovementForm kind="receipt" product={product} close={close} />}
       </ModalDialog>
+      <ModalDialog isOpen={dialog?.kind === 'issue'} onOpenChange={onOpenChange} title={t('inventory.issueStock')} description={t('inventory.issueDescription')} size="md">
+        {(close) => <MovementForm kind="issue" product={product} close={close} />}
+      </ModalDialog>
       <ModalDialog
         isOpen={dialog?.kind === 'adjust'}
         onOpenChange={onOpenChange}
@@ -144,6 +158,9 @@ function InventoryPage() {
         size="md"
       >
         {(close) => <MovementForm kind="adjustment" product={product} close={close} />}
+      </ModalDialog>
+      <ModalDialog isOpen={dialog?.kind === 'stocktake'} onOpenChange={onOpenChange} title={t('inventory.stocktake.title')} description={t('inventory.stocktake.description')} size="md">
+        {(close) => <StocktakeForm product={product} close={close} />}
       </ModalDialog>
       <ModalDialog isOpen={dialog?.kind === 'location'} onOpenChange={onOpenChange} title={t('inventory.locations.addTitle')} size="sm">
         {(close) => <LocationForm close={close} />}
@@ -182,6 +199,10 @@ function toInput(p: Product): ProductInput {
     densityTM3: p.densityTM3,
     fertilizerType: p.fertilizerType,
     lowStockThreshold: p.lowStockThreshold,
+    humusCKgPerT: p.humusCKgPerT,
+    nEffectivenessPct: p.nEffectivenessPct,
+    website: p.website,
+    datasheetFileId: p.datasheetFileId,
     notes: p.notes,
   }
 }
@@ -227,8 +248,13 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
       .filter((p) => !q || [p.name, p.manufacturer, p.activeIngredients, p.registrationNumber].some((s) => s?.toLowerCase().includes(q)))
   }, [all, category, search])
 
-  const stockValue = active.reduce((s, p) => s + Math.max(0, p.stock) * (p.unitCost ?? 0), 0)
+  const stockValue = active.reduce((s, p) => s + (p.stockValue ?? 0), 0)
   const lowStock = active.filter((p) => p.lowStock || p.stock < 0)
+  const expiring = active.filter((p) => p.nextExpiry != null && p.nextExpiry <= addDays(today(), EXPIRY_WARNING_DAYS)).sort((a, b) => a.nextExpiry!.localeCompare(b.nextExpiry!))
+  const byCategory = PRODUCT_CATEGORIES.map((c) => {
+    const items = active.filter((p) => p.category === c)
+    return { category: c, count: items.length, value: items.reduce((s, p) => s + (p.stockValue ?? 0), 0) }
+  }).filter((c) => c.count > 0)
 
   if (products.isLoading) return <Loading />
   if (products.error) return <ErrorNotice error={products.error} />
@@ -254,7 +280,7 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat icon={Package} label={t('inventory.tabs.products')} value={fmt.num(active.length)} />
         <Stat icon={Coins} label={t('inventory.stats.stockValue')} value={fmt.money(stockValue, org.currency)} hint={t('inventory.stats.stockValueHint')} />
         <Stat
@@ -264,7 +290,32 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
           hint={lowStock.length ? lowStock.slice(0, 3).map((p) => p.name).join(', ') + (lowStock.length > 3 ? '…' : '') : t('inventory.stats.allAboveThreshold')}
           tone={lowStock.length ? 'warning' : 'success'}
         />
+        <Stat
+          icon={CalendarClock}
+          label={t('inventory.stats.expiring')}
+          value={fmt.num(expiring.length)}
+          hint={expiring.length ? expiring.slice(0, 3).map((p) => `${p.name} (${fmt.date(p.nextExpiry!)})`).join(', ') + (expiring.length > 3 ? '…' : '') : t('inventory.stats.expiringNone', { days: EXPIRY_WARNING_DAYS })}
+          tone={expiring.length ? 'warning' : 'success'}
+        />
       </div>
+
+      {byCategory.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {byCategory.map((c) => (
+            <button
+              key={c.category}
+              type="button"
+              onClick={() => setCategory(category === c.category ? ALL : c.category)}
+              className={cx('rounded-lg border px-3 py-2 text-left text-sm transition-colors', category === c.category ? 'border-primary bg-primary-soft' : 'border-line bg-surface hover:bg-surface-2')}
+            >
+              <div className="font-medium">{productCategoryLabel(c.category)}</div>
+              <div className="text-xs text-muted">
+                {t('inventory.stats.categorySummary', { count: c.count, value: fmt.money(c.value, org.currency) })}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
       <Card padded={false}>
         <div className="p-3 flex flex-wrap items-center gap-3 border-b border-line">
@@ -281,6 +332,9 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
           <Switch isSelected={showArchived} onChange={setShowArchived}>
             {t('inventory.showArchived')}
           </Switch>
+          <Button size="sm" onPress={() => void api.download(`/orgs/${org.id}/stock/balances.csv`, undefined, 'stock.csv')}>
+            <FileDown /> {t('inventory.exportCsv')}
+          </Button>
         </div>
         <Table aria-label={t('inventory.tabs.products')}>
           <TableHeader>
@@ -288,7 +342,8 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
             <Column>{t('inventory.category')}</Column>
             <Column>{t('inventory.manufacturer')}</Column>
             <Column align="end">{t('inventory.stock')}</Column>
-            <Column align="end">{t('inventory.unitCost')}</Column>
+            <Column align="end">{t('inventory.price')}</Column>
+            <Column align="end">{t('inventory.value')}</Column>
             <Column>{t('common.status')}</Column>
             {canWrite && (
               <Column>
@@ -312,7 +367,17 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
                     <div className={cx('font-medium', p.stock < 0 && 'text-danger')}>{fmt.qty(p.stock, p.baseUnit)}</div>
                     {p.lowStockThreshold != null && <div className="text-xs text-muted">{t('inventory.minStock', { qty: fmt.qty(p.lowStockThreshold, p.baseUnit) })}</div>}
                   </Cell>
-                  <Cell align="end">{p.unitCost != null ? `${fmt.money(p.unitCost, org.currency, 2)} / ${unitLabel(p.baseUnit)}` : <span className="text-muted">—</span>}</Cell>
+                  <Cell align="end">
+                    {p.currentPrice ? (
+                      <>
+                        <div>{`${fmt.money(p.currentPrice.price, org.currency, 2)} / ${unitLabel(p.baseUnit)}`}</div>
+                        <div className="text-xs text-muted">{t(`inventory.priceSource.${p.currentPrice.source}`, { year: p.currentPrice.year })}</div>
+                      </>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </Cell>
+                  <Cell align="end">{p.stockValue != null ? fmt.money(p.stockValue, org.currency) : <span className="text-muted">—</span>}</Cell>
                   <Cell>
                     <ProductStatus product={p} />
                   </Cell>
@@ -325,7 +390,7 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
                         <Menu
                           onAction={(key) => {
                             if (key === 'archive') archive.mutate(p)
-                            else onAction({ kind: key as 'product' | 'receive' | 'adjust', product: p })
+                            else onAction({ kind: key as 'product' | MovementDialog, product: p })
                           }}
                         >
                           <MenuItem id="product" textValue={t('common.edit')}>
@@ -334,6 +399,16 @@ function ProductsTab({ canWrite, onAction }: { canWrite: boolean; onAction: (d: 
                           {!p.archivedAt && (
                             <MenuItem id="receive" textValue={t('inventory.receiveStock')}>
                               <PackagePlus /> {t('inventory.receiveStock')}
+                            </MenuItem>
+                          )}
+                          {!p.archivedAt && (
+                            <MenuItem id="issue" textValue={t('inventory.issueStock')}>
+                              <PackageMinus /> {t('inventory.issueStock')}
+                            </MenuItem>
+                          )}
+                          {!p.archivedAt && (
+                            <MenuItem id="stocktake" textValue={t('inventory.stocktake.title')}>
+                              <ClipboardCheck /> {t('inventory.stocktake.title')}
                             </MenuItem>
                           )}
                           {!p.archivedAt && (
@@ -361,7 +436,9 @@ function ProductStatus({ product: p }: { product: Product }) {
   const { t } = useTranslation()
   if (p.archivedAt) return <Badge>{t('inventory.status.archived')}</Badge>
   if (p.stock <= 0) return <Badge tone="danger">{p.stock < 0 ? t('inventory.status.negative') : t('inventory.status.outOfStock')}</Badge>
+  if (p.nextExpiry && p.nextExpiry < today()) return <Badge tone="danger">{t('inventory.status.expired')}</Badge>
   if (p.lowStock) return <Badge tone="warning">{t('inventory.lowStock')}</Badge>
+  if (p.nextExpiry && p.nextExpiry <= addDays(today(), EXPIRY_WARNING_DAYS)) return <Badge tone="warning">{t('inventory.status.expiresOn', { date: fmt.date(p.nextExpiry) })}</Badge>
   return <Badge tone="success">{t('inventory.status.inStock')}</Badge>
 }
 
@@ -424,6 +501,10 @@ function ProductForm({ product, close }: { product?: Product; close: () => void 
   const [dryMatterPct, setDryMatterPct] = useState(product?.dryMatterPct ?? NaN)
   const [densityTM3, setDensityTM3] = useState(product?.densityTM3 ?? NaN)
   const [lowStockThreshold, setLowStockThreshold] = useState(product?.lowStockThreshold ?? NaN)
+  const [humusCKgPerT, setHumusCKgPerT] = useState(product?.humusCKgPerT ?? NaN)
+  const [nEffectivenessPct, setNEffectivenessPct] = useState(product?.nEffectivenessPct ?? NaN)
+  const [website, setWebsite] = useState(product?.website ?? '')
+  const [datasheetFileId, setDatasheetFileId] = useState<string | null>(product?.datasheetFileId ?? null)
   const [notes, setNotes] = useState(product?.notes ?? '')
 
   const save = useOrgMutation((base, input: ProductInput) => (product ? api.put<Product>(`${base}/products/${product.id}`, input) : api.post<Product>(`${base}/products`, input)), {
@@ -483,6 +564,10 @@ function ProductForm({ product, close }: { product?: Product; close: () => void 
           densityTM3: isFertilizer ? num(densityTM3) : null,
           fertilizerType: isFertilizer ? fertilizerType : null,
           lowStockThreshold: num(lowStockThreshold),
+          humusCKgPerT: isFertilizer && organic ? num(humusCKgPerT) : null,
+          nEffectivenessPct: isFertilizer ? num(nEffectivenessPct) : null,
+          website: textOrNull(website),
+          datasheetFileId,
           notes: textOrNull(notes),
         })
       }}
@@ -580,6 +665,25 @@ function ProductForm({ product, close }: { product?: Product; close: () => void 
           <div className="grid sm:grid-cols-2 gap-3">
             <NumberField label={t('inventory.form.dryMatter')} value={dryMatterPct} onChange={setDryMatterPct} {...pct} />
             <NumberField
+              label={t('inventory.form.nEffectiveness')}
+              value={nEffectivenessPct}
+              onChange={setNEffectivenessPct}
+              description={t('inventory.form.nEffectivenessHint')}
+              {...pct}
+            />
+            {organic && (
+              <NumberField
+                label={t('inventory.form.humusC')}
+                unit={byVolume ? 'kg/m³' : 'kg/t'}
+                value={humusCKgPerT}
+                onChange={setHumusCKgPerT}
+                minValue={-1000}
+                maxValue={1000}
+                formatOptions={{ maximumFractionDigits: 1 }}
+                description={t('inventory.form.humusCHint')}
+              />
+            )}
+            <NumberField
               label={t('inventory.form.density')}
               unit="t/m³"
               value={densityTM3}
@@ -617,11 +721,62 @@ function ProductForm({ product, close }: { product?: Product; close: () => void 
         formatOptions={{ maximumFractionDigits: 3 }}
         description={t('inventory.form.lowStockThresholdHint')}
       />
+      <TextField label={t('inventory.form.website')} type="url" value={website} onChange={setWebsite} placeholder="https://" />
+      <DatasheetField fileId={datasheetFileId} onChange={setDatasheetFileId} />
       <TextField label={t('common.notes')} multiline rows={2} value={notes} onChange={setNotes} className="sm:col-span-2" />
       <div className="sm:col-span-2">
         <FormActions close={close} isPending={save.isPending} submitLabel={product ? t('common.saveChanges') : t('inventory.form.create')} />
       </div>
     </Form>
+  )
+}
+
+/** A product datasheet: uploaded into the organization's files and linked to the product. */
+function DatasheetField({ fileId, onChange }: { fileId: string | null; onChange: (id: string | null) => void }) {
+  const { t } = useTranslation()
+  const { org } = useOrg()
+  const file = useOrgQuery<FileItem>(fileId ? `/files/${fileId}` : null)
+  const upload = useOrgMutation(
+    (base, f: File) => {
+      const form = new FormData()
+      form.append('names', JSON.stringify([f.name]))
+      form.append('files', f, 'upload')
+      return api.upload<FileItem[]>(`${base}/files/upload`, form)
+    },
+    { onSuccess: (files) => onChange(files[0]?.id ?? null) },
+  )
+  return (
+    <div className="space-y-1.5">
+      <span className="block text-sm font-medium text-fg-2">{t('inventory.form.datasheet')}</span>
+      {fileId ? (
+        <div className="flex items-center gap-2 text-sm">
+          <FileText className="size-4 text-muted shrink-0" />
+          <span className="truncate flex-1">{file.data?.name ?? '…'}</span>
+          {file.data && (
+            <Button size="icon-sm" variant="ghost" aria-label={t('common.download')} onPress={() => void api.download(`/orgs/${org.id}/files/${fileId}/content`, undefined, file.data!.name)}>
+              <FileDown />
+            </Button>
+          )}
+          <Button size="icon-sm" variant="ghost" aria-label={t('common.remove')} onPress={() => onChange(null)}>
+            <X />
+          </Button>
+        </div>
+      ) : (
+        <label className={cx('inline-flex items-center gap-2 rounded-md border border-line px-3 py-1.5 text-sm cursor-pointer hover:bg-surface-2', upload.isPending && 'opacity-60 pointer-events-none')}>
+          <Upload className="size-4" /> {upload.isPending ? t('inventory.form.datasheetUploading') : t('inventory.form.datasheetUpload')}
+          <input
+            type="file"
+            className="sr-only"
+            accept=".pdf,image/*"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) upload.mutate(f)
+              e.target.value = ''
+            }}
+          />
+        </label>
+      )}
+    </div>
   )
 }
 
@@ -811,7 +966,7 @@ function PsmSearchDialog({ close }: { close: () => void }) {
 // Receipts and adjustments
 // ---------------------------------------------------------------------------
 
-function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'adjustment'; product?: Product; close: () => void }) {
+function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'issue' | 'adjustment'; product?: Product; close: () => void }) {
   const { t } = useTranslation()
   const { org } = useOrg()
   const products = useOrgQuery<Product[]>('/products')
@@ -819,18 +974,34 @@ function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'ad
   const [productId, setProductId] = useState<string | null>(initial?.id ?? null)
   const [locationId, setLocationId] = useState<string>(NONE)
   const [quantity, setQuantity] = useState(NaN)
-  const [unitCost, setUnitCost] = useState(initial?.unitCost ?? NaN)
+  const [unitCost, setUnitCost] = useState(initial?.currentPrice?.price ?? NaN)
+  const [totalPrice, setTotalPrice] = useState(NaN)
+  const [vatRate, setVatRate] = useState(NaN)
+  const [lotNumber, setLotNumber] = useState('')
+  const [expiryDate, setExpiryDate] = useState<string | null>(null)
+  const [counterparty, setCounterparty] = useState('')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
   const [date, setDate] = useState<string | null>(today())
   const [note, setNote] = useState('')
 
   const isReceipt = kind === 'receipt'
+  const isIssue = kind === 'issue'
+  const priced = isReceipt || isIssue
   const options = products.data ?? (initial ? [initial] : [])
   const product = options.find((p) => p.id === productId) ?? null
   const unit = product ? unitLabel(product.baseUnit) : undefined
   const qty = num(quantity)
+  // Issues are entered as a positive quantity and booked as an outflow.
+  const delta = qty == null ? null : isIssue ? -Math.abs(qty) : qty
+  const total = num(totalPrice) ?? (qty != null && num(unitCost) != null ? Math.abs(qty) * unitCost : null)
 
   const save = useOrgMutation((base, input: StockMovementInput) => api.post<Product>(`${base}/stock/movements`, input), {
-    success: (p) => (isReceipt ? t('inventory.movement.received', { qty: fmt.qty(qty ?? 0, p.baseUnit), name: p.name }) : t('inventory.movement.adjusted', { name: p.name })),
+    success: (p) =>
+      isReceipt
+        ? t('inventory.movement.received', { qty: fmt.qty(qty ?? 0, p.baseUnit), name: p.name })
+        : isIssue
+          ? t('inventory.movement.issued', { qty: fmt.qty(qty ?? 0, p.baseUnit), name: p.name })
+          : t('inventory.movement.adjusted', { name: p.name }),
     onSuccess: close,
   })
 
@@ -839,13 +1010,19 @@ function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'ad
       className="grid sm:grid-cols-2 gap-4"
       onSubmit={(e) => {
         e.preventDefault()
-        if (!productId || qty == null || qty === 0 || !date) return
+        if (!productId || delta == null || delta === 0 || !date) return
         save.mutate({
           productId,
           storageLocationId: keyOrNull(locationId),
           kind,
-          quantityDelta: qty,
-          unitCost: isReceipt ? num(unitCost) : null,
+          quantityDelta: delta,
+          unitCost: priced && num(totalPrice) == null ? num(unitCost) : null,
+          totalPrice: priced ? num(totalPrice) : null,
+          vatRate: priced ? num(vatRate) : null,
+          lotNumber: isReceipt ? textOrNull(lotNumber) : null,
+          expiryDate: isReceipt ? expiryDate : null,
+          counterparty: priced ? textOrNull(counterparty) : null,
+          invoiceNumber: priced ? textOrNull(invoiceNumber) : null,
           // Today keeps the actual time so the ledger order matches entry order.
           occurredAt: date === today() ? new Date().toISOString() : localToIso(date, '12:00'),
           note: textOrNull(note),
@@ -863,7 +1040,7 @@ function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'ad
           const id = v == null ? null : String(v)
           setProductId(id)
           const p = options.find((o) => o.id === id)
-          if (p) setUnitCost(p.unitCost ?? NaN)
+          if (p) setUnitCost(p.currentPrice?.price ?? NaN)
         }}
       >
         {(p) => (
@@ -873,29 +1050,49 @@ function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'ad
         )}
       </Select>
       <NumberField
-        label={isReceipt ? t('inventory.movement.quantityReceived') : t('inventory.movement.quantityChange')}
+        label={isReceipt ? t('inventory.movement.quantityReceived') : isIssue ? t('inventory.movement.quantityIssued') : t('inventory.movement.quantityChange')}
         isRequired
         autoFocus={!!initial}
         unit={unit}
         value={quantity}
         onChange={setQuantity}
-        minValue={isReceipt ? 0 : undefined}
-        formatOptions={{ maximumFractionDigits: 3, signDisplay: isReceipt ? 'auto' : 'exceptZero' }}
-        validate={(v) => (Number.isNaN(v) ? null : v === 0 ? t('inventory.movement.notZero') : isReceipt && v < 0 ? t('inventory.movement.aboveZero') : null)}
-        description={!isReceipt ? t('inventory.movement.quantityChangeHint') : undefined}
+        minValue={priced ? 0 : undefined}
+        formatOptions={{ maximumFractionDigits: 3, signDisplay: priced ? 'auto' : 'exceptZero' }}
+        validate={(v) => (Number.isNaN(v) ? null : v === 0 ? t('inventory.movement.notZero') : priced && v < 0 ? t('inventory.movement.aboveZero') : null)}
+        description={!priced ? t('inventory.movement.quantityChangeHint') : undefined}
       />
-      {isReceipt ? (
-        <NumberField
-          label={t('inventory.unitCost')}
-          unit={unit ? `${org.currency} / ${unit}` : org.currency}
-          value={unitCost}
-          onChange={setUnitCost}
-          minValue={0}
-          formatOptions={{ maximumFractionDigits: 4 }}
-          description={qty != null && num(unitCost) != null ? t('inventory.movement.total', { amount: fmt.money(qty * unitCost, org.currency, 2) }) : t('inventory.movement.unitCostHint')}
-        />
-      ) : (
-        <DatePicker label={t('common.date')} isRequired value={date} onChange={setDate} maxValue={today()} />
+      <DatePicker label={t('common.date')} isRequired value={date} onChange={setDate} maxValue={today()} />
+      {priced && (
+        <>
+          <NumberField
+            label={t('inventory.unitCost')}
+            unit={unit ? `${org.currency} / ${unit}` : org.currency}
+            value={num(totalPrice) != null && qty ? totalPrice / Math.abs(qty) : unitCost}
+            isDisabled={num(totalPrice) != null}
+            onChange={setUnitCost}
+            minValue={0}
+            formatOptions={{ maximumFractionDigits: 4 }}
+            description={isReceipt ? t('inventory.movement.unitCostHint') : undefined}
+          />
+          <NumberField
+            label={t('inventory.movement.totalPrice')}
+            unit={org.currency}
+            value={totalPrice}
+            onChange={setTotalPrice}
+            minValue={0}
+            formatOptions={{ maximumFractionDigits: 2 }}
+            description={num(totalPrice) == null && total != null ? t('inventory.movement.total', { amount: fmt.money(total, org.currency, 2) }) : t('inventory.movement.totalPriceHint')}
+          />
+          <NumberField label={t('inventory.movement.vatRate')} unit="%" value={vatRate} onChange={setVatRate} minValue={0} maxValue={100} formatOptions={{ maximumFractionDigits: 2 }} />
+          <TextField label={isReceipt ? t('inventory.movement.supplier') : t('inventory.movement.buyer')} value={counterparty} onChange={setCounterparty} />
+          <TextField label={t('inventory.movement.invoiceNumber')} value={invoiceNumber} onChange={setInvoiceNumber} />
+        </>
+      )}
+      {isReceipt && (
+        <>
+          <TextField label={t('inventory.movement.lotNumber')} value={lotNumber} onChange={setLotNumber} />
+          <DatePicker label={t('inventory.movement.expiryDate')} value={expiryDate} onChange={setExpiryDate} />
+        </>
       )}
       <Select
         label={t('inventory.storageLocation')}
@@ -905,13 +1102,12 @@ function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'ad
       >
         {(l) => <Option id={l.id}>{l.name}</Option>}
       </Select>
-      {isReceipt && <DatePicker label={t('common.date')} isRequired value={date} onChange={setDate} maxValue={today()} />}
       <TextField
         label={t('inventory.note')}
         value={note}
         onChange={setNote}
-        placeholder={isReceipt ? t('inventory.movement.notePlaceholderReceipt') : t('inventory.movement.notePlaceholderAdjustment')}
-        className={isReceipt ? 'sm:col-span-2' : undefined}
+        placeholder={isReceipt ? t('inventory.movement.notePlaceholderReceipt') : isIssue ? t('inventory.movement.notePlaceholderIssue') : t('inventory.movement.notePlaceholderAdjustment')}
+        className="sm:col-span-2"
       />
 
       {product && (
@@ -919,17 +1115,108 @@ function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'ad
           <span className="text-muted">
             {t('inventory.movement.currentStock')} <span className="text-fg font-medium">{fmt.qty(product.stock, product.baseUnit)}</span>
           </span>
-          {qty != null && qty !== 0 && (
+          {delta != null && delta !== 0 && (
             <span className="text-muted">
               {isReceipt ? t('inventory.movement.afterReceipt') : t('inventory.movement.afterAdjustment')}{' '}
-              <span className={cx('font-medium', product.stock + qty < 0 ? 'text-danger' : 'text-fg')}>{fmt.qty(product.stock + qty, product.baseUnit)}</span>
+              <span className={cx('font-medium', product.stock + delta < 0 ? 'text-danger' : 'text-fg')}>{fmt.qty(product.stock + delta, product.baseUnit)}</span>
             </span>
           )}
         </div>
       )}
 
       <div className="sm:col-span-2">
-        <FormActions close={close} isPending={save.isPending} submitLabel={isReceipt ? t('inventory.movement.recordReceipt') : t('inventory.movement.recordAdjustment')} isDisabled={!productId} />
+        <FormActions
+          close={close}
+          isPending={save.isPending}
+          submitLabel={isReceipt ? t('inventory.movement.recordReceipt') : isIssue ? t('inventory.movement.recordIssue') : t('inventory.movement.recordAdjustment')}
+          isDisabled={!productId}
+        />
+      </div>
+    </Form>
+  )
+}
+
+/** Stocktake: enter the counted quantity; the difference to the recorded stock is booked. */
+function StocktakeForm({ product: initial, close }: { product?: Product; close: () => void }) {
+  const { t } = useTranslation()
+  const products = useOrgQuery<Product[]>('/products')
+  const locations = useOrgQuery<StorageLocation[]>('/storage-locations')
+  const [productId, setProductId] = useState<string | null>(initial?.id ?? null)
+  const [locationId, setLocationId] = useState<string>(NONE)
+  const [counted, setCounted] = useState(NaN)
+  const [date, setDate] = useState<string | null>(today())
+  const [note, setNote] = useState('')
+  const balances = useOrgQuery<StockBalance[]>(productId ? '/stock/balances' : null, { productId: productId ?? undefined })
+
+  const options = products.data ?? (initial ? [initial] : [])
+  const product = options.find((p) => p.id === productId) ?? null
+  const recorded = (balances.data ?? []).filter((b) => (b.storageLocationId ?? NONE) === locationId).reduce((s, b) => s + b.quantity, 0)
+  const diff = num(counted) == null ? null : Math.round((counted - recorded) * 1e6) / 1e6
+
+  const save = useOrgMutation((base, input: StocktakeInput) => api.post<Product>(`${base}/stock/stocktake`, input), {
+    success: (p) => t('inventory.stocktake.saved', { name: p.name }),
+    onSuccess: close,
+  })
+
+  return (
+    <Form
+      className="grid sm:grid-cols-2 gap-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!productId || num(counted) == null || !date) return
+        save.mutate({
+          productId,
+          storageLocationId: keyOrNull(locationId),
+          counted,
+          occurredAt: date === today() ? new Date().toISOString() : localToIso(date, '12:00'),
+          note: textOrNull(note) ?? t('inventory.stocktake.defaultNote'),
+        })
+      }}
+    >
+      <Select label={t('inventory.product')} isRequired items={options} value={productId} className="sm:col-span-2" onChange={(v) => setProductId(v == null ? null : String(v))}>
+        {(p) => (
+          <Option id={p.id} textValue={p.name}>
+            {p.name}
+          </Option>
+        )}
+      </Select>
+      <Select
+        label={t('inventory.storageLocation')}
+        items={[{ id: NONE, name: t('inventory.movement.noLocation') }, ...(locations.data ?? [])]}
+        value={locationId}
+        onChange={(v) => setLocationId(String(v ?? NONE))}
+      >
+        {(l) => <Option id={l.id}>{l.name}</Option>}
+      </Select>
+      <DatePicker label={t('common.date')} isRequired value={date} onChange={setDate} maxValue={today()} />
+      <NumberField
+        label={t('inventory.stocktake.counted')}
+        isRequired
+        autoFocus={!!initial}
+        unit={product ? unitLabel(product.baseUnit) : undefined}
+        value={counted}
+        onChange={setCounted}
+        minValue={0}
+        formatOptions={{ maximumFractionDigits: 3 }}
+      />
+      <TextField label={t('inventory.note')} value={note} onChange={setNote} placeholder={t('inventory.stocktake.defaultNote')} />
+      {product && (
+        <div className="sm:col-span-2 rounded-lg bg-surface-2 px-3 py-2.5 text-sm flex flex-wrap justify-between gap-x-4 gap-y-1 tabular">
+          <span className="text-muted">
+            {t('inventory.stocktake.recorded')} <span className="text-fg font-medium">{fmt.qty(recorded, product.baseUnit)}</span>
+          </span>
+          {diff != null && (
+            <span className="text-muted">
+              {t('inventory.stocktake.difference')}{' '}
+              <span className={cx('font-medium', diff < 0 ? 'text-danger' : diff > 0 ? 'text-success' : 'text-fg')}>
+                {diff === 0 ? t('inventory.stocktake.noDifference') : `${diff > 0 ? '+' : ''}${fmt.qty(diff, product.baseUnit)}`}
+              </span>
+            </span>
+          )}
+        </div>
+      )}
+      <div className="sm:col-span-2">
+        <FormActions close={close} isPending={save.isPending} submitLabel={t('inventory.stocktake.save')} isDisabled={!productId} />
       </div>
     </Form>
   )
@@ -941,11 +1228,16 @@ function MovementForm({ kind, product: initial, close }: { kind: 'receipt' | 'ad
 
 function MovementsTab() {
   const { t } = useTranslation()
-  const { orgId, org } = useOrg()
+  const { orgId, org, can } = useOrg()
+  const canWrite = can('inventory.write')
   const [productId, setProductId] = useState<string>(ALL)
   const [kind, setKind] = useState<string>(ALL)
+  const [from, setFrom] = useState<string | null>(null)
+  const [to, setTo] = useState<string | null>(null)
+  const [voiding, setVoiding] = useState<StockMovement | null>(null)
   const products = useOrgQuery<Product[]>('/products', { includeArchived: true })
-  const movements = useOrgQuery<StockMovement[]>('/stock/movements', { productId: productId === ALL ? undefined : productId })
+  const range = { productId: productId === ALL ? undefined : productId, from: from ?? undefined, to: to ?? undefined }
+  const movements = useOrgQuery<StockMovement[]>('/stock/movements', range)
 
   const visible = useMemo(() => (movements.data ?? []).filter((m) => kind === ALL || m.kind === kind), [movements.data, kind])
 
@@ -970,7 +1262,12 @@ function MovementsTab() {
         >
           {(k) => <Option id={k.id}>{k.name}</Option>}
         </Select>
+        <DatePicker aria-label={t('inventory.movements.from')} value={from} onChange={setFrom} maxValue={to ?? undefined} />
+        <DatePicker aria-label={t('inventory.movements.to')} value={to} onChange={setTo} minValue={from ?? undefined} />
         <span className="text-sm text-muted ml-auto">{movements.data ? t('inventory.movements.count', { count: visible.length }) : null}</span>
+        <Button size="sm" onPress={() => void api.download(`/orgs/${orgId}/stock/movements.csv`, range, 'stock-movements.csv')}>
+          <FileDown /> {t('inventory.exportCsv')}
+        </Button>
       </div>
       {movements.isLoading ? (
         <div className="p-4">
@@ -989,13 +1286,19 @@ function MovementsTab() {
             <Column align="end">{t('inventory.movements.quantity')}</Column>
             <Column align="end">{t('inventory.unitCost')}</Column>
             <Column>{t('inventory.storageLocation')}</Column>
+            <Column>{t('inventory.movements.details')}</Column>
             <Column>{t('inventory.movements.operation')}</Column>
             <Column>{t('inventory.note')}</Column>
             <Column>{t('inventory.movements.by')}</Column>
+            {canWrite && (
+              <Column>
+                <span className="sr-only">{t('inventory.actions')}</span>
+              </Column>
+            )}
           </TableHeader>
           <TableBody
             items={visible}
-            dependencies={[orgId, org.currency]}
+            dependencies={[orgId, org.currency, canWrite]}
             renderEmptyState={() => (
               <EmptyState icon={History} title={t('inventory.movements.empty.title')}>
                 {t('inventory.movements.empty.text')}
@@ -1005,8 +1308,16 @@ function MovementsTab() {
             {(m) => {
               const label = movementKindLabel(m.kind)
               const tone = KIND_TONES[m.kind]
+              const details = [
+                m.counterparty,
+                m.invoiceNumber && t('inventory.movements.invoice', { number: m.invoiceNumber }),
+                m.lotNumber && t('inventory.movements.lot', { lot: m.lotNumber }),
+                m.expiryDate && t('inventory.movements.expires', { date: fmt.date(m.expiryDate) }),
+                m.totalPrice != null && `${fmt.money(m.totalPrice, org.currency, 2)}${m.vatRate != null ? ` + ${fmt.num(m.vatRate, 0)} % ${t('inventory.movements.vat')}` : ''}`,
+              ].filter(Boolean)
+              const voidable = canWrite && !m.voidedBy && ['receipt', 'issue', 'adjustment'].includes(m.kind)
               return (
-                <Row id={m.id}>
+                <Row id={m.id} className={m.voidedBy ? 'text-muted line-through decoration-muted' : undefined}>
                   <Cell className="whitespace-nowrap tabular">{fmt.date(m.occurredAt)}</Cell>
                   <Cell className="font-medium">{m.productName}</Cell>
                   <Cell>
@@ -1018,6 +1329,7 @@ function MovementsTab() {
                   </Cell>
                   <Cell align="end">{m.unitCost != null ? fmt.money(m.unitCost, org.currency, 2) : <span className="text-muted">—</span>}</Cell>
                   <Cell className="whitespace-nowrap">{m.storageLocationName ?? <span className="text-muted">—</span>}</Cell>
+                  <Cell className="text-xs text-fg-2 max-w-64">{details.length ? details.join(' · ') : <span className="text-muted">—</span>}</Cell>
                   <Cell>
                     {m.operationId ? (
                       <Link to="/o/$orgId/operations/$operationId" params={{ orgId, operationId: m.operationId }} className="whitespace-nowrap">
@@ -1029,13 +1341,49 @@ function MovementsTab() {
                   </Cell>
                   <Cell className="text-fg-2 max-w-64">{m.note ?? <span className="text-muted">—</span>}</Cell>
                   <Cell className="whitespace-nowrap text-fg-2">{m.createdByName ?? <span className="text-muted">—</span>}</Cell>
+                  {canWrite && (
+                    <Cell className="w-0">
+                      {voidable && (
+                        <Button variant="ghost" size="icon-sm" aria-label={t('inventory.void.action')} onPress={() => setVoiding(m)}>
+                          <Undo2 />
+                        </Button>
+                      )}
+                    </Cell>
+                  )}
                 </Row>
               )
             }}
           </TableBody>
         </Table>
       )}
+      <ModalDialog isOpen={!!voiding} onOpenChange={(open) => !open && setVoiding(null)} title={t('inventory.void.title')} description={t('inventory.void.description')} size="sm">
+        {(close) => voiding && <VoidForm movement={voiding} close={close} />}
+      </ModalDialog>
     </Card>
+  )
+}
+
+function VoidForm({ movement: m, close }: { movement: StockMovement; close: () => void }) {
+  const { t } = useTranslation()
+  const [reason, setReason] = useState('')
+  const save = useOrgMutation((base, r: string) => api.post<Product>(`${base}/stock/movements/${m.id}/void`, { reason: r }), {
+    success: t('inventory.void.done'),
+    onSuccess: close,
+  })
+  return (
+    <Form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (reason.trim().length >= 3) save.mutate(reason.trim())
+      }}
+    >
+      <p className="text-sm">
+        {t('inventory.void.summary', { date: fmt.date(m.occurredAt), product: m.productName, qty: fmt.qty(m.quantityDelta, m.baseUnit) })}
+      </p>
+      <TextField label={t('inventory.void.reason')} isRequired autoFocus minLength={3} value={reason} onChange={setReason} />
+      <FormActions close={close} isPending={save.isPending} submitLabel={t('inventory.void.submit')} />
+    </Form>
   )
 }
 

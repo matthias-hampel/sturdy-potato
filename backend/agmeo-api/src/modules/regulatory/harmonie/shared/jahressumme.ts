@@ -2,7 +2,8 @@
  * Jahressumme — the DüV Anlage 5 nutrient balance of a Düngejahr, per Schlag
  * and for the whole farm: area, N need (from the stored DBEs), N and P2O5
  * applied by source class, the plant-available N (Anlage 3 Mindestwirksamkeit)
- * and the NH4-N actually documented. Formatting is left to the consumers.
+ * and the NH4-N actually documented. Feeds the Sachsen-Anhalt Anl5 file and
+ * the DüV report; formatting is left to the consumers.
  */
 
 import type {

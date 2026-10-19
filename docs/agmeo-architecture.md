@@ -9,12 +9,15 @@ specification (P0 modules plus inventory, economics, compliance and machinery).
 ```
 frontend/agmeo        TanStack Start + React Aria + MapLibre      :3000  (/api → :3001)
 backend/agmeo-api     NestJS modular monolith (HTTP API)          :3001
-                      + worker entry (outbox → NATS relay, scheduled recommendations)
+                      + worker entry (outbox → NATS relay, job queue + schedules, scheduled recommendations)
 packages/contracts    zod request schemas + response types, shared by API and web
 db/migrations         golang-migrate SQL migrations (PostgreSQL 18 + PostGIS 3.6)
 backend/agmeo-geo     Python: field zonal statistics worker + index tile server  :3002 (internal)
 backend/sentinel-archive  Python: Sentinel-2 L2A archive, `derive` writes index COGs + manifest
 NATS JetStream        domain events, stream AGMEO_EVENTS (agmeo.events.>)  :4222
+Keycloak              identity provider, realm agmeo (OIDC, Authorization Code + PKCE)  :8180
+Mailpit               local SMTP catcher (production: any SMTP relay)  :1025 / UI :8025
+Object storage        local directory (development) or S3-compatible bucket
 ```
 
 **Why TanStack Start.** The API is a separate NestJS service, so the web app needs no
@@ -70,13 +73,21 @@ expressions are written as `sql` fragments.
   writing `recommendation_runs`/`recommendations`; `app.recommendation_schedule()` (SECURITY
   DEFINER) lists active organizations with their open crop cycles and latest run.
 
-### Authentication (temporary)
+### Authentication
 
-`POST /v1/auth/dev/sign-in {email}` issues an HS256 token for any email (AUTH_MODE=dev).
-Replacing it with Keycloak means: verify IdP access tokens via JWKS in
-`TokenService.verify`, delete `issue` and the dev endpoint, and switch the web app's
-`useAuth` to an OIDC PKCE flow. Everything downstream depends only on `{subject, email, name}`.
-Invited users are matched by email on first sign-in.
+`AUTH_MODE=oidc` (production): the web app signs in with Keycloak (realm `agmeo`, public
+client `agmeo-web`, Authorization Code + PKCE via `oidc-client-ts`) and renews the access
+token with the refresh token. The API verifies RS256 tokens against the realm's JWKS, issuer
+and audience `agmeo-api`, and requires `email_verified` (Keycloak forces verification
+before issuing tokens). `GET /v1/auth/config` tells the web app which mode is active.
+
+`AUTH_MODE=dev` (tests, offline development): `POST /v1/auth/dev/sign-in {email}` issues an
+HS256 token for any email. The API refuses to start in this mode with NODE_ENV=production.
+
+Everything downstream depends only on `{subject, email, name}`. `app.sign_in` links the
+subject to the account with the same e-mail address (an invited user, or an account that
+was linked to another subject before) and activates pending invitations. Inviting someone
+queues an invitation e-mail in the inviter's language.
 
 ## Operation lifecycle
 
@@ -101,6 +112,42 @@ Completion, in one transaction:
 
 Reopening appends compensating `reversal` movements and negative cost entries for the
 last completion; nothing is deleted.
+
+## Background jobs
+
+`jobs` is a Postgres queue. The API appends jobs inside the transaction of the change that
+needs them (`enqueue`, `queueEmail`), so nothing is sent for a rolled-back change. The
+worker claims due jobs with `FOR UPDATE SKIP LOCKED` and a lease, retries failures with
+exponential backoff (30 s doubling, capped at 6 h) up to `max_attempts`, and keeps finished
+jobs 14 days and failed ones 90 days. Schedules enqueue one job per UTC-aligned slot with
+the slot start as dedupe key, so several workers never run a slot twice. Handlers must be
+idempotent (delivery is at-least-once).
+
+Jobs run as `agmeo_jobs`, which reads tenant data only through policies granted to it per
+table (today: users and organizations for e-mails). Job kinds: `email.send`, `jobs.cleanup`.
+
+E-mails are rendered at send time from typed templates (`src/mail/templates.ts`, German and
+English) and delivered over SMTP (`SMTP_URL`; Mailpit locally).
+
+## Files
+
+Organization files live in object storage (`STORAGE_DRIVER=local` keeps them under `.storage/`,
+`s3` uses any S3-compatible bucket); `files` and `file_folders` hold names, folders, year,
+description and a soft-delete `deleted_at` (the trash). Keys are `orgs/<orgId>/files/<uuid>`;
+names never appear in keys. Uploads write the objects first and the rows second, and remove the
+objects if the rows fail. Emptying the trash deletes rows and queues `files.purge_objects`.
+Each organization has an allowance (`storage_limit_bytes`, default `STORAGE_DEFAULT_LIMIT_GB`);
+uploads beyond it get 413 `storage_full`. Content is served as an attachment, or inline only for
+raster images and PDF, always with `nosniff` and a sandbox CSP. App-written files go to system
+folders (`FilesService.storeGenerated`), recreated if the user deleted them.
+
+## Language and units
+
+The UI language is the user's saved choice (`users.locale`), else the browser's language,
+else German; switching reloads the page. Each organization has a measurement setting
+(`auto` derives imperial for US farms, or explicit `metric` / `imperial`). The database
+always stores metric values; `packages/contracts/src/units.ts` (ported from the reference
+app) converts 28 dimensions for display, including crop-specific bushel weights.
 
 ## Events (NATS JetStream)
 
@@ -201,6 +248,6 @@ is a module in `backend/agmeo-api/src/modules`:
 - Weather: Open-Meteo forecast API, cached 30 minutes per location; spray windows are
   indicative thresholds only (no daylight, inversion or product-label rules).
 - Aerial imagery: Esri World Imagery for development; production needs a licensed provider.
-- Not built yet: restricting members to selected farms, offline mobile use, Keycloak, BESyD and
+- Not built yet: restricting members to selected farms, offline mobile use, BESyD and
   Sachsen-Anhalt reporting formats, import of the subsidy application, market price feeds,
   KTBL machine costs, trafficability and disease models (they need external data feeds).

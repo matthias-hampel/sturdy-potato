@@ -12,23 +12,29 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as OOrgIdRouteImport } from './routes/o.$orgId'
 import { Route as OOrgIdIndexRouteImport } from './routes/o.$orgId.index'
 import { Route as OOrgIdCalendarRouteImport } from './routes/o.$orgId.calendar'
 import { Route as OOrgIdEconomicsRouteImport } from './routes/o.$orgId.economics'
+import { Route as OOrgIdFilesRouteImport } from './routes/o.$orgId.files'
 import { Route as OOrgIdInventoryRouteImport } from './routes/o.$orgId.inventory'
 import { Route as OOrgIdNutrientsRouteImport } from './routes/o.$orgId.nutrients'
+import { Route as OOrgIdPricesRouteImport } from './routes/o.$orgId.prices'
+import { Route as OOrgIdRotationsRouteImport } from './routes/o.$orgId.rotations'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o.$orgId.settings'
 import { Route as OOrgIdTasksRouteImport } from './routes/o.$orgId.tasks'
 import { Route as OOrgIdTeamRouteImport } from './routes/o.$orgId.team'
 import { Route as OOrgIdTemplatesRouteImport } from './routes/o.$orgId.templates'
 import { Route as OOrgIdWeatherRouteImport } from './routes/o.$orgId.weather'
 import { Route as OOrgIdComplianceIndexRouteImport } from './routes/o.$orgId.compliance.index'
+import { Route as OOrgIdCompliancePsmRecordRouteImport } from './routes/o.$orgId.compliance.psm-record'
 import { Route as OOrgIdComplianceReportRouteImport } from './routes/o.$orgId.compliance.report'
 import { Route as OOrgIdCropsIndexRouteImport } from './routes/o.$orgId.crops.index'
 import { Route as OOrgIdCropsCropCycleIdRouteImport } from './routes/o.$orgId.crops.$cropCycleId'
 import { Route as OOrgIdFieldsIndexRouteImport } from './routes/o.$orgId.fields.index'
 import { Route as OOrgIdFieldsFieldIdRouteImport } from './routes/o.$orgId.fields.$fieldId'
+import { Route as OOrgIdFieldsManageRouteImport } from './routes/o.$orgId.fields.manage'
 import { Route as OOrgIdFieldsNewRouteImport } from './routes/o.$orgId.fields.new'
 import { Route as OOrgIdMachineryIndexRouteImport } from './routes/o.$orgId.machinery.index'
 import { Route as OOrgIdMachineryEquipmentIdRouteImport } from './routes/o.$orgId.machinery.$equipmentId'
@@ -51,6 +57,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OOrgIdRoute = OOrgIdRouteImport.update({
   id: '/o/$orgId',
   path: '/o/$orgId',
@@ -71,6 +82,11 @@ const OOrgIdEconomicsRoute = OOrgIdEconomicsRouteImport.update({
   path: '/economics',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdFilesRoute = OOrgIdFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
@@ -79,6 +95,16 @@ const OOrgIdInventoryRoute = OOrgIdInventoryRouteImport.update({
 const OOrgIdNutrientsRoute = OOrgIdNutrientsRouteImport.update({
   id: '/nutrients',
   path: '/nutrients',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdPricesRoute = OOrgIdPricesRouteImport.update({
+  id: '/prices',
+  path: '/prices',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdRotationsRoute = OOrgIdRotationsRouteImport.update({
+  id: '/rotations',
+  path: '/rotations',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdSettingsRoute = OOrgIdSettingsRouteImport.update({
@@ -111,6 +137,12 @@ const OOrgIdComplianceIndexRoute = OOrgIdComplianceIndexRouteImport.update({
   path: '/compliance/',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdCompliancePsmRecordRoute =
+  OOrgIdCompliancePsmRecordRouteImport.update({
+    id: '/compliance/psm-record',
+    path: '/compliance/psm-record',
+    getParentRoute: () => OOrgIdRoute,
+  } as any)
 const OOrgIdComplianceReportRoute = OOrgIdComplianceReportRouteImport.update({
   id: '/compliance/report',
   path: '/compliance/report',
@@ -134,6 +166,11 @@ const OOrgIdFieldsIndexRoute = OOrgIdFieldsIndexRouteImport.update({
 const OOrgIdFieldsFieldIdRoute = OOrgIdFieldsFieldIdRouteImport.update({
   id: '/fields/$fieldId',
   path: '/fields/$fieldId',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
+const OOrgIdFieldsManageRoute = OOrgIdFieldsManageRouteImport.update({
+  id: '/fields/manage',
+  path: '/fields/manage',
   getParentRoute: () => OOrgIdRoute,
 } as any)
 const OOrgIdFieldsNewRoute = OOrgIdFieldsNewRouteImport.update({
@@ -173,20 +210,26 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/prices': typeof OOrgIdPricesRoute
+  '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
@@ -201,19 +244,25 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/prices': typeof OOrgIdPricesRoute
+  '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
+  '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
@@ -229,20 +278,26 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/o/$orgId': typeof OOrgIdRouteWithChildren
   '/o/$orgId/calendar': typeof OOrgIdCalendarRoute
   '/o/$orgId/economics': typeof OOrgIdEconomicsRoute
+  '/o/$orgId/files': typeof OOrgIdFilesRoute
   '/o/$orgId/inventory': typeof OOrgIdInventoryRoute
   '/o/$orgId/nutrients': typeof OOrgIdNutrientsRoute
+  '/o/$orgId/prices': typeof OOrgIdPricesRoute
+  '/o/$orgId/rotations': typeof OOrgIdRotationsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/tasks': typeof OOrgIdTasksRoute
   '/o/$orgId/team': typeof OOrgIdTeamRoute
   '/o/$orgId/templates': typeof OOrgIdTemplatesRoute
   '/o/$orgId/weather': typeof OOrgIdWeatherRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/o/$orgId/compliance/psm-record': typeof OOrgIdCompliancePsmRecordRoute
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
   '/o/$orgId/operations/$operationId': typeof OOrgIdOperationsOperationIdRoute
@@ -259,20 +314,26 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/onboarding'
+    | '/auth/callback'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/prices'
+    | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
     | '/o/$orgId/'
+    | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
@@ -287,19 +348,25 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/onboarding'
+    | '/auth/callback'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/prices'
+    | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
     | '/o/$orgId'
+    | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
@@ -314,20 +381,26 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/onboarding'
+    | '/auth/callback'
     | '/o/$orgId'
     | '/o/$orgId/calendar'
     | '/o/$orgId/economics'
+    | '/o/$orgId/files'
     | '/o/$orgId/inventory'
     | '/o/$orgId/nutrients'
+    | '/o/$orgId/prices'
+    | '/o/$orgId/rotations'
     | '/o/$orgId/settings'
     | '/o/$orgId/tasks'
     | '/o/$orgId/team'
     | '/o/$orgId/templates'
     | '/o/$orgId/weather'
     | '/o/$orgId/'
+    | '/o/$orgId/compliance/psm-record'
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
     | '/o/$orgId/operations/$operationId'
@@ -343,6 +416,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   OOrgIdRoute: typeof OOrgIdRouteWithChildren
 }
 
@@ -367,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/o/$orgId': {
@@ -397,6 +478,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdEconomicsRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/files': {
+      id: '/o/$orgId/files'
+      path: '/files'
+      fullPath: '/o/$orgId/files'
+      preLoaderRoute: typeof OOrgIdFilesRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/inventory': {
       id: '/o/$orgId/inventory'
       path: '/inventory'
@@ -409,6 +497,20 @@ declare module '@tanstack/react-router' {
       path: '/nutrients'
       fullPath: '/o/$orgId/nutrients'
       preLoaderRoute: typeof OOrgIdNutrientsRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/prices': {
+      id: '/o/$orgId/prices'
+      path: '/prices'
+      fullPath: '/o/$orgId/prices'
+      preLoaderRoute: typeof OOrgIdPricesRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/rotations': {
+      id: '/o/$orgId/rotations'
+      path: '/rotations'
+      fullPath: '/o/$orgId/rotations'
+      preLoaderRoute: typeof OOrgIdRotationsRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/settings': {
@@ -453,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdComplianceIndexRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/compliance/psm-record': {
+      id: '/o/$orgId/compliance/psm-record'
+      path: '/compliance/psm-record'
+      fullPath: '/o/$orgId/compliance/psm-record'
+      preLoaderRoute: typeof OOrgIdCompliancePsmRecordRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/compliance/report': {
       id: '/o/$orgId/compliance/report'
       path: '/compliance/report'
@@ -486,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/fields/$fieldId'
       fullPath: '/o/$orgId/fields/$fieldId'
       preLoaderRoute: typeof OOrgIdFieldsFieldIdRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
+    '/o/$orgId/fields/manage': {
+      id: '/o/$orgId/fields/manage'
+      path: '/fields/manage'
+      fullPath: '/o/$orgId/fields/manage'
+      preLoaderRoute: typeof OOrgIdFieldsManageRouteImport
       parentRoute: typeof OOrgIdRoute
     }
     '/o/$orgId/fields/new': {
@@ -536,17 +652,22 @@ declare module '@tanstack/react-router' {
 interface OOrgIdRouteChildren {
   OOrgIdCalendarRoute: typeof OOrgIdCalendarRoute
   OOrgIdEconomicsRoute: typeof OOrgIdEconomicsRoute
+  OOrgIdFilesRoute: typeof OOrgIdFilesRoute
   OOrgIdInventoryRoute: typeof OOrgIdInventoryRoute
   OOrgIdNutrientsRoute: typeof OOrgIdNutrientsRoute
+  OOrgIdPricesRoute: typeof OOrgIdPricesRoute
+  OOrgIdRotationsRoute: typeof OOrgIdRotationsRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
   OOrgIdTasksRoute: typeof OOrgIdTasksRoute
   OOrgIdTeamRoute: typeof OOrgIdTeamRoute
   OOrgIdTemplatesRoute: typeof OOrgIdTemplatesRoute
   OOrgIdWeatherRoute: typeof OOrgIdWeatherRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
+  OOrgIdCompliancePsmRecordRoute: typeof OOrgIdCompliancePsmRecordRoute
   OOrgIdComplianceReportRoute: typeof OOrgIdComplianceReportRoute
   OOrgIdCropsCropCycleIdRoute: typeof OOrgIdCropsCropCycleIdRoute
   OOrgIdFieldsFieldIdRoute: typeof OOrgIdFieldsFieldIdRoute
+  OOrgIdFieldsManageRoute: typeof OOrgIdFieldsManageRoute
   OOrgIdFieldsNewRoute: typeof OOrgIdFieldsNewRoute
   OOrgIdMachineryEquipmentIdRoute: typeof OOrgIdMachineryEquipmentIdRoute
   OOrgIdOperationsOperationIdRoute: typeof OOrgIdOperationsOperationIdRoute
@@ -561,17 +682,22 @@ interface OOrgIdRouteChildren {
 const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdCalendarRoute: OOrgIdCalendarRoute,
   OOrgIdEconomicsRoute: OOrgIdEconomicsRoute,
+  OOrgIdFilesRoute: OOrgIdFilesRoute,
   OOrgIdInventoryRoute: OOrgIdInventoryRoute,
   OOrgIdNutrientsRoute: OOrgIdNutrientsRoute,
+  OOrgIdPricesRoute: OOrgIdPricesRoute,
+  OOrgIdRotationsRoute: OOrgIdRotationsRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
   OOrgIdTasksRoute: OOrgIdTasksRoute,
   OOrgIdTeamRoute: OOrgIdTeamRoute,
   OOrgIdTemplatesRoute: OOrgIdTemplatesRoute,
   OOrgIdWeatherRoute: OOrgIdWeatherRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,
+  OOrgIdCompliancePsmRecordRoute: OOrgIdCompliancePsmRecordRoute,
   OOrgIdComplianceReportRoute: OOrgIdComplianceReportRoute,
   OOrgIdCropsCropCycleIdRoute: OOrgIdCropsCropCycleIdRoute,
   OOrgIdFieldsFieldIdRoute: OOrgIdFieldsFieldIdRoute,
+  OOrgIdFieldsManageRoute: OOrgIdFieldsManageRoute,
   OOrgIdFieldsNewRoute: OOrgIdFieldsNewRoute,
   OOrgIdMachineryEquipmentIdRoute: OOrgIdMachineryEquipmentIdRoute,
   OOrgIdOperationsOperationIdRoute: OOrgIdOperationsOperationIdRoute,
@@ -590,6 +716,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   OOrgIdRoute: OOrgIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport

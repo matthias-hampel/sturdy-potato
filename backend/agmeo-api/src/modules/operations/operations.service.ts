@@ -17,6 +17,7 @@ import {
   type ProductCategory,
   type ReopenOperationInput,
   type StockShortage,
+  type TaskPriority,
 } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
@@ -172,14 +173,13 @@ export class OperationsService {
               WHERE cur.id = ofl.crop_cycle_id AND ${dateIn(performedAt)}::date BETWEEN s.start_date AND s.end_date))`.execute(trx);
       }
 
-      // 1. Stock consumption, valued at the application's unit cost or the product default.
+      // 1. Stock consumption, valued at the application's unit cost or the product's price of the year.
       await sql`
         INSERT INTO stock_movements (organization_id, product_id, storage_location_id, kind, quantity_delta,
                                      unit_cost, occurred_at, operation_id, operation_input_id, completion_seq, created_by)
         SELECT oi.organization_id, oi.product_id, oi.storage_location_id, 'consumption', -oi.total_quantity,
-               coalesce(oi.unit_cost, p.unit_cost), ${performedAt}, oi.operation_id, oi.id, ${seq}, ${ctx.userId}
+               coalesce(oi.unit_cost, app.product_price(oi.product_id, ${Number(dateIn(performedAt).slice(0, 4))})), ${performedAt}, oi.operation_id, oi.id, ${seq}, ${ctx.userId}
         FROM operation_inputs oi
-        JOIN products p ON p.id = oi.product_id
         WHERE oi.operation_id = ${id}`.execute(trx);
 
       // 2. Direct costs, allocated to fields (and their crop cycles) by treated area.
@@ -195,7 +195,7 @@ export class OperationsService {
                    WHEN 'seed' THEN 'seed' WHEN 'fertilizer' THEN 'fertilizer'
                    WHEN 'crop_protection' THEN 'crop_protection' WHEN 'fuel' THEN 'fuel'
                    ELSE 'other_input' END AS category,
-                 sum(oi.total_quantity * coalesce(oi.unit_cost, p.unit_cost, 0)) AS amount
+                 sum(oi.total_quantity * coalesce(oi.unit_cost, app.product_price(oi.product_id, ${Number(dateIn(performedAt).slice(0, 4))}), 0)) AS amount
           FROM operation_inputs oi JOIN products p ON p.id = oi.product_id
           WHERE oi.operation_id = ${id}
           GROUP BY 1
@@ -365,6 +365,8 @@ export class OperationsService {
       responsible_employee_id: input.responsibleEmployeeId ?? null,
       contractor_name: input.contractorName ?? null,
       contractor_cost: input.contractorCost ?? null,
+      action_id: input.actionId ?? null,
+      diesel_l_per_ha: input.dieselLPerHa ?? null,
       bbch_stage: input.bbchStage ?? null,
       target_organism: input.targetOrganism ?? null,
       weather_conditions: input.weatherConditions ?? null,
@@ -530,7 +532,7 @@ export class OperationsService {
 
   /**
    * Emissions of a completion by source, split over the treated fields by area. Diesel is the
-   * recorded fuel, else machine hours × the machine's consumption per hour.
+   * recorded fuel, else the operation's diesel per hectare, else machine hours × consumption per hour.
    */
   private async writeEmissions(trx: Trx, ctx: Ctx, operationId: string, seq: number, seasonId: string | null, details: Record<string, unknown>) {
     const inputs = await trx
@@ -540,7 +542,18 @@ export class OperationsService {
       .where('oi.operation_id', '=', operationId)
       .execute();
     const fuel = inputs.filter((i) => i.category === 'fuel' && (i.base_unit === 'l' || i.base_unit === 'm3')).reduce((s, i) => s + i.total_quantity * (i.base_unit === 'm3' ? 1000 : 1), 0);
-    const machineFuel = fuel > 0
+    // Diesel: recorded fuel, else the operation's diesel per hectare, else machine hours × consumption.
+    const perHa = fuel > 0
+      ? 0
+      : Number(
+          (await trx
+            .selectFrom('operations as o')
+            .innerJoin('operation_fields as ofl', 'ofl.operation_id', 'o.id')
+            .select(sql<number | null>`max(o.diesel_l_per_ha) * sum(ofl.treated_area_ha)`.as('l'))
+            .where('o.id', '=', operationId)
+            .executeTakeFirst())?.l ?? 0,
+        );
+    const machineFuel = fuel > 0 || perHa > 0
       ? 0
       : Number(
           (await trx
@@ -551,7 +564,7 @@ export class OperationsService {
             .executeTakeFirst())?.l ?? 0,
         );
     const emissions = operationEmissions({
-      dieselL: fuel + machineFuel,
+      dieselL: fuel + perHa + machineFuel,
       technique: (details.applicationTechnique as ApplicationTechnique | undefined) ?? null,
       incorporationHours: typeof details.incorporationHours === 'number' ? details.incorporationHours : null,
       inputs: inputs.map((i) => ({
@@ -675,7 +688,7 @@ export class OperationsService {
           'oi.storage_location_id',
           'oi.rate_per_ha',
           'oi.total_quantity',
-          sql<number | null>`coalesce(oi.unit_cost, p.unit_cost)`.as('unit_cost'),
+          sql<number | null>`coalesce(oi.unit_cost, app.product_price(oi.product_id, (SELECT extract(year FROM coalesce(o.performed_at::date, o.planned_on, current_date))::int FROM operations o WHERE o.id = oi.operation_id)))`.as('unit_cost'),
           (eb) =>
             eb
               .selectFrom('stock_movements as m')
@@ -740,9 +753,13 @@ export class OperationsService {
         status: o.status as OperationStatus,
         plannedOn: o.planned_on,
         performedAt: iso(o.performed_at),
+        priority: o.priority as TaskPriority,
+        dueOn: o.due_on,
         responsibleEmployee: o.responsible_employee_id ? { id: o.responsible_employee_id, name: o.employee_name! } : null,
         contractorName: o.contractor_name,
         contractorCost: o.contractor_cost,
+        actionId: o.action_id,
+        dieselLPerHa: o.diesel_l_per_ha,
         bbchStage: o.bbch_stage,
         targetOrganism: o.target_organism,
         weatherConditions: o.weather_conditions,

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm --parallel --filter @agmeo/contracts --filter @agmeo/api --filter @agmeo/web dev",
     "dev:worker": "pnpm --filter @agmeo/api dev:worker",
-    "infra:up": "docker compose up -d postgres nats",
+    "infra:up": "docker compose up -d postgres nats mailpit keycloak",
     "infra:down": "docker compose down",
     "db:migrate": "migrate -path db/migrations -database \"${DATABASE_URL_MIGRATE:-postgres://agmeo_owner:agmeo_owner@localhost:5434/agmeo?sslmode=disable}\" up",
     "db:rollback": "migrate -path db/migrations -database \"${DATABASE_URL_MIGRATE:-postgres://agmeo_owner:agmeo_owner@localhost:5434/agmeo?sslmode=disable}\" down 1",

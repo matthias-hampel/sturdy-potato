@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { LatLng, SprayRating, SprayWindow, WeatherDay, WeatherForecast, WeatherHour, WeatherNotice } from '@agmeo/contracts';
+import type { FieldWeather, LatLng, SprayRating, SprayWindow, StoredWeatherDay, WeatherDay, WeatherForecast, WeatherHour, WeatherNotice } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
 import { config } from '../../config.js';
-import { DomainError, badRequest } from '../../core/errors.js';
+import { DomainError, badRequest, notFound } from '../../core/errors.js';
 import { round } from '../../core/mappers.js';
 import { Database } from '../../db/database.js';
 
@@ -27,6 +27,77 @@ export class WeatherService {
   private readonly cache = new Map<string, { at: number; data: OpenMeteoResponse }>();
 
   constructor(private readonly db: Database) {}
+
+  /**
+   * Stored weather of a field's grid cell: daily values in [from, to] (default: the last 30 days
+   * and the forecast) and the next 48 hours.
+   */
+  fieldWeather(ctx: Ctx, fieldId: string, opts: { from?: string; to?: string } = {}): Promise<FieldWeather> {
+    return this.db.run(ctx, async (trx) => {
+      const { rows } = await sql<{ lat: string; lng: string }>`
+        SELECT c.lat, c.lng FROM fields f JOIN field_current_geometry g ON g.field_id = f.id
+        CROSS JOIN LATERAL app.weather_cell(ST_PointOnSurface(g.geometry)) c WHERE f.id = ${fieldId}`.execute(trx);
+      if (!rows[0]) throw notFound('Field');
+      const lat = Number(rows[0].lat);
+      const lng = Number(rows[0].lng);
+      const cell = await trx.selectFrom('weather_cells').selectAll().where('lat', '=', lat).where('lng', '=', lng).executeTakeFirst();
+      const from = opts.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+      let q = trx.selectFrom('weather_daily').selectAll().where('lat', '=', lat).where('lng', '=', lng).where('date', '>=', from).orderBy('date');
+      if (opts.to) q = q.where('date', '<=', opts.to);
+      const [days, first, hours] = await Promise.all([
+        q.execute(),
+        trx.selectFrom('weather_daily').select(sql<string>`min(date)`.as('d')).where('lat', '=', lat).where('lng', '=', lng).executeTakeFirst(),
+        trx
+          .selectFrom('weather_hourly')
+          .selectAll()
+          .where('lat', '=', lat)
+          .where('lng', '=', lng)
+          .where('time', '>=', sql<Date>`date_trunc('hour', now())`)
+          .orderBy('time')
+          .limit(48)
+          .execute(),
+      ]);
+      return {
+        fieldId,
+        cell: { lat, lng, timezone: cell?.timezone ?? null },
+        refreshedAt: cell?.refreshed_at ? new Date(cell.refreshed_at).toISOString() : null,
+        storedFrom: first?.d ?? null,
+        daily: days.map(
+          (d): StoredWeatherDay => ({
+            date: d.date,
+            tempMin: d.temp_min,
+            tempMax: d.temp_max,
+            tempMean: d.temp_mean,
+            precipitation: d.precipitation,
+            humidityMin: d.humidity_min,
+            humidityMax: d.humidity_max,
+            humidityMean: d.humidity_mean,
+            dewPointMean: d.dew_point_mean,
+            windSpeedMax: d.wind_speed_max,
+            windSpeedMean: d.wind_speed_mean,
+            windGustsMax: d.wind_gusts_max,
+            et0: d.et0,
+            radiationSum: d.radiation_sum,
+            soilTemp0to7cm: d.soil_temp_0_7,
+            soilTemp7to28cm: d.soil_temp_7_28,
+            soilMoisture0to7cm: d.soil_moisture_0_7,
+            soilMoisture7to28cm: d.soil_moisture_7_28,
+            source: d.source as StoredWeatherDay['source'],
+          }),
+        ),
+        hourly: hours.map((h) => ({
+          time: new Date(h.time).toISOString(),
+          tempC: h.temp,
+          humidityPct: h.humidity,
+          dewPointC: h.dew_point,
+          precipitationMm: h.precipitation,
+          precipitationProbabilityPct: h.precipitation_probability,
+          windKmh: h.wind_speed,
+          gustKmh: h.wind_gusts,
+        })),
+      };
+    });
+  }
 
   async forecast(ctx: Ctx, farmId: string): Promise<WeatherForecast> {
     const farm = await this.db.run(ctx, async (trx) => {

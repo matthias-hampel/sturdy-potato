@@ -1,5 +1,5 @@
 import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { PlanTaskOperationInput, TaskInput, TaskListQuery, UpdateTaskInput } from '@agmeo/contracts';
+import { PlanTaskOperationInput, TaskInput, TaskListQuery, TaskSyncQuery, UpdateTaskInput } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { type Out, ZBody, ZQuery } from '../../core/validation.js';
 import { TasksService } from './tasks.service.js';
@@ -11,6 +11,12 @@ export class TasksController {
   @Get()
   list(@OrgCtx() ctx: Ctx, @ZQuery(TaskListQuery) query: Out<typeof TaskListQuery>) {
     return this.tasks.list(ctx, query);
+  }
+
+  /** For mobile clients: changes since a timestamp, with ids of deleted tasks. */
+  @Get('sync')
+  sync(@OrgCtx() ctx: Ctx, @ZQuery(TaskSyncQuery) query: Out<typeof TaskSyncQuery>) {
+    return this.tasks.sync(ctx, query.since);
   }
 
   @Post()

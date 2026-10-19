@@ -4,19 +4,25 @@ import type {
   CreateOrganizationInput,
   CurrentUser,
   InviteMemberInput,
+  Locale,
+  MeasurementSetting,
   Member,
   Organization,
   Role,
   UpdateMemberInput,
   UpdateOrganizationInput,
+  UpdateProfileInput,
 } from '@agmeo/contracts';
+import { resolveMeasurementSystem } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors.js';
 import { diff, record } from '../../core/events.js';
 import { iso } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
+import { config } from '../../config.js';
 import { Database, type Trx } from '../../db/database.js';
+import { queueEmail } from '../../mail/mail.js';
 
 @Injectable()
 export class IdentityService {
@@ -26,18 +32,31 @@ export class IdentityService {
     return this.db.run({ userId }, async (trx) => {
       const user = await trx
         .selectFrom('users')
-        .select(['id', 'email', 'display_name'])
+        .select(['id', 'email', 'display_name', 'locale'])
         .where('id', '=', userId)
         .executeTakeFirstOrThrow();
-      return { id: user.id, email: user.email, displayName: user.display_name, organizations: await this.organizations(trx, userId) };
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: user.display_name,
+        locale: (user.locale as Locale | null) ?? null,
+        organizations: await this.organizations(trx, userId),
+      };
     });
+  }
+
+  async updateProfile(userId: string, input: Out<typeof UpdateProfileInput>): Promise<CurrentUser> {
+    await this.db.run({ userId }, (trx) =>
+      trx.updateTable('users').set({ display_name: input.displayName, locale: input.locale }).where('id', '=', userId).execute(),
+    );
+    return this.me(userId);
   }
 
   private async organizations(trx: Trx, userId: string): Promise<Organization[]> {
     const rows = await trx
       .selectFrom('organizations as o')
       .innerJoin('memberships as m', (j) => j.onRef('m.organization_id', '=', 'o.id').on('m.user_id', '=', userId))
-      .select(['o.id', 'o.name', 'o.country', 'o.currency', 'o.crop_year_start_month', 'o.status', 'o.created_at', 'm.role'])
+      .select(['o.id', 'o.name', 'o.country', 'o.currency', 'o.crop_year_start_month', 'o.measurement_setting', 'o.status', 'o.created_at', 'm.role'])
       .where('m.status', '=', 'active')
       .orderBy('o.name')
       .execute();
@@ -47,6 +66,8 @@ export class IdentityService {
       country: r.country,
       currency: r.currency,
       cropYearStartMonth: r.crop_year_start_month,
+      measurementSetting: r.measurement_setting as MeasurementSetting,
+      measurementSystem: resolveMeasurementSystem(r.measurement_setting as MeasurementSetting, r.country),
       status: r.status as Organization['status'],
       role: r.role as Role,
       createdAt: iso(r.created_at),
@@ -87,6 +108,7 @@ export class IdentityService {
         country: input.country,
         currency: input.currency,
         crop_year_start_month: input.cropYearStartMonth,
+        measurement_setting: input.measurementSetting,
       };
       await trx.updateTable('organizations').set(values).where('id', '=', ctx.orgId).execute();
       await record(trx, ctx, { entityType: 'organization', entityId: ctx.orgId, action: 'updated', changes: diff(before, values) });
@@ -129,7 +151,7 @@ export class IdentityService {
           .executeTakeFirst();
         if (existing) throw conflict('already_member', `${input.email} is already a member of this organization`);
         // Users who have signed in before become active immediately; others on first sign-in.
-        const user = await trx.selectFrom('users').select('auth_subject').where('id', '=', userId).executeTakeFirst();
+        const user = await trx.selectFrom('users').select(['auth_subject', 'locale']).where('id', '=', userId).executeTakeFirst();
         await trx
           .insertInto('memberships')
           .values({
@@ -146,6 +168,18 @@ export class IdentityService {
           action: 'invited',
           changes: { email: input.email, role: input.role },
           event: { type: 'membership.invited', payload: { userId, email: input.email, role: input.role } },
+        });
+        const [org, inviter] = await Promise.all([
+          trx.selectFrom('organizations').select('name').where('id', '=', ctx.orgId).executeTakeFirstOrThrow(),
+          trx.selectFrom('users').select(['display_name', 'locale']).where('id', '=', ctx.userId).executeTakeFirstOrThrow(),
+        ]);
+        // Someone who has signed in before gets their own language, a newcomer the inviter's.
+        await queueEmail(trx, {
+          to: input.email,
+          template: 'invitation',
+          locale: user?.auth_subject ? user.locale : inviter.locale,
+          organizationId: ctx.orgId,
+          params: { orgName: org.name, inviterName: inviter.display_name, role: input.role, acceptUrl: `${config.appUrl}/login?invited=1` },
         });
       })
       .then(() => this.members(ctx));

@@ -1,6 +1,17 @@
+import { displayUnit, toDisplay, type Dimension, type MeasureContext, type MeasurementSystem } from '@agmeo/contracts'
 import { LOCALE, t } from '#/i18n'
 
 const locale = LOCALE
+
+/**
+ * Measurement system of the organization being viewed. Set by OrgProvider; values from the
+ * API are metric and converted here for display.
+ */
+let system: MeasurementSystem = 'metric'
+export function setMeasurementSystem(next: MeasurementSystem) {
+  system = next
+}
+export const measurementSystem = () => system
 
 const cache = new Map<string, Intl.NumberFormat>()
 function nf(options: Intl.NumberFormatOptions) {
@@ -19,8 +30,21 @@ export const fmt = {
   fixed(v: number | null | undefined, digits = 1) {
     return v == null || Number.isNaN(v) ? dash : nf({ maximumFractionDigits: digits, minimumFractionDigits: digits }).format(v)
   },
+  /** Area from hectares, in the organization's unit (ha or ac). */
   ha(v: number | null | undefined, digits = 2) {
-    return v == null ? dash : `${fmt.fixed(v, digits)} ha`
+    if (v == null) return dash
+    return system === 'metric' ? `${fmt.fixed(v, digits)} ha` : fmt.measure(v, 'area', { digits: Math.min(digits, 1) })
+  },
+  /** A metric value in the organization's unit for its dimension, with the unit label. */
+  measure(v: number | null | undefined, dimension: Dimension, opts: MeasureContext & { digits?: number; withUnit?: boolean } = {}) {
+    if (v == null || Number.isNaN(v)) return dash
+    const unit = displayUnit(dimension, system, opts)
+    const value = fmt.num(toDisplay(v, dimension, system, opts), opts.digits ?? unit.precision)
+    return opts.withUnit === false ? value : `${value} ${t(`unit.${unit.id}`)}`
+  },
+  /** Label of the organization's unit for a dimension (table headers, axes). */
+  unit(dimension: Dimension, ctx?: MeasureContext) {
+    return t(`unit.${displayUnit(dimension, system, ctx).id}`)
   },
   money(v: number | null | undefined, currency = 'EUR', digits = 0) {
     return v == null ? dash : nf({ style: 'currency', currency, maximumFractionDigits: digits, minimumFractionDigits: digits }).format(v)

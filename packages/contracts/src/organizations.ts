@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { countryCode, currencyCode, name } from './common.js';
+import { MEASUREMENT_SETTINGS, type MeasurementSetting, type MeasurementSystem } from './units.js';
+
+/** UI languages. The user's choice is stored on the account; new accounts follow the browser. */
+export const LOCALES = ['de', 'en'] as const;
+export type Locale = (typeof LOCALES)[number];
 
 export const ROLES = ['owner', 'manager', 'agronomist', 'worker', 'accountant', 'viewer'] as const;
 export type Role = (typeof ROLES)[number];
@@ -26,15 +31,16 @@ export const PERMISSIONS = [
   'team.write',
   'finance.read',
   'finance.write',
+  'files.write',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: PERMISSIONS,
   manager: PERMISSIONS.filter((p) => p !== 'org.manage'),
-  agronomist: ['field.write', 'crop.write', 'operation.write', 'task.write'],
-  worker: ['operation.write', 'task.write'],
-  accountant: ['finance.read', 'finance.write'],
+  agronomist: ['field.write', 'crop.write', 'operation.write', 'task.write', 'files.write'],
+  worker: ['operation.write', 'task.write', 'files.write'],
+  accountant: ['finance.read', 'finance.write', 'files.write'],
   viewer: [],
 };
 
@@ -54,6 +60,7 @@ export const UpdateOrganizationInput = z.object({
   country: countryCode.optional(),
   currency: currencyCode.optional(),
   cropYearStartMonth: z.int().min(1).max(12).optional(),
+  measurementSetting: z.enum(MEASUREMENT_SETTINGS).optional(),
 });
 export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationInput>;
 
@@ -63,6 +70,10 @@ export interface Organization {
   country: string;
   currency: string;
   cropYearStartMonth: number;
+  /** The setting as stored: an explicit system or `auto` (from the country). */
+  measurementSetting: MeasurementSetting;
+  /** The system the UI uses. */
+  measurementSystem: MeasurementSystem;
   status: 'active' | 'archived';
   role: Role;
   createdAt: string;
@@ -95,10 +106,21 @@ export interface CurrentUser {
   id: string;
   email: string;
   displayName: string;
+  /** Chosen UI language; null until the user picks one (the app then follows the browser). */
+  locale: Locale | null;
   organizations: Organization[];
 }
 
-/** Development-only sign-in. Replaced by the OIDC flow (e.g. Keycloak) later. */
+export const UpdateProfileInput = z.object({
+  displayName: name.optional(),
+  locale: z.enum(LOCALES).optional(),
+});
+export type UpdateProfileInput = z.infer<typeof UpdateProfileInput>;
+
+/** How the web app signs in, served by `GET /auth/config`. */
+export type AuthConfig = { mode: 'dev' } | { mode: 'oidc'; issuer: string; clientId: string };
+
+/** Development-only sign-in (AUTH_MODE=dev). */
 export const DevSignInInput = z.object({
   email: z.email().max(320),
   displayName: z.string().trim().min(1).max(200).optional(),

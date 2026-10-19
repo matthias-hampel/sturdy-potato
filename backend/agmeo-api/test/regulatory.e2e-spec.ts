@@ -135,6 +135,8 @@ describe('regulatory reporting', () => {
     // Coordinates are UTM metres: the bounding box starts east of the false easting.
     expect(file('.shp').readDoubleLE(36)).toBeGreaterThan(500_000)
     await u.get(`${base}/exports/agrarantrag.zip?farmId=${farm.id}&seasonId=${season.id}&preset=XX`).expect(400)
+    const history = (await u.get(`${base}/regulatory/exports/history?year=2026`).expect(200)).body
+    expect(history).toEqual([expect.objectContaining({ format: 'agrarantrag', name: expect.stringMatching(/^agrarantrag-NI-2026-/) })])
   })
 
   it('exports ENNI and ENDO XML that validates against the authorities\' schemas', async () => {
@@ -171,5 +173,8 @@ describe('regulatory reporting', () => {
     const endo = await u.get(`${base}/exports/endo.xml?farmId=${farm.id}&year=2026`).expect(200)
     const endoCheck = await validateEndoXsd(endo.text)
     expect(endoCheck.errors).toEqual([])
+    // Both downloads are archived in Files, newest first.
+    const history = (await u.get(`${base}/regulatory/exports/history?year=2026`).expect(200)).body
+    expect(history.map((h: { format: string }) => h.format)).toEqual(['endo', 'enni'])
   })
 })

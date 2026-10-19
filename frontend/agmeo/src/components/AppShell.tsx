@@ -1,8 +1,9 @@
-import type { CurrentUser } from '@agmeo/contracts'
+import { LOCALES, type CurrentUser, type Locale } from '@agmeo/contracts'
 import { Link as RouterLink, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   BarChart3,
   Boxes,
+  Coins,
   Building2,
   CalendarCheck2,
   CalendarRange,
@@ -11,13 +12,16 @@ import {
   ClipboardList,
   CloudSun,
   FlaskConical,
+  FolderOpen,
   Grid2x2,
+  Languages,
   LayoutDashboard,
   ListChecks,
   LogOut,
   Map,
   Menu as MenuIcon,
   Plus,
+  Repeat,
   Settings,
   ShieldCheck,
   Sprout,
@@ -29,7 +33,9 @@ import {
 import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button as AriaButton, Dialog as AriaDialog, Modal, ModalOverlay } from 'react-aria-components'
+import { LANGUAGE, setLanguage } from '#/i18n'
 import { roleLabel } from '#/i18n/labels'
+import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { useOrg, useSeason } from '#/lib/org'
 import { Button } from '#/ui/Button'
@@ -57,6 +63,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/nutrients', label: 'nav.nutrients', icon: FlaskConical },
       { to: '/o/$orgId/calendar', label: 'nav.calendar', icon: CalendarRange },
       { to: '/o/$orgId/templates', label: 'nav.templates', icon: ListChecks },
+      { to: '/o/$orgId/rotations', label: 'nav.rotations', icon: Repeat },
       { to: '/o/$orgId/operations', label: 'nav.operations', icon: ClipboardList },
       { to: '/o/$orgId/tasks', label: 'nav.tasks', icon: CalendarCheck2 },
     ],
@@ -65,8 +72,10 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'nav.section.resources',
     items: [
       { to: '/o/$orgId/inventory', label: 'nav.inventory', icon: Boxes },
+      { to: '/o/$orgId/prices', label: 'nav.prices', icon: Coins },
       { to: '/o/$orgId/machinery', label: 'nav.machinery', icon: Tractor },
       { to: '/o/$orgId/team', label: 'nav.team', icon: Users },
+      { to: '/o/$orgId/files', label: 'nav.files', icon: FolderOpen },
     ],
   },
   {
@@ -209,6 +218,19 @@ function OrgSwitcher({ user }: { user: CurrentUser }) {
   )
 }
 
+/** Each language in its own name, so it can be found whatever language is active. */
+const LANGUAGE_NAMES: Record<Locale, string> = { de: 'Deutsch', en: 'English' }
+
+/** Saves the language on the account (it follows the user to other devices), then reloads in it. */
+async function switchLanguage(locale: Locale) {
+  try {
+    await api.patch('/me', { locale })
+  } catch {
+    // The choice still applies on this browser.
+  }
+  setLanguage(locale)
+}
+
 function TopBar({ user, onOpenNav }: { user: CurrentUser; onOpenNav: () => void }) {
   const { t } = useTranslation()
   const { seasons, seasonId, setSeasonId } = useSeason()
@@ -252,13 +274,24 @@ function TopBar({ user, onOpenNav }: { user: CurrentUser; onOpenNav: () => void 
         <AriaButton aria-label={t('nav.account')} className={cx('size-9 rounded-full bg-primary text-primary-fg text-sm font-semibold flex items-center justify-center', focusRing)}>
           {initials}
         </AriaButton>
-        <Menu onAction={(key) => key === 'signout' && signOut()}>
+        <Menu
+          onAction={(key) => {
+            if (key === 'signout') void signOut()
+            else if (typeof key === 'string' && key.startsWith('lang:')) void switchLanguage(key.slice(5) as Locale)
+          }}
+        >
           <MenuItem id="me" isDisabled textValue={user.displayName}>
             <span className="flex flex-col">
               <span className="font-medium text-fg">{user.displayName}</span>
               <span className="text-xs text-muted">{user.email}</span>
             </span>
           </MenuItem>
+          <MenuSeparator />
+          {LOCALES.map((l) => (
+            <MenuItem key={l} id={`lang:${l}`} textValue={LANGUAGE_NAMES[l]}>
+              {l === LANGUAGE ? <Check /> : <Languages className="opacity-0" />} {LANGUAGE_NAMES[l]}
+            </MenuItem>
+          ))}
           <MenuSeparator />
           <MenuItem id="signout">
             <LogOut /> {t('nav.signOut')}

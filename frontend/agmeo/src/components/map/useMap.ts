@@ -3,6 +3,7 @@ import { Map as MapLibreMap, NavigationControl, ScaleControl, setWorkerUrl } fro
 import { useEffect, useRef, useState } from 'react'
 import { t } from '#/i18n'
 import { tokenStore } from '#/lib/api'
+import { measurementSystem } from '#/lib/format'
 import { type Basemap, OWN, styleFor } from './basemaps'
 
 export interface UseMapOptions {
@@ -74,7 +75,7 @@ export function useMap({ basemap, center, zoom, interactive = true, bounds }: Us
     })
     if (interactive) {
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
-      m.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left')
+      m.addControl(new ScaleControl({ unit: measurementSystem() }), 'bottom-left')
     }
     m.touchZoomRotate.disableRotation()
     // 'load' waits for every tile of the first view; layers only need the style.

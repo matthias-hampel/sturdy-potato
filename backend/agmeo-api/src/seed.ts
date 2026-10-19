@@ -75,10 +75,10 @@ async function main() {
   await identity.inviteMember(ctx, { email: 'mira@example.com', displayName: 'Dr. Mira Hoffmann', role: 'agronomist' });
 
   const team = app.get(TeamService);
-  const anna = await team.createEmployee(ctx, { name: 'Anna Bauer', userId: ownerId, jobTitle: 'Inhaberin', hourlyRate: 32, active: true });
-  const jonas = await team.createEmployee(ctx, { name: 'Jonas Meyer', jobTitle: 'Betriebsleiter', email: 'jonas@example.com', hourlyRate: 28, active: true });
-  const lena = await team.createEmployee(ctx, { name: 'Lena Schulz', jobTitle: 'Schlepperfahrerin', email: 'lena@example.com', hourlyRate: 21, active: true });
-  await team.createEmployee(ctx, { name: 'Piotr Nowak', jobTitle: 'Saisonarbeitskraft (Ernte)', hourlyRate: 17.5, active: false });
+  const anna = await team.createEmployee(ctx, { name: 'Anna Bauer', userId: ownerId, role: 'manager', staffNumber: '001', jobTitle: 'Inhaberin', hourlyRate: 32, active: true });
+  const jonas = await team.createEmployee(ctx, { name: 'Jonas Meyer', role: 'manager', staffNumber: '002', jobTitle: 'Betriebsleiter', email: 'jonas@example.com', hourlyRate: 28, active: true });
+  const lena = await team.createEmployee(ctx, { name: 'Lena Schulz', role: 'machine_operator', staffNumber: '003', jobTitle: 'Schlepperfahrerin', email: 'lena@example.com', hourlyRate: 21, active: true });
+  await team.createEmployee(ctx, { name: 'Piotr Nowak', role: 'field_worker', jobTitle: 'Saisonarbeitskraft (Ernte)', hourlyRate: 17.5, active: false });
 
   // Farm and fields ---------------------------------------------------------
   const farm = await app.get(FarmsService).create(ctx, {
@@ -105,12 +105,12 @@ async function main() {
   }
 
   // Machinery -----------------------------------------------------------------
-  const tractor = await team.createEquipment(ctx, { name: 'Fendt 724 Vario', farmId: farm.id, kind: 'tractor', manufacturer: 'Fendt', model: '724 Vario Gen6', modelYear: 2021, registration: 'H-SF 724', hourMeter: 3410, hourlyCost: 68, status: 'active' });
-  const sprayer = await team.createEquipment(ctx, { name: 'Amazone UX 5201', farmId: farm.id, kind: 'sprayer', manufacturer: 'Amazone', model: 'UX 5201 Super', modelYear: 2019, hourMeter: 1290, hourlyCost: 42, status: 'active' });
-  const drill = await team.createEquipment(ctx, { name: 'Väderstad Rapid', farmId: farm.id, kind: 'seeder', manufacturer: 'Väderstad', model: 'Rapid A 600S', modelYear: 2017, hourMeter: 2100, hourlyCost: 38, status: 'active' });
-  const spreader = await team.createEquipment(ctx, { name: 'Rauch Axis', farmId: farm.id, kind: 'spreader', manufacturer: 'Rauch', model: 'AXIS-H 50.2', modelYear: 2020, hourMeter: 640, hourlyCost: 18, status: 'active' });
-  const combine = await team.createEquipment(ctx, { name: 'Claas Lexion 6800', farmId: farm.id, kind: 'combine', manufacturer: 'Claas', model: 'Lexion 6800', modelYear: 2018, hourMeter: 2875, hourlyCost: 165, status: 'active' });
-  await team.createEquipment(ctx, { name: 'Lemken Karat', farmId: farm.id, kind: 'tillage', manufacturer: 'Lemken', model: 'Karat 10', modelYear: 2015, hourMeter: 1810, hourlyCost: 24, status: 'active' });
+  const tractor = await team.createEquipment(ctx, { name: 'Fendt 724 Vario', farmId: farm.id, class: 'machine', category: 'tractor_large', powerKw: 174, manufacturer: 'Fendt', model: '724 Vario Gen6', modelYear: 2021, registration: 'H-SF 724', hourMeter: 3410, hourlyCost: 68, status: 'active' });
+  const sprayer = await team.createEquipment(ctx, { name: 'Amazone UX 5201', farmId: farm.id, class: 'implement', category: 'sprayer', mountType: 'trailed', workingWidthM: 36, manufacturer: 'Amazone', model: 'UX 5201 Super', modelYear: 2019, hourMeter: 1290, hourlyCost: 42, status: 'active' });
+  const drill = await team.createEquipment(ctx, { name: 'Väderstad Rapid', farmId: farm.id, class: 'implement', category: 'combination_drill', mountType: 'trailed', workingWidthM: 6, manufacturer: 'Väderstad', model: 'Rapid A 600S', modelYear: 2017, hourMeter: 2100, hourlyCost: 38, status: 'active' });
+  const spreader = await team.createEquipment(ctx, { name: 'Rauch Axis', farmId: farm.id, class: 'implement', category: 'fertilizer_spreader', mountType: 'three_point', workingWidthM: 36, manufacturer: 'Rauch', model: 'AXIS-H 50.2', modelYear: 2020, hourMeter: 640, hourlyCost: 18, status: 'active' });
+  const combine = await team.createEquipment(ctx, { name: 'Claas Lexion 6800', farmId: farm.id, class: 'machine', category: 'combine', manufacturer: 'Claas', model: 'Lexion 6800', modelYear: 2018, hourMeter: 2875, hourlyCost: 165, status: 'active' });
+  await team.createEquipment(ctx, { name: 'Lemken Karat', farmId: farm.id, class: 'implement', category: 'cultivator', mountType: 'three_point', workingWidthM: 3, manufacturer: 'Lemken', model: 'Karat 10', modelYear: 2015, hourMeter: 1810, hourlyCost: 24, status: 'active' });
   await team.addMaintenance(ctx, tractor.id, { performedOn: '2026-03-02', description: '3000-h-Inspektion: Motoröl, Filter, Hydrauliköl', cost: 1840, hourMeter: 3005, nextDueOn: '2027-03-01', nextDueHours: 3500 });
   await team.addMaintenance(ctx, combine.id, { performedOn: '2026-06-20', description: 'Inspektion vor der Ernte, neue Messerklingen', cost: 2350, hourMeter: 2790, nextDueOn: '2026-10-15', nextDueHours: 3000 });
 

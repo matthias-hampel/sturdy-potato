@@ -13,7 +13,9 @@ import {
   type FarmResult,
   type Harvest,
   type HarvestInput,
+  type Product,
   type RevenueBasis,
+  type StorageLocation,
 } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
@@ -721,6 +723,8 @@ function FieldGroupLabel({ children }: { children: ReactNode }) {
   return <span className="text-sm font-medium text-fg-2">{children}</span>
 }
 
+const NO_STOCK = '__none'
+
 function HarvestForm({ seasonId, currency, onDone }: { seasonId: string; currency: string; onDone: () => void }) {
   const { t } = useTranslation()
   const cycles = useOrgQuery<CropCycle[]>('/crop-cycles', { seasonId })
@@ -734,6 +738,11 @@ function HarvestForm({ seasonId, currency, onDone }: { seasonId: string; currenc
   const [price, setPrice] = useState(NaN)
   const [basis, setBasis] = useState<'actual' | 'expected'>('expected')
   const [notes, setNotes] = useState('')
+  const goods = useOrgQuery<Product[]>('/products', { category: 'harvest' })
+  const locations = useOrgQuery<StorageLocation[]>('/storage-locations')
+  const [productId, setProductId] = useState<string>(NO_STOCK)
+  const [locationId, setLocationId] = useState<string>(NO_STOCK)
+  const stockable = (goods.data ?? []).filter((p) => p.baseUnit === 't' || p.baseUnit === 'kg')
 
   const items = (cycles.data ?? []).map((c) => ({ ...c, label: `${c.fieldName} · ${c.cropName}` }))
   const cycle = items.find((c) => c.id === cycleId)
@@ -763,6 +772,8 @@ function HarvestForm({ seasonId, currency, onDone }: { seasonId: string; currenc
         quality: quality.trim() || null,
         pricePerT: num(price),
         priceBasis: basis,
+        productId: productId === NO_STOCK ? null : productId,
+        storageLocationId: productId === NO_STOCK || locationId === NO_STOCK ? null : locationId,
         notes: notes.trim() || null,
       })
       onDone()
@@ -822,6 +833,29 @@ function HarvestForm({ seasonId, currency, onDone }: { seasonId: string; currenc
         </div>
         <span className="text-xs text-muted">{t('economics.harvestForm.actualHint')}</span>
       </div>
+      {stockable.length > 0 && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Select
+            label={t('economics.harvestForm.bookIntoStock')}
+            items={[{ id: NO_STOCK, name: t('economics.harvestForm.noStock') }, ...stockable]}
+            value={productId}
+            onChange={(v) => setProductId(String(v ?? NO_STOCK))}
+            description={t('economics.harvestForm.bookIntoStockHint')}
+          >
+            {(p) => <Option id={p.id}>{p.name}</Option>}
+          </Select>
+          {productId !== NO_STOCK && (
+            <Select
+              label={t('inventory.storageLocation')}
+              items={[{ id: NO_STOCK, name: t('inventory.movement.noLocation') }, ...(locations.data ?? [])]}
+              value={locationId}
+              onChange={(v) => setLocationId(String(v ?? NO_STOCK))}
+            >
+              {(l) => <Option id={l.id}>{l.name}</Option>}
+            </Select>
+          )}
+        </div>
+      )}
       <TextField label={t('common.notes')} multiline rows={2} value={notes} onChange={setNotes} />
       {yieldTHa != null && (
         <p className="text-sm text-fg-2 tabular">

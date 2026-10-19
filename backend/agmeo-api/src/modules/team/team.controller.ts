@@ -1,7 +1,9 @@
-import { Controller, Get, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
-import { EmployeeInput, EquipmentInput, MaintenanceInput } from '@agmeo/contracts';
+import { Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+import { EmployeeInput, EquipmentInput, MaintenanceInput, OperationActionInput } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
+import { badRequest } from '../../core/errors.js';
 import { type Out, ZBody } from '../../core/validation.js';
+import { catalogueManufacturers, catalogueSearch } from './machinery-catalogue.js';
 import { TeamService } from './team.service.js';
 
 @Controller('orgs/:orgId')
@@ -26,8 +28,41 @@ export class TeamController {
   }
 
   @Get('equipment')
-  equipment(@OrgCtx() ctx: Ctx) {
-    return this.team.equipment(ctx);
+  equipment(@OrgCtx() ctx: Ctx, @Query('includeArchived') includeArchived?: string) {
+    return this.team.equipment(ctx, { includeArchived: includeArchived === 'true' });
+  }
+
+  @Get('machinery-catalogue/manufacturers')
+  catalogueManufacturers(@OrgCtx() _ctx: Ctx, @Query('class') cls?: string) {
+    return catalogueManufacturers(catalogueClass(cls));
+  }
+
+  @Get('machinery-catalogue')
+  catalogue(@OrgCtx() _ctx: Ctx, @Query('class') cls?: string, @Query('manufacturer') manufacturer?: string, @Query('q') q?: string) {
+    return catalogueSearch(catalogueClass(cls), { manufacturer, q, limit: 200 });
+  }
+
+  @Get('operation-actions')
+  actions(@OrgCtx() ctx: Ctx, @Query('includeArchived') includeArchived?: string) {
+    return this.team.actions(ctx, { includeArchived: includeArchived === 'true' });
+  }
+
+  @Post('operation-actions')
+  @Requires('machinery.write')
+  createAction(@OrgCtx() ctx: Ctx, @ZBody(OperationActionInput) input: Out<typeof OperationActionInput>) {
+    return this.team.createAction(ctx, input);
+  }
+
+  @Put('operation-actions/:id')
+  @Requires('machinery.write')
+  updateAction(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string, @ZBody(OperationActionInput) input: Out<typeof OperationActionInput>) {
+    return this.team.updateAction(ctx, id, input);
+  }
+
+  @Delete('operation-actions/:id')
+  @Requires('machinery.write')
+  deleteAction(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string) {
+    return this.team.deleteAction(ctx, id);
   }
 
   @Get('equipment/:id')
@@ -62,4 +97,9 @@ export class TeamController {
   usage(@OrgCtx() ctx: Ctx, @Param('id', ParseUUIDPipe) id: string) {
     return this.team.usage(ctx, id);
   }
+}
+
+function catalogueClass(v?: string): 'machine' | 'implement' {
+  if (v === 'machine' || v === 'implement') return v;
+  throw badRequest('invalid_class', 'class must be machine or implement');
 }

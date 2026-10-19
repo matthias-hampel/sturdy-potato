@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { id, isoDate, longText, type Ref } from './common.js';
-import { OPERATION_TYPES, type OperationStatus } from './operations.js';
-
-export const TASK_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
-export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+import { OPERATION_TYPES, TASK_PRIORITIES, type OperationStatus, type TaskPriority } from './operations.js';
 
 export const TASK_STATUSES = ['open', 'in_progress', 'done', 'canceled'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
@@ -41,7 +38,9 @@ export interface Task {
   status: TaskStatus;
   overdue: boolean;
   completedAt: string | null;
+  commentCount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 export const TaskListQuery = z.object({
@@ -53,3 +52,49 @@ export const TaskListQuery = z.object({
   to: isoDate.optional(),
 });
 export type TaskListQuery = z.input<typeof TaskListQuery>;
+
+/** Changes since a point in time, for mobile clients: deleted tasks are listed by id. */
+export const TaskSyncQuery = z.object({ since: z.iso.datetime({ offset: true }).optional() });
+export type TaskSyncQuery = z.input<typeof TaskSyncQuery>;
+
+export interface TaskSync {
+  tasks: Task[];
+  deleted: string[];
+  /** Pass as `since` next time. */
+  serverTime: string;
+}
+
+// ---------------------------------------------------------------------------
+// Comments on operations and tasks
+// ---------------------------------------------------------------------------
+
+export const COMMENT_TARGETS = ['operation', 'task'] as const;
+export type CommentTarget = (typeof COMMENT_TARGETS)[number];
+
+export interface Comment {
+  id: string;
+  entityType: CommentTarget;
+  entityId: string;
+  authorUserId: string | null;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  editedAt: string | null;
+  /** The current user wrote it (and may edit it). */
+  mine: boolean;
+}
+
+export const CommentQuery = z.object({ entityType: z.enum(COMMENT_TARGETS), entityId: id });
+export type CommentQuery = z.input<typeof CommentQuery>;
+
+export const CommentInput = z.object({
+  entityType: z.enum(COMMENT_TARGETS),
+  entityId: id,
+  /** Client-chosen id makes a retried post idempotent. */
+  id: id.optional(),
+  body: z.string().trim().min(1).max(5000),
+});
+export type CommentInput = z.input<typeof CommentInput>;
+
+export const UpdateCommentInput = z.object({ body: z.string().trim().min(1).max(5000) });
+export type UpdateCommentInput = z.input<typeof UpdateCommentInput>;

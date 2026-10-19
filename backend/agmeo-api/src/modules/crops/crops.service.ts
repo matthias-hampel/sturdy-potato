@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type CropColorsInput,
+  type CropUsage,
   type CreateCropCyclesInput,
   type CreateCropInput,
   type CreateVarietyInput,
@@ -22,7 +24,7 @@ import { diff, record } from '../../core/events.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
 import type { DB } from '../../db/schema.js';
-import { cropName } from './crop-name.js';
+import { cropColor, cropName } from './crop-name.js';
 import { defaultSeasonName } from './seasons.js';
 
 export interface CropCycleQuery {
@@ -40,9 +42,40 @@ export class CropsService {
   // Catalogue
   // ---------------------------------------------------------------------------
 
+  /** The organization's own crop colours, by crop id. */
+  cropColors(ctx: Ctx): Promise<Record<string, string>> {
+    return this.db.run(ctx, async (trx) => Object.fromEntries((await trx.selectFrom('org_crop_colors').select(['crop_id', 'color']).execute()).map((r) => [r.crop_id, r.color])));
+  }
+
+  /** Sets or resets (null) colours; crops not named keep theirs. */
+  setCropColors(ctx: Ctx, input: Out<typeof CropColorsInput>): Promise<Record<string, string>> {
+    return this.db.run(ctx, async (trx) => {
+      for (const [cropId, color] of Object.entries(input.colors)) {
+        if (color === null) {
+          await trx.deleteFrom('org_crop_colors').where('crop_id', '=', cropId).execute();
+          continue;
+        }
+        const crop = await trx.selectFrom('crops').select('id').where('id', '=', cropId).executeTakeFirst();
+        if (!crop) throw notFound('Crop');
+        await trx
+          .insertInto('org_crop_colors')
+          .values({ organization_id: ctx.orgId, crop_id: cropId, color })
+          .onConflict((oc) => oc.columns(['organization_id', 'crop_id']).doUpdateSet({ color }))
+          .execute();
+      }
+      await record(trx, ctx, { entityType: 'organization', entityId: ctx.orgId, action: 'crop_colors_updated', changes: input.colors });
+      return Object.fromEntries((await trx.selectFrom('org_crop_colors').select(['crop_id', 'color']).execute()).map((r) => [r.crop_id, r.color]));
+    });
+  }
+
   crops(ctx: Ctx): Promise<Crop[]> {
     return this.db.run(ctx, async (trx) => {
-      const rows = await trx.selectFrom('crops as c').selectAll('c').select(cropName('c').as('display_name')).orderBy('display_name').execute();
+      const rows = await trx
+        .selectFrom('crops as c')
+        .selectAll('c')
+        .select([cropName('c').as('display_name'), cropColor('c').as('effective_color')])
+        .orderBy('display_name')
+        .execute();
       return rows.map((r) => ({
         id: r.id,
         code: r.code,
@@ -50,7 +83,7 @@ export class CropsService {
         nameEn: r.organization_id == null ? r.name : null,
         category: r.category as CropCategory,
         isWinterCrop: r.is_winter_crop,
-        color: r.color,
+        color: r.effective_color,
         custom: r.organization_id != null,
         bsaSpeciesCode: r.bsa_species_code,
         euSpeciesCode: r.eu_species_code,
@@ -320,6 +353,10 @@ export class CropsService {
             expected_harvest_date: input.expectedHarvestDate ?? null,
             expected_yield_t_ha: input.expectedYieldTHa ?? null,
             expected_price_per_t: input.expectedPricePerT ?? null,
+            usage: input.usage ?? 'commercial',
+            // Seed lot and generation only describe seed multiplication.
+            seed_lot: input.usage === 'seed_multiplication' ? (input.seedLot ?? null) : null,
+            multiplication_generation: input.usage === 'seed_multiplication' ? (input.multiplicationGeneration ?? null) : null,
             notes: input.notes ?? null,
           })),
         )
@@ -365,6 +402,9 @@ export class CropsService {
         expected_harvest_date: input.expectedHarvestDate,
         expected_yield_t_ha: input.expectedYieldTHa,
         expected_price_per_t: input.expectedPricePerT,
+        usage: input.usage,
+        seed_lot: input.usage === 'commercial' ? null : input.seedLot,
+        multiplication_generation: input.usage === 'commercial' ? null : input.multiplicationGeneration,
         notes: input.notes,
       };
       await trx.updateTable('crop_cycles').set(values).where('id', '=', id).execute();
@@ -429,7 +469,7 @@ export class CropsService {
         's.harvest_year',
         'cc.crop_id',
         cropName('c').as('crop_name'),
-        'c.color',
+        cropColor('c').as('color'),
         'cc.variety_id',
         'v.name as variety_name',
         'cc.status',
@@ -438,6 +478,9 @@ export class CropsService {
         'cc.expected_harvest_date',
         'cc.expected_yield_t_ha',
         'cc.expected_price_per_t',
+        'cc.usage',
+        'cc.seed_lot',
+        'cc.multiplication_generation',
         'cc.notes',
       ])
       .orderBy('s.harvest_year', 'desc')
@@ -475,6 +518,9 @@ export class CropsService {
       expectedHarvestDate: r.expected_harvest_date,
       expectedYieldTHa: r.expected_yield_t_ha,
       expectedPricePerT: r.expected_price_per_t,
+      usage: r.usage as CropUsage,
+      seedLot: r.seed_lot,
+      multiplicationGeneration: r.multiplication_generation,
       notes: r.notes,
     }));
   }

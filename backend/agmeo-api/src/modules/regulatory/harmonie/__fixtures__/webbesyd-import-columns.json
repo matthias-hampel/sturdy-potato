@@ -1,0 +1,1872 @@
+{
+  "IMPBETR.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen, Tabelle 1",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "BNAME",
+      "specName": "BNAME",
+      "description": "Betriebsname",
+      "range": "max. 60 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "PLZ",
+      "specName": "PLZ",
+      "description": "Postleitzahl",
+      "range": "5 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "ORT",
+      "specName": "ORT",
+      "description": "Ort",
+      "range": "max. 100 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "STR",
+      "specName": "STR",
+      "description": "Straße",
+      "range": "max. 30 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "AMTCODEN",
+      "specName": "AMTCODEN",
+      "description": "Amt (für Sachsen: Außenstelle LfULG)",
+      "range": "Tabelle 2, sonst 99",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "BFCODE",
+      "specName": "BFCODE",
+      "description": "Berechnungsgrundlage",
+      "range": "Tabelle 3",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "BKR_NR",
+      "specName": "BKR_NR",
+      "description": "Bodenklimaraum",
+      "range": "Tabelle 4",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "EMAIL",
+      "specName": "EMAIL",
+      "description": "EMAIL",
+      "range": "max. 100 Zeichen Standort-, Anbau-, Bestandes- und Entwicklungsdaten",
+      "required": null,
+      "format": "text"
+    }
+  ],
+  "IMPANBAU.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "SNAME",
+      "specName": "SNAME",
+      "description": "Schlagname",
+      "range": "max. 30 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "FLHA",
+      "specName": "FLHA",
+      "description": "Fläche [ha]",
+      "range": "0,01 – 200,00",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "FELDBLOCK",
+      "specName": "FELDBLOCK",
+      "description": "Feldblock",
+      "range": "max. 20 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "AZ",
+      "specName": "AZ",
+      "description": "Ackerzahl",
+      "range": "1 – 120",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "BCODE",
+      "specName": "BCODE",
+      "description": "Bodenart",
+      "range": "Tabelle 5",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "ECODE",
+      "specName": "ECODE",
+      "description": "Entstehung",
+      "range": "Tabelle 6",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "BOTI",
+      "specName": "BOTI",
+      "description": "durchwurzelbare Bodentiefe [cm]",
+      "range": "10 – 200",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "HNN",
+      "specName": "HNN",
+      "description": "Höhe über NN [m]",
+      "range": "0 – 650",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "STK",
+      "specName": "STK",
+      "description": "Steinigkeit [%]",
+      "range": "0 – 60",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "WSGCODE",
+      "specName": "WSGCODE",
+      "description": "Wasserschutzgebiet",
+      "range": "Tabelle 7",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "BKR_NR",
+      "specName": "BKR_NR",
+      "description": "Boden-Klima-Raum",
+      "range": "Tabelle 4",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "HUMUS_EINST",
+      "specName": "HUMUS_EINST",
+      "description": "Humus-Einstufung",
+      "range": "Tabelle 8",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "DATUMVF",
+      "specName": "DATUMVF",
+      "description": "Datum Anbau Vorfrucht",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "VFRUCHT",
+      "specName": "VFRUCHT",
+      "description": "Vorfrucht",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "VKZBRACHE",
+      "specName": "VKZBRACHE",
+      "description": "Brache (Vorfrucht) ja oder nein",
+      "range": "j, n",
+      "required": null,
+      "format": "flag"
+    },
+    {
+      "name": "ERTRAGHP",
+      "specName": "ERTRAGHP",
+      "description": "Vorfruchtertrag",
+      "range": "Tabelle 9a/9b",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NP",
+      "specName": "NP",
+      "description": "Vorfrucht Nebenprodukt",
+      "range": "Tabelle 10",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Anbau Frucht",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Fruchtart",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "KZBRACHE",
+      "specName": "KZBRACHE",
+      "description": "Brache (Fruchtart) ja oder nein",
+      "range": "j, n",
+      "required": null,
+      "format": "flag"
+    },
+    {
+      "name": "ERTZIEL",
+      "specName": "ERTZIEL",
+      "description": "Erwartungsertrag FM [dt/ha]",
+      "range": "Tabelle 9a/9b",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "ERTZIEL_TM",
+      "specName": "ERTZIEL_TM",
+      "description": "Erwartungsertrag TM [dt/ha]",
+      "range": "20 – 150 für Grünland",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "ROHPROT_TM",
+      "specName": "ROHPROT_TM",
+      "description": "Rohproteingehalt TM [%]",
+      "range": "5 – 30 für Grünland",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "SCHNITTE",
+      "specName": "SCHNITTE",
+      "description": "Anzahl Schnitte",
+      "range": "1 – 6 für Grünland",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "WEIDEANT",
+      "specName": "WEIDEANT",
+      "description": "Weideanteil [%]",
+      "range": "10 – 90 für Mähweide",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "LEGUMANT",
+      "specName": "LEGUMANT",
+      "description": "Anteil Leguminosen [%]",
+      "range": "0 – 100 für Grünland",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "FOLIE",
+      "specName": "FOLIE",
+      "description": "Folie oder Vlies ja oder nein",
+      "range": "j, n für Gemüse",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "VWCODE",
+      "specName": "VWCODE",
+      "description": "Verwendung",
+      "range": "Tabelle 11",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "BERECODE",
+      "specName": "BERECODE",
+      "description": "Beregnung",
+      "range": "Tabelle 12",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "STABINDG",
+      "specName": "STABINDG",
+      "description": "Stabilisierte N-Dünger ja o. nein",
+      "range": "j, n",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "AACODE",
+      "specName": "AACODE",
+      "description": "Art der Bestellung",
+      "range": "Tabelle 13",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "EC",
+      "specName": "EC",
+      "description": "BBCH(EC) zur Probenahme",
+      "range": "11 – 29 für Wintergetreide",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "PDICHTE",
+      "specName": "PDICHTE",
+      "description": "Pflanzendichte",
+      "range": "Tabelle 14",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "VEGBEGIN",
+      "specName": "VEGBEGIN",
+      "description": "Vegetationsbeginn (Datum)",
+      "range": "1.2.jjjj bis 1.5.jjjj des Ernte- jahres",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "BLATTVERL",
+      "specName": "BLATTVERL",
+      "description": "erhebliche Blattverluste im Winter (W-",
+      "range": "j, n raps) ja o. nein",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "SPROSS_FM",
+      "specName": "SPROSS_FM",
+      "description": "Sprossfrischmasse/m² [kg] (Winterraps)",
+      "range": "0,2 – 5",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NITRATGEB1",
+      "specName": "NITRATGEB1",
+      "description": "Nitratgebiet nach §13, Abs. 2 DüV",
+      "range": "j, n",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "ZWEITFRUCHT",
+      "specName": "ZWEITFRUCHT",
+      "description": "Ist die Kultur eine Zweitfrucht?",
+      "range": "j, n",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "STABINDG100",
+      "specName": "STABINDG100%",
+      "description": "Einsatz von stabilisierten Dünger zu",
+      "range": "j, n 100%?",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "NP",
+      "specName": "NP",
+      "description": "Frucht Verwendung Nebenprodukt",
+      "range": "Tabelle 10",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "ZW_ABGEFR",
+      "specName": "ZW_ABGEFR",
+      "description": "Zwischenfrucht abgefroren",
+      "range": "Text, nur für Export in web- nein BESyD notwendig, kann bei Import leer bleiben, nur bei Zwischenfrüchten (nein =0, ja = -1) Organische Düngung",
+      "required": null,
+      "format": "text"
+    }
+  ],
+  "IMPORG.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Anbau Frucht",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Fruchtart",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "AADATUM",
+      "specName": "AADATUM",
+      "description": "Datum organ. Düngung",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "MICODE",
+      "specName": "MICODE",
+      "description": "Düngerart/Tier",
+      "range": "Tabelle 15",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "MIBEZ",
+      "specName": "MIBEZ",
+      "description": "Bezeichnung Düngerart",
+      "range": "max. 40 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "FAORGNP",
+      "specName": "FAORGNP",
+      "description": "Fruchtart (bei Stroh -, Gründüngung",
+      "range": "Tabelle 9a/9b und Ernterückstände)",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "MENGE",
+      "specName": "MENGE",
+      "description": "Menge",
+      "range": "[t/ha bzw. m³/ha] 0,0 – 60,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MITS",
+      "specName": "MITS",
+      "description": "TS",
+      "range": "[%] 1,0 – 99,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_N",
+      "specName": "MI_N",
+      "description": "N [%] FM",
+      "range": "0,0 – 16,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_NH4",
+      "specName": "MI_NH4",
+      "description": "NH4-N [%] FM",
+      "range": "0,0 – 3,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_P",
+      "specName": "MI_P",
+      "description": "P [%] FM",
+      "range": "0,0 – 10,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_K",
+      "specName": "MI_K",
+      "description": "K [%] FM",
+      "range": "0,0 – 9,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_MG",
+      "specName": "MI_MG",
+      "description": "Mg [%] FM",
+      "range": "0,0 – 1,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_S",
+      "specName": "MI_S",
+      "description": "S [%] FM",
+      "range": "0,0 – 5,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "ZW_ABGEFR",
+      "specName": "ZW_ABGEFR",
+      "description": "Zwischenfrucht abgefroren ja oder nein",
+      "range": "j, n",
+      "required": null,
+      "format": "flag"
+    },
+    {
+      "name": "MI_P2O5",
+      "specName": "MI_P2O5",
+      "description": "P2O5 [%] FM",
+      "range": "0,0 – 10,0",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "PARKOR",
+      "specName": "PARKOR",
+      "description": "PARKOR",
+      "range": "1 Zeichen * = bei Änderung der TS- Gehaltes und der Inhaltsstoffe N, NH4-N, P, K, Mg, S, P2O5; n = neu Bezeichnung Dünger- art sowie geänderte und neue Inhaltsstoffe",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "MINDESTWIRKSAMKEIT",
+      "specName": "Mindestwirksamkeit",
+      "description": "Mindestwirksamkeit",
+      "range": "0,0 – 100 in %, Mindestwirk- samkeit im Jahr des Aufbrin- gens des Gesamtstickstoffes",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "MENGEGESAMT",
+      "specName": "MengeGesamt",
+      "description": "MengeGesamt [t oder m³]",
+      "range": ">=0",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "ZUFUHR",
+      "specName": "ZUFUHR",
+      "description": "ZUFUHR",
+      "range": "1 Zeichen 1 = Zufuhr von außerhalb 2 = auf dem Schlag verblieben Nmin-Untersuchung",
+      "required": false,
+      "format": "text"
+    }
+  ],
+  "IMPNMIN.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Anbau Frucht",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Fruchtart",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "AADATUM",
+      "specName": "AADATUM",
+      "description": "Datum Nmin-Untersuchung",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "PROBE",
+      "specName": "PROBE",
+      "description": "Proben-Nr.",
+      "range": "max. 12 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "LABOR15",
+      "specName": "LABOR15",
+      "description": "Labor-Nr.",
+      "range": "Schicht 0 – 15 cm max. 10 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "NH415",
+      "specName": "NH415",
+      "description": "NH4-N",
+      "range": "[kg/ha] Schicht 0 – 15 cm 0 – 100",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NO315",
+      "specName": "NO315",
+      "description": "NO 3-N",
+      "range": "[kg/ha] Schicht 0 – 15 cm 0 – 150",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "LABOR16",
+      "specName": "LABOR16",
+      "description": "Labor-Nr.",
+      "range": "Schicht 15 – 30 cm max. 10 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "NH416",
+      "specName": "NH416",
+      "description": "NH4-N",
+      "range": "[kg/ha] Schicht 15 – 30 cm 0 – 100",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NO316",
+      "specName": "NO316",
+      "description": "NO 3-N",
+      "range": "[kg/ha] Schicht 15 – 30 cm 0 – 150",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "LABOR30",
+      "specName": "LABOR30",
+      "description": "Labor-Nr.",
+      "range": "Schicht 0 – 30 cm max. 10 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "NH430",
+      "specName": "NH430",
+      "description": "NH4-N",
+      "range": "[kg/ha] Schicht 0 – 30 cm 0 – 150",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NO330",
+      "specName": "NO330",
+      "description": "NO 3-N",
+      "range": "[kg/ha] Schicht 0 – 30 cm 0 – 250",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "LABOR60",
+      "specName": "LABOR60",
+      "description": "Labor-Nr.",
+      "range": "Schicht 30 – 60 cm max. 10 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "NH460",
+      "specName": "NH460",
+      "description": "NH4-N",
+      "range": "[kg/ha] Schicht 30 – 60 cm 0 – 150",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NO360",
+      "specName": "NO360",
+      "description": "NO3-N",
+      "range": "[kg/ha] Schicht 30 – 60 cm 0 – 250",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "LABOR90",
+      "specName": "LABOR90",
+      "description": "Labor-Nr.",
+      "range": "Schicht 60 – 90 cm max. 10 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "NH490",
+      "specName": "NH490",
+      "description": "NH4-N",
+      "range": "[kg/ha] Schicht 60 – 90 cm 0 – 150",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NO390",
+      "specName": "NO390",
+      "description": "NO 3-N",
+      "range": "[kg/ha] Schicht 60 – 90 cm 0 – 250",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NMIN_RW",
+      "specName": "NMIN_RW",
+      "description": "Nmin-Richtwert verwendet ja oder nein",
+      "range": "j, n",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "NMIN15",
+      "specName": "NMIN15",
+      "description": "Nmin",
+      "range": "[kg/ha] Schicht 0 – 15 cm 0 – 150",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NMIN16",
+      "specName": "NMIN16",
+      "description": "Nmin",
+      "range": "[kg/ha] Schicht 15 – 30 cm 0 – 150",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NMIN30",
+      "specName": "NMIN30",
+      "description": "Nmin",
+      "range": "[kg/ha] Schicht 0 – 30 cm 0 – 250",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NMIN60",
+      "specName": "NMIN60",
+      "description": "Nmin",
+      "range": "[kg/ha] Schicht 30 – 60 cm 0 – 250",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NMIN90",
+      "specName": "NMIN90",
+      "description": "Nmin",
+      "range": "[kg/ha] Schicht 60 – 90 cm 0 – 250",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NMIN_AS",
+      "specName": "NMIN_AS",
+      "description": "Nmin-Analysewert steinfrei verwendet ja",
+      "range": "j, n oder nein",
+      "required": false,
+      "format": "flag"
+    },
+    {
+      "name": "NMIN_AS_L",
+      "specName": "NMIN_AS_L",
+      "description": "Nmin-Analysewert Steingehalt im Labor",
+      "range": "j, n verrechnet ja oder nein Makronährstoffuntersuchung",
+      "required": null,
+      "format": "flag"
+    }
+  ],
+  "IMPMAKRO.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Makronährstoff-Untersuchung",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Proben-Nr.",
+      "range": "max. 12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "LABOR20",
+      "specName": "LABOR20",
+      "description": "Labor-Nr.",
+      "range": "max. 10 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "HUMUS",
+      "specName": "HUMUS",
+      "description": "Humus-Gehalt",
+      "range": "[%] 0,0 – 15,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "PH",
+      "specName": "PH",
+      "description": "pH-Wert",
+      "range": "3,0 – 8,5",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "P",
+      "specName": "P",
+      "description": "P-Gehalt",
+      "range": "[mg/100 g]* 0,5 – 30,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "K",
+      "specName": "K",
+      "description": "K-Gehalt",
+      "range": "[mg/100 g]* 0,5 – 60,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MG",
+      "specName": "MG",
+      "description": "Mg-Gehalt",
+      "range": "[mg/100 g]* 0,5 – 30,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "METHODPK",
+      "specName": "METHODPK",
+      "description": "Methode P/K-Untersuchung",
+      "range": "Tabelle 16",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "FAT",
+      "specName": "FAT",
+      "description": "Feinanteil (FAT)",
+      "range": "[%] 1 – 60",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "CORG",
+      "specName": "CORG",
+      "description": "Corg - Gehalt",
+      "range": "[%] 0,00 – 100,00",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "NT",
+      "specName": "NT",
+      "description": "Nt - Gehalt",
+      "range": "[%] 0,00 – 100,00",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "VSZIEL",
+      "specName": "VSZIEL",
+      "description": "Berechnungsart bzw. Ziel Gehaltsklasse",
+      "range": "Tabelle 20 P, K, Mg Mineralische Düngung",
+      "required": null,
+      "format": "code"
+    }
+  ],
+  "IMPMIND.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Anbau Frucht",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Fruchtart",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "AADATUM",
+      "specName": "AADATUM",
+      "description": "Datum mineralische Düngung",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "MICODE",
+      "specName": "MICODE",
+      "description": "Düngerartgruppe",
+      "range": "Tabelle 18",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "MIBEZ",
+      "specName": "MIBEZ",
+      "description": "Bezeichnung Düngerart",
+      "range": "max. 40 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "MENGE",
+      "specName": "MENGE",
+      "description": "Menge [dt/ha]",
+      "range": "0,0 – 200,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_N",
+      "specName": "MI_N",
+      "description": "N [%]",
+      "range": "0,0 – 100,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_P",
+      "specName": "MI_P",
+      "description": "P [%]",
+      "range": "0,0 – 40,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_K",
+      "specName": "MI_K",
+      "description": "K [%]",
+      "range": "0,0 – 60,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_MG",
+      "specName": "MI_MG",
+      "description": "Mg [%]",
+      "range": "0,0 – 30,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_CAO",
+      "specName": "MI_CAO",
+      "description": "CaO [%]",
+      "range": "0,0 – 90,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_S",
+      "specName": "MI_S",
+      "description": "S [%]",
+      "range": "0,0 – 80,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_P2O5",
+      "specName": "MI_P2O5",
+      "description": "P2O5 [%]",
+      "range": "0,0 - 100,0",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "PARKOR",
+      "specName": "PARKOR",
+      "description": "PARKOR",
+      "range": "1 Zeichen * = bei Änderung der In- haltsstoffe N, P, K, Mg, CaO, S, P2O5; n = neu Be- zeichnung Düngerart sowie geänderte und neue Inhalts- stoffe",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "MENGEGESAMT",
+      "specName": "MengeGesamt",
+      "description": "MengeGesamt [dt]",
+      "range": ">=0",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "REFERENCE_ID",
+      "specName": "REFERENCE_ID",
+      "description": "REFERENCE_ID",
+      "range": "ID (Ganzzahl) für den Im- port in webBESyD, kann leer bleiben wenn ID nicht bekannt, Tabelle 24 Stickstoffbindung durch Leguminosen auf dem Schlag",
+      "required": false,
+      "format": "number"
+    }
+  ],
+  "IMPNLEGUM.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Anbau Frucht",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Fruchtart",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "AADATUM",
+      "specName": "AADATUM",
+      "description": "Datum Ernte Leguminose",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "MICODE",
+      "specName": "MICODE",
+      "description": "Code Leguminose",
+      "range": "Tabelle 21",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "MIBEZ",
+      "specName": "MIBEZ",
+      "description": "Bezeichnung Leguminose",
+      "range": "max. 40 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "MENGE",
+      "specName": "MENGE",
+      "description": "Menge [dt FM/ha]",
+      "range": ">=0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MENGEGESAMT",
+      "specName": "MengeGesamt",
+      "description": "MengeGesamt [dt FM]",
+      "range": ">=0",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "MI_NBINDUNG",
+      "specName": "MI_NBINDUNG",
+      "description": "N-Fixierung [kg N/dt FM%]",
+      "range": "0,00 – 100,00",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "PARKOR",
+      "specName": "PARKOR",
+      "description": "PARKOR",
+      "range": "1 Zeichen * = bei Änderung N-Fixie- rung n = neu Bezeichnung Le- guminosen sowie geänderte N-Fixierung",
+      "required": false,
+      "format": "text"
+    }
+  ],
+  "IMPNLEGUMBETRIEB.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "AADATUM",
+      "specName": "AADATUM",
+      "description": "Datum Ernte Leguminose",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "MICODE",
+      "specName": "MICODE",
+      "description": "Code Leguminose",
+      "range": "Tabelle 21",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "MIBEZ",
+      "specName": "MIBEZ",
+      "description": "Bezeichnung Leguminose",
+      "range": "max. 40 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "MENGE",
+      "specName": "MENGE",
+      "description": "MengeGesamt",
+      "range": "[dt FM] >=0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_NBINDUNG",
+      "specName": "MI_NBINDUNG",
+      "description": "N-Fixierung",
+      "range": "[kg N/dt FM%] 0,00 – 100,00",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "PARKOR",
+      "specName": "PARKOR",
+      "description": "PARKOR",
+      "range": "1 Zeichen * = bei Änderung N-Fixie- rung n = neu Bezeichnung Le- guminosen sowie geänderte N-Fixierung Zufuhr Nährstoffe aus Weidehaltung auf dem Schlag",
+      "required": false,
+      "format": "text"
+    }
+  ],
+  "IMPWEIDE.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Anbau Frucht",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Fruchtart",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "AADATUM",
+      "specName": "AADATUM",
+      "description": "Datum Abschluss Weidehaltung",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "MIGRUPPE",
+      "specName": "MIGRUPPE",
+      "description": "Code Tiergruppe",
+      "range": "Tabelle 22",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "MICODE",
+      "specName": "MICODE",
+      "description": "Tierart Code",
+      "range": "Tabelle 23",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "MIBEZ",
+      "specName": "MIBEZ",
+      "description": "Tierartbezeichnung",
+      "range": "Max. 120 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "TIERZAHL",
+      "specName": "TIERZAHL",
+      "description": "Anzahl der Weidetiere",
+      "range": ">=0,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "WEIDET",
+      "specName": "WEIDET",
+      "description": "Anzahl der Weidetage",
+      "range": ">=0,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_N",
+      "specName": "MI_N",
+      "description": "N [kg je Tier und Tag]",
+      "range": ">=0,000",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_P",
+      "specName": "MI_P",
+      "description": "P [kg je Tier und Tag]",
+      "range": ">=0,000",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_P2O5",
+      "specName": "MI_P2O5",
+      "description": "P2O5 [kg je Tier und Tag]",
+      "range": ">=0,000",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "NANRECHNUNG",
+      "specName": "NAnrechnung",
+      "description": "N-Anrechnung",
+      "range": "nach DüV 2020",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "PARKOR",
+      "specName": "PARKOR",
+      "description": "PARKOR",
+      "range": "1 Zeichen * = bei Änderung der Ge- halte n = neu Bezeichnung Tierart sowie Gehalte",
+      "required": false,
+      "format": "text"
+    }
+  ],
+  "IMPWEIDEBETRIEB.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": true,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": " 1990",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "AADATUM",
+      "specName": "AADATUM",
+      "description": "Datum Abschluss Weidehaltung",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "MIGRUPPE",
+      "specName": "MIGRUPPE",
+      "description": "Code Tiergruppe",
+      "range": "Tabelle 22",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "MICODE",
+      "specName": "MICODE",
+      "description": "Tierart Code",
+      "range": "Tabelle 23",
+      "required": false,
+      "format": "code"
+    },
+    {
+      "name": "MIBEZ",
+      "specName": "MIBEZ",
+      "description": "Tierartbezeichnung",
+      "range": "Max. 120 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "TIERZAHL",
+      "specName": "TIERZAHL",
+      "description": "Anzahl der Weidetiere",
+      "range": ">=0,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "WEIDET",
+      "specName": "WEIDET",
+      "description": "Anzahl der Weidetage",
+      "range": ">=0,0",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_N",
+      "specName": "MI_N",
+      "description": "N [kg je Tier und Tag]",
+      "range": ">=0,000",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_P",
+      "specName": "MI_P",
+      "description": "P [kg je Tier und Tag]",
+      "range": ">=0,000",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "MI_P2O5",
+      "specName": "MI_P2O5",
+      "description": "P2O5 [kg je Tier und Tag]",
+      "range": ">=0,000",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "NANRECHNUNG",
+      "specName": "NAnrechnung",
+      "description": "N-Anrechnung",
+      "range": "nach DüV 2020",
+      "required": null,
+      "format": "number"
+    },
+    {
+      "name": "PARKOR",
+      "specName": "PARKOR",
+      "description": "PARKOR",
+      "range": "1 Zeichen * = bei Änderung der Ge- halte n = neu Bezeichnung Tierart sowie Gehalte Ernte",
+      "required": false,
+      "format": "text"
+    }
+  ],
+  "IMPERNTE.TXT": [
+    {
+      "name": "BNR",
+      "specName": "BNR",
+      "description": "Betriebsnr.",
+      "range": "12 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "FSTNR",
+      "specName": "FSTNR",
+      "description": "Feldstücknr.",
+      "range": "max. 10 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "SNR",
+      "specName": "SNR",
+      "description": "Schlagnr.",
+      "range": "max. 10 Zeichen",
+      "required": false,
+      "format": "text"
+    },
+    {
+      "name": "EJAHR",
+      "specName": "EJAHR",
+      "description": "Erntejahr",
+      "range": ">= 1990",
+      "required": false,
+      "format": "number"
+    },
+    {
+      "name": "DATUMF",
+      "specName": "DATUMF",
+      "description": "Datum Anbau Frucht",
+      "range": "tt.mm.jjjj",
+      "required": false,
+      "format": "date"
+    },
+    {
+      "name": "FRUCHT",
+      "specName": "FRUCHT",
+      "description": "Fruchtart",
+      "range": "Tabelle 9a/9b",
+      "required": true,
+      "format": "code"
+    },
+    {
+      "name": "ERNTEDAT",
+      "specName": "ERNTEDAT",
+      "description": "Datum Ernte",
+      "range": "tt.mm.jjjj",
+      "required": true,
+      "format": "date"
+    },
+    {
+      "name": "MIBEZ",
+      "specName": "MIBEZ",
+      "description": "Bezeichnung Fruchtart",
+      "range": "max. 100 Zeichen",
+      "required": null,
+      "format": "text"
+    },
+    {
+      "name": "ERTRAGHP",
+      "specName": "ERTRAGHP",
+      "description": "Ertrag Hauptprodukt [dt/ha]",
+      "range": "0,0 – fruchtartabhängig",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "VERWENHP",
+      "specName": "VERWENHP",
+      "description": "Verwendung Hauptprodukt",
+      "range": "Tabelle 11",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "ERTWEIDE",
+      "specName": "ERTWEIDE",
+      "description": "Ertragsanteil Beweidung [dt/ha]",
+      "range": "0 – 700",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "ERTRAGNP",
+      "specName": "ERTRAGNP",
+      "description": "Ertrag Nebenprodukt [dt/ha]",
+      "range": "0,0 – fruchtartabhängig",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "VERWENNP",
+      "specName": "VERWENNP",
+      "description": "Verwendung Nebenprodukt",
+      "range": "Tabelle 11 ohne Code 11 und 12",
+      "required": null,
+      "format": "code"
+    },
+    {
+      "name": "ANTLEG",
+      "specName": "ANTLEG",
+      "description": "Anteil Leguminosen [%]",
+      "range": "0 – 100",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAN",
+      "specName": "FAN",
+      "description": "N-Entzug Haupt- und",
+      "range": "0,0 – 20,0 Nebenprodukt [kg/dt]",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAN_NP",
+      "specName": "FAN_NP",
+      "description": "N-Entzug Nebenprodukt [kg/dt]",
+      "range": "0,0 – 5,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAP",
+      "specName": "FAP",
+      "description": "P-Entzug Haupt- und",
+      "range": "0,0 – 2,0 Nebenprodukt [kg/dt]",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAP_NP",
+      "specName": "FAP_NP",
+      "description": "P-Entzug Nebenprodukt [kg/dt]",
+      "range": "0,0 – 1,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAK",
+      "specName": "FAK",
+      "description": "K-Entzug Haupt- und",
+      "range": "0,0 – 20,0 Nebenprodukt [kg/dt]",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAK_NP",
+      "specName": "FAK_NP",
+      "description": "K-Entzug Nebenprodukt [kg/dt]",
+      "range": "0,0 – 5,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAMG",
+      "specName": "FAMG",
+      "description": "Mg-Entzug Haupt- und",
+      "range": "0,0 – 2,5 Nebenprodukt [kg/dt]",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAMG_NP",
+      "specName": "FAMG_NP",
+      "description": "Mg-Entzug Nebenprodukt [kg/dt]",
+      "range": "0,0 – 1,5",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAS",
+      "specName": "FAS",
+      "description": "S-Entzug Haupt- und",
+      "range": "0,0 – 1,5 Nebenprodukt [kg/dt]",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAS_NP",
+      "specName": "FAS_NP",
+      "description": "S-Entzug Nebenprodukt [kg/dt]",
+      "range": "0,0 – 1,5",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "GEWI_NP",
+      "specName": "GEWI_NP",
+      "description": "Gewichtsverhältnis Hauptprodukt",
+      "range": "0,0 – 10,0 zu Nebenprodukt",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAN_HP",
+      "specName": "FAN_HP",
+      "description": "N-Entzug Hauptprodukt [kg/dt]",
+      "range": "0,0 – 7,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAP_HP",
+      "specName": "FAP_HP",
+      "description": "P-Entzug Hauptprodukt [kg/dt]",
+      "range": "0,0 – 2,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAK_HP",
+      "specName": "FAK_HP",
+      "description": "K-Entzug Hauptprodukt [kg/dt]",
+      "range": "0,0 – 5,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAMG_HP",
+      "specName": "FAMG_HP",
+      "description": "Mg-Entzug Hauptprodukt [kg/dt]",
+      "range": "0,0 – 1,5",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "FAS_HP",
+      "specName": "FAS_HP",
+      "description": "S-Entzug Hauptprodukt [kg/dt]",
+      "range": "0,0 – 1,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "RP",
+      "specName": "RP",
+      "description": "Rohprotein Hauptprodukt [% in TM]",
+      "range": "0,0 – 60,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "TSHP",
+      "specName": "TSHP",
+      "description": "TS Hauptprodukt [%]",
+      "range": "0,0 – 100,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "TSNP",
+      "specName": "TSNP",
+      "description": "TS Nebenprodukt [%]",
+      "range": "0,0 – 100,0",
+      "required": true,
+      "format": "number"
+    },
+    {
+      "name": "PARKOR",
+      "specName": "PARKOR",
+      "description": "Parameter geändert",
+      "range": "* (bei Änderung der Stan- dardwerte)",
+      "required": true,
+      "format": "text"
+    }
+  ]
+}

@@ -62,6 +62,19 @@ export interface BsaVarieties {
   synced_at: Generated<Timestamp>;
 }
 
+export interface Comments {
+  author_name: string;
+  author_user_id: string | null;
+  body: string;
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  edited_at: Timestamp | null;
+  entity_id: string;
+  entity_type: string;
+  id: Generated<string>;
+  organization_id: string;
+}
+
 export interface CostEntries {
   amount: Numeric;
   basis: Generated<string>;
@@ -94,16 +107,19 @@ export interface CropCycles {
   film_or_fleece: Generated<boolean>;
   id: Generated<string>;
   land_use_code: string | null;
+  multiplication_generation: string | null;
   notes: string | null;
   organization_id: string;
   protein_pct: Numeric | null;
   role: Generated<string>;
   season_id: string;
+  seed_lot: string | null;
   sowing_date: string | null;
   status: Generated<string>;
   straw_removed: Generated<boolean>;
   template_id: string | null;
   updated_at: Generated<Timestamp>;
+  usage: Generated<string>;
   variety_id: string | null;
 }
 
@@ -204,29 +220,68 @@ export interface Employees {
   id: Generated<string>;
   job_title: string | null;
   name: string;
+  notes: string | null;
   organization_id: string;
   phone: string | null;
+  role: Generated<string>;
+  staff_number: string | null;
   updated_at: Generated<Timestamp>;
   user_id: string | null;
 }
 
 export interface Equipment {
+  acquisition_type: string | null;
+  archived_at: Timestamp | null;
+  catalogue_id: string | null;
+  category: string;
+  class: Generated<string>;
   created_at: Generated<Timestamp>;
+  default_employee_id: string | null;
+  depreciation_method: string | null;
+  empty_mass_kg: number | null;
   farm_id: string | null;
+  financing_end_date: string | null;
+  financing_monthly_payment: Numeric | null;
+  financing_type: string | null;
+  front_axle_fraction: Numeric | null;
+  front_tyre: Json | null;
   fuel_l_per_h: Numeric | null;
   hour_meter: Generated<Numeric>;
   hourly_cost: Numeric | null;
   id: Generated<string>;
-  kind: string;
+  inspection_until: string | null;
+  insurance_annual: Numeric | null;
+  insurance_until: string | null;
+  inventory_number: string | null;
+  irrigation_coverage_ha: Numeric | null;
+  irrigation_flow_l_per_min: number | null;
+  irrigation_pressure_bar: Numeric | null;
+  irrigation_type: string | null;
+  /** Derived from the category by a trigger. */
+  kind: Generated<string>;
+  lease_end_date: string | null;
+  machine_ring_member_number: string | null;
   manufacturer: string | null;
+  max_fill_mass_kg: number | null;
   model: string | null;
   model_year: number | null;
+  mount_type: string | null;
   name: string;
   notes: string | null;
+  operating_mass_kg: number | null;
   organization_id: string;
+  power_kw: number | null;
+  purchase_date: string | null;
+  purchase_price_net: Numeric | null;
+  rear_tyre: Json | null;
   registration: string | null;
+  residual_value: Numeric | null;
+  serial_number: string | null;
   status: Generated<string>;
+  tank_capacity_l: number | null;
   updated_at: Generated<Timestamp>;
+  useful_life_years: number | null;
+  working_width_m: Numeric | null;
 }
 
 export interface EuSpecies {
@@ -269,6 +324,7 @@ export interface Farms {
   archived_at: Timestamp | null;
   country: Generated<string>;
   created_at: Generated<Timestamp>;
+  eu_holding_number: string | null;
   federal_state: string | null;
   fertilizer_year_start: Generated<string>;
   holding_number: string | null;
@@ -342,9 +398,24 @@ export interface FieldGeometryVersions {
   geometry: string;
   id: Generated<string>;
   organization_id: string;
+  reason: string | null;
   source: Generated<string>;
   valid_from: Generated<Timestamp>;
   valid_to: Timestamp | null;
+}
+
+export interface FieldGroupMembers {
+  field_id: string;
+  group_id: string;
+  organization_id: string;
+}
+
+export interface FieldGroups {
+  color: Generated<string>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  organization_id: string;
 }
 
 export interface FieldImageryJobs {
@@ -417,20 +488,50 @@ export interface FieldRasters {
 }
 
 export interface Fields {
+  archived_from: string | null;
   created_at: Generated<Timestamp>;
   farm_id: string;
   id: Generated<string>;
   identifier: string | null;
+  merged_into_id: string | null;
   name: string;
   nitrate_sensitive_zone: Generated<boolean>;
   notes: string | null;
   organization_id: string;
+  parcel_number: string | null;
   phosphate_sensitive_zone: Generated<boolean>;
   soil_texture: string | null;
   soil_type: string | null;
   status: Generated<string>;
   tenure: Generated<string>;
   updated_at: Generated<Timestamp>;
+}
+
+export interface FileFolders {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  deleted_at: Timestamp | null;
+  id: Generated<string>;
+  name: string;
+  organization_id: string;
+  parent_id: string | null;
+  system_key: string | null;
+}
+
+export interface Files {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  deleted_at: Timestamp | null;
+  description: string | null;
+  folder_id: string | null;
+  id: Generated<string>;
+  mime_type: Generated<string>;
+  name: string;
+  organization_id: string;
+  size_bytes: Int8;
+  storage_key: string;
+  updated_at: Generated<Timestamp>;
+  year: number | null;
 }
 
 export interface GrowingSeasons {
@@ -456,9 +557,26 @@ export interface Harvests {
   organization_id: string;
   price_basis: Generated<string>;
   price_per_t: Numeric | null;
+  product_id: string | null;
   quality: string | null;
   quantity_t: Numeric;
   updated_at: Generated<Timestamp>;
+}
+
+export interface Jobs {
+  attempts: Generated<number>;
+  created_at: Generated<Timestamp>;
+  dedupe_key: string | null;
+  failed_at: Timestamp | null;
+  finished_at: Timestamp | null;
+  id: Generated<Int8>;
+  kind: string;
+  last_error: string | null;
+  locked_until: Timestamp | null;
+  max_attempts: Generated<number>;
+  organization_id: string | null;
+  payload: Generated<Json>;
+  run_at: Generated<Timestamp>;
 }
 
 export interface LandUseCodes {
@@ -518,6 +636,22 @@ export interface NminReferenceValues {
   year: number;
 }
 
+export interface OperationActions {
+  archived_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  diesel_l_per_ha: Numeric | null;
+  employee_id: string | null;
+  hours_per_ha: Numeric | null;
+  id: Generated<string>;
+  implement_id: string | null;
+  machine_id: string | null;
+  name: string;
+  notes: string | null;
+  operation_type: string;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface OperationEquipment {
   equipment_id: string;
   hourly_cost: Numeric | null;
@@ -559,6 +693,7 @@ export interface OperationLabor {
 }
 
 export interface Operations {
+  action_id: string | null;
   bbch_stage: string | null;
   completed_at: Timestamp | null;
   completed_by: string | null;
@@ -568,12 +703,15 @@ export interface Operations {
   created_at: Generated<Timestamp>;
   created_by: string | null;
   details: Generated<Json>;
+  diesel_l_per_ha: Numeric | null;
+  due_on: string | null;
   farm_id: string;
   id: Generated<string>;
   notes: string | null;
   organization_id: string;
   performed_at: Timestamp | null;
   planned_on: string | null;
+  priority: Generated<string>;
   responsible_employee_id: string | null;
   status: Generated<string>;
   target_organism: string | null;
@@ -585,14 +723,22 @@ export interface Operations {
   weather_conditions: string | null;
 }
 
+export interface OrgCropColors {
+  color: string;
+  crop_id: string;
+  organization_id: string;
+}
+
 export interface Organizations {
   country: Generated<string>;
   created_at: Generated<Timestamp>;
   crop_year_start_month: Generated<number>;
   currency: Generated<string>;
   id: Generated<string>;
+  measurement_setting: Generated<string>;
   name: string;
   status: Generated<string>;
+  storage_limit_bytes: Int8 | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -608,6 +754,15 @@ export interface OutboxEvents {
   organization_id: string | null;
   payload: Json;
   published_at: Timestamp | null;
+}
+
+export interface ProductPrices {
+  organization_id: string;
+  price: Numeric;
+  product_id: string;
+  source: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  year: number;
 }
 
 export interface ProductivityAnalyses {
@@ -641,14 +796,17 @@ export interface Products {
   catalogue_entry_id: string | null;
   category: string;
   created_at: Generated<Timestamp>;
+  datasheet_file_id: string | null;
   density_t_m3: Numeric | null;
   dry_matter_pct: Numeric | null;
   fertilizer_type: string | null;
+  humus_c_kg_per_t: Numeric | null;
   id: Generated<string>;
   k2o_pct: Numeric | null;
   low_stock_threshold: Numeric | null;
   manufacturer: string | null;
   mgo_pct: Numeric | null;
+  n_effectiveness_pct: Numeric | null;
   n_pct: Numeric | null;
   name: string;
   nh4_n_pct: Numeric | null;
@@ -659,6 +817,18 @@ export interface Products {
   s_pct: Numeric | null;
   unit_cost: Numeric | null;
   updated_at: Generated<Timestamp>;
+  website: string | null;
+}
+
+export interface PsmAttestations {
+  certificate_holder: string | null;
+  certificate_number: string | null;
+  certificate_valid_until: string | null;
+  organization_id: string;
+  sprayer_inspected_on: string | null;
+  sprayer_inspection_number: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface PsmCodes {
@@ -802,10 +972,15 @@ export interface StockBalances {
 
 export interface StockMovements {
   completion_seq: number | null;
+  counterparty: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  expiry_date: string | null;
+  harvest_id: string | null;
   id: Generated<string>;
+  invoice_number: string | null;
   kind: string;
+  lot_number: string | null;
   note: string | null;
   occurred_at: Generated<Timestamp>;
   operation_id: string | null;
@@ -814,7 +989,10 @@ export interface StockMovements {
   product_id: string;
   quantity_delta: Numeric;
   storage_location_id: string | null;
+  total_price: Numeric | null;
   unit_cost: Numeric | null;
+  vat_rate: Numeric | null;
+  voids_movement_id: string | null;
 }
 
 export interface StorageLocations {
@@ -830,6 +1008,7 @@ export interface Tasks {
   completed_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  deleted_at: Timestamp | null;
   description: string | null;
   due_on: string | null;
   farm_id: string;
@@ -871,7 +1050,7 @@ export interface Users {
   email: string;
   id: Generated<string>;
   last_login_at: Timestamp | null;
-  locale: Generated<string>;
+  locale: string | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -907,6 +1086,58 @@ export interface VraMaps {
   zoning_id: string;
 }
 
+export interface WeatherCells {
+  backfilled_from: string | null;
+  created_at: Generated<Timestamp>;
+  last_error: string | null;
+  last_error_at: Timestamp | null;
+  lat: Numeric;
+  lng: Numeric;
+  refreshed_at: Timestamp | null;
+  timezone: string | null;
+  utc_offset_seconds: number | null;
+}
+
+export interface WeatherDaily {
+  date: string;
+  dew_point_max: number | null;
+  dew_point_mean: number | null;
+  dew_point_min: number | null;
+  et0: number | null;
+  humidity_max: number | null;
+  humidity_mean: number | null;
+  humidity_min: number | null;
+  lat: Numeric;
+  lng: Numeric;
+  precipitation: number | null;
+  radiation_sum: number | null;
+  soil_moisture_0_7: number | null;
+  soil_moisture_7_28: number | null;
+  soil_temp_0_7: number | null;
+  soil_temp_7_28: number | null;
+  source: string;
+  temp_max: number | null;
+  temp_mean: number | null;
+  temp_min: number | null;
+  wind_gusts_max: number | null;
+  wind_gusts_mean: number | null;
+  wind_speed_max: number | null;
+  wind_speed_mean: number | null;
+}
+
+export interface WeatherHourly {
+  dew_point: number | null;
+  humidity: number | null;
+  lat: Numeric;
+  lng: Numeric;
+  precipitation: number | null;
+  precipitation_probability: number | null;
+  temp: number | null;
+  time: Timestamp;
+  wind_gusts: number | null;
+  wind_speed: number | null;
+}
+
 export interface Zonings {
   analysis_id: string | null;
   created_at: Generated<Timestamp>;
@@ -932,6 +1163,7 @@ export interface DB {
   audit_events: AuditEvents;
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
+  comments: Comments;
   cost_entries: CostEntries;
   crop_cycles: CropCycles;
   crop_prices: CropPrices;
@@ -952,27 +1184,36 @@ export interface DB {
   field_crop_rotations: FieldCropRotations;
   field_current_geometry: FieldCurrentGeometry;
   field_geometry_versions: FieldGeometryVersions;
+  field_group_members: FieldGroupMembers;
+  field_groups: FieldGroups;
   field_imagery_jobs: FieldImageryJobs;
   field_observations: FieldObservations;
   field_parts: FieldParts;
   field_rasters: FieldRasters;
   fields: Fields;
+  file_folders: FileFolders;
+  files: Files;
   growing_seasons: GrowingSeasons;
   harvests: Harvests;
+  jobs: Jobs;
   land_use_codes: LandUseCodes;
   maintenance_records: MaintenanceRecords;
   memberships: Memberships;
   n170_inputs: N170Inputs;
   nmin_reference_values: NminReferenceValues;
+  operation_actions: OperationActions;
   operation_equipment: OperationEquipment;
   operation_fields: OperationFields;
   operation_inputs: OperationInputs;
   operation_labor: OperationLabor;
   operations: Operations;
+  org_crop_colors: OrgCropColors;
   organizations: Organizations;
   outbox_events: OutboxEvents;
+  product_prices: ProductPrices;
   productivity_analyses: ProductivityAnalyses;
   products: Products;
+  psm_attestations: PsmAttestations;
   psm_codes: PsmCodes;
   psm_crop_groups: PsmCropGroups;
   psm_products: PsmProducts;
@@ -990,6 +1231,9 @@ export interface DB {
   users: Users;
   vra_map_inputs: VraMapInputs;
   vra_maps: VraMaps;
+  weather_cells: WeatherCells;
+  weather_daily: WeatherDaily;
+  weather_hourly: WeatherHourly;
   zoning_zones: ZoningZones;
   zonings: Zonings;
 }

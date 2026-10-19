@@ -5,6 +5,8 @@ import {
   InviteMemberInput,
   UpdateMemberInput,
   UpdateOrganizationInput,
+  UpdateProfileInput,
+  type AuthConfig,
   type SignInResult,
 } from '@agmeo/contracts';
 import { sql } from 'kysely';
@@ -31,9 +33,18 @@ export class IdentityController {
     return { status: 'ok' };
   }
 
+  /** How the web app signs in: Keycloak (OIDC with PKCE) or the development sign-in. */
+  @Public()
+  @Get('auth/config')
+  authConfig(): AuthConfig {
+    return config.auth.mode === 'oidc'
+      ? { mode: 'oidc', issuer: config.auth.issuer, clientId: config.auth.webClientId }
+      : { mode: 'dev' };
+  }
+
   /**
    * Development sign-in: anyone can sign in as any email address. Only enabled in
-   * AUTH_MODE=dev; the OIDC integration removes this endpoint.
+   * AUTH_MODE=dev.
    */
   @Public()
   @Post('auth/dev/sign-in')
@@ -49,6 +60,11 @@ export class IdentityController {
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.identity.me(user.userId);
+  }
+
+  @Patch('me')
+  updateProfile(@CurrentUser() user: AuthUser, @ZBody(UpdateProfileInput) input: Out<typeof UpdateProfileInput>) {
+    return this.identity.updateProfile(user.userId, input);
   }
 
   @Post('orgs')

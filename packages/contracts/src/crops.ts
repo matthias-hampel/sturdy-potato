@@ -135,10 +135,24 @@ export interface CropCycle {
   expectedHarvestDate: string | null;
   expectedYieldTHa: number | null;
   expectedPricePerT: number | null;
+  usage: CropUsage;
+  /** Seed lot (Partie) and generation of a seed multiplication crop. */
+  seedLot: string | null;
+  multiplicationGeneration: string | null;
   notes: string | null;
 }
 
+export const CROP_USAGES = ['commercial', 'seed_multiplication'] as const;
+export type CropUsage = (typeof CROP_USAGES)[number];
+
+const seedFields = {
+  usage: z.enum(CROP_USAGES).optional(),
+  seedLot: z.string().trim().max(100).nullish(),
+  multiplicationGeneration: z.string().trim().max(20).nullish(),
+};
+
 const cropCycleFields = {
+  ...seedFields,
   cropId: id,
   varietyId: id.nullish(),
   status: z.enum(CROP_CYCLE_STATUSES).default('planned'),
@@ -177,6 +191,15 @@ export const UpdateCropCycleInput = z.object({
   expectedHarvestDate: isoDate.nullish(),
   expectedYieldTHa: amount.nullish(),
   expectedPricePerT: amount.nullish(),
+  ...seedFields,
   notes: longText,
 });
 export type UpdateCropCycleInput = z.input<typeof UpdateCropCycleInput>;
+
+// ---------------------------------------------------------------------------
+// The organization's own crop colours
+// ---------------------------------------------------------------------------
+
+/** Colour per crop id; null resets a crop to its default colour. */
+export const CropColorsInput = z.object({ colors: z.record(id, z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable()) });
+export type CropColorsInput = z.input<typeof CropColorsInput>;

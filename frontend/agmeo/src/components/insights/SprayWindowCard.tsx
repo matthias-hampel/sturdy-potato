@@ -18,7 +18,7 @@ const ms = (kmh: number | null) => (kmh == null ? null : kmh / 3.6)
 /** OneSoil-style 24 h strip at the field centre: wind, rain and spraying suitability per hour. */
 export function SprayWindowCard({ fieldId, className }: { fieldId: string; className?: string }) {
   const { t } = useTranslation()
-  const weather = useOrgQuery<WeatherForecast>(`/fields/${fieldId}/weather`, undefined, { staleTime: 10 * 60_000 })
+  const weather = useOrgQuery<WeatherForecast>(`/fields/${fieldId}/forecast`, undefined, { staleTime: 10 * 60_000 })
   const hours = weather.data?.hourly.slice(0, HOURS) ?? []
 
   return (

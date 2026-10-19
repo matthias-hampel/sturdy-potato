@@ -1,4 +1,4 @@
-import { Filter, Search, X } from 'lucide-react'
+import { Columns3, Filter, RotateCcw, Search, X } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Button as AriaButton, CheckboxContext, Dialog as AriaDialog, DialogTrigger, Popover, type Selection, type SortDescriptor } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
@@ -219,5 +219,115 @@ export function useBulkMutation<T>(fn: (orgPath: string, item: T) => Promise<unk
         opts.onDone?.()
       },
     },
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Column configuration (which columns a table shows), kept per browser
+// ---------------------------------------------------------------------------
+
+/** A named set of columns, e.g. a quick view. */
+export interface ColumnPreset {
+  id: string
+  label: string
+  columns: string[]
+}
+
+const readColumns = (key: string): string[] | null => {
+  try {
+    const raw = window.localStorage.getItem(key)
+    const v = raw ? (JSON.parse(raw) as unknown) : null
+    return Array.isArray(v) && v.every((x) => typeof x === 'string') ? v : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The visible columns of a table. `fixed` columns always show; the rest follow the viewer's
+ * choice, remembered in the browser under `storageKey`.
+ */
+export function useColumnConfig(storageKey: string, opts: { all: string[]; fixed: string[]; defaults: string[] }) {
+  const [chosen, setChosen] = useState<string[]>(() => (typeof window === 'undefined' ? null : readColumns(storageKey)) ?? opts.defaults)
+  const save = (next: string[]) => {
+    setChosen(next)
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(next))
+    } catch {
+      // Not remembered (private window, blocked storage); the choice still applies now.
+    }
+  }
+  const visible = new Set([...opts.fixed, ...chosen.filter((c) => opts.all.includes(c))])
+  return {
+    visible,
+    isVisible: (id: string) => visible.has(id),
+    toggle: (id: string) => save(visible.has(id) ? chosen.filter((c) => c !== id) : [...chosen, id]),
+    set: (ids: string[]) => save(ids),
+    reset: () => save(opts.defaults),
+    /** Configurable columns shown, and how many there are. */
+    count: { shown: opts.all.filter((c) => !opts.fixed.includes(c) && visible.has(c)).length, of: opts.all.filter((c) => !opts.fixed.includes(c)).length },
+  }
+}
+
+/** "Columns 4/7" button with quick views and a checkbox per configurable column. */
+export function ColumnConfigButton({
+  columns,
+  fixed,
+  presets,
+  config,
+}: {
+  columns: { id: string; label: string; group?: string }[]
+  fixed: string[]
+  presets: ColumnPreset[]
+  config: ReturnType<typeof useColumnConfig>
+}) {
+  const { t } = useTranslation()
+  const pickable = columns.filter((c) => !fixed.includes(c.id))
+  const groups = [...new Set(pickable.map((c) => c.group ?? ''))]
+  const sameSet = (a: string[], b: Set<string>) => pickable.every((c) => a.includes(c.id) === b.has(c.id))
+  const active = presets.find((p) => sameSet(p.columns, config.visible))?.id ?? 'custom'
+  return (
+    <DialogTrigger>
+      <Button size="sm">
+        <Columns3 /> {t('table.columns.button', { shown: config.count.shown, of: config.count.of })}
+      </Button>
+      <Popover placement="bottom end" offset={6} className="rounded-[var(--radius-control)] border border-line bg-surface shadow-[var(--shadow-overlay)]">
+        <AriaDialog aria-label={t('table.columns.title')} className="outline-none p-4 w-80 max-h-[70vh] overflow-y-auto space-y-4">
+          <div className="space-y-2">
+            <p className="text-xs text-muted">{t('table.columns.quickViews')}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {presets.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => config.set(p.columns)}
+                  className={cx('rounded-md border px-2.5 py-1 text-sm transition-colors', active === p.id ? 'border-primary bg-primary-soft text-primary font-medium' : 'border-line hover:bg-surface-2', focusRing)}
+                >
+                  {p.label}
+                </button>
+              ))}
+              {active === 'custom' && <span className="rounded-md border border-primary bg-primary-soft text-primary font-medium px-2.5 py-1 text-sm">{t('table.columns.custom')}</span>}
+              <button type="button" onClick={config.reset} title={t('table.columns.reset')} aria-label={t('table.columns.reset')} className={cx('ml-auto rounded-md border border-line px-2 py-1 text-muted hover:bg-surface-2', focusRing)}>
+                <RotateCcw className="size-3.5" aria-hidden />
+              </button>
+            </div>
+          </div>
+          <CheckboxContext.Provider value={null}>
+            {groups.map((g) => (
+              <div key={g} className="flex flex-col items-start gap-2">
+                {g && <p className="text-xs font-medium text-muted">{g}</p>}
+                {pickable
+                  .filter((c) => (c.group ?? '') === g)
+                  .map((c) => (
+                    <Checkbox key={c.id} isSelected={config.isVisible(c.id)} onChange={() => config.toggle(c.id)}>
+                      {c.label}
+                    </Checkbox>
+                  ))}
+              </div>
+            ))}
+          </CheckboxContext.Provider>
+        </AriaDialog>
+      </Popover>
+    </DialogTrigger>
   )
 }

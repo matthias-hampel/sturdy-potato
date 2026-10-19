@@ -11,11 +11,13 @@ import {
   type TaskStatus,
 } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, List, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Columns3, Table2, ChevronLeft, ChevronRight, ClipboardList, List, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button as AriaButton, Form } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { PRIORITY_LABELS, PriorityBadge, TaskStatusBadge } from '#/components/labels'
+import { OperationsBoard } from '#/components/tasks/Board'
+import { Comments } from '#/components/tasks/Comments'
 import { LOCALE } from '#/i18n'
 import { operationTypeLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
@@ -31,13 +33,30 @@ import { cx } from '#/ui/utils'
 
 export const Route = createFileRoute('/o/$orgId/tasks')({ validateSearch: openSearch, component: TasksPage })
 
-type View = 'list' | 'calendar'
+type View = 'board' | 'table' | 'list' | 'calendar'
+const VIEW_KEY = 'agmeo.tasks.view'
+const readView = (): View => {
+  try {
+    const v = window.localStorage.getItem(VIEW_KEY)
+    return v === 'table' || v === 'list' || v === 'calendar' ? v : 'board'
+  } catch {
+    return 'board'
+  }
+}
 type StatusFilter = 'active' | 'done' | 'all'
 
 function TasksPage() {
   const { t } = useTranslation()
   const { can } = useOrg()
-  const [view, setView] = useState<View>('list')
+  const [view, setViewState] = useState<View>(readView)
+  const setView = (v: View) => {
+    setViewState(v)
+    try {
+      window.localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      // Not remembered without storage.
+    }
+  }
   const [status, setStatus] = useState<StatusFilter>('active')
   const [assignee, setAssignee] = useState<string>('all')
   const [editing, setEditing] = useState<Task | 'new' | null>(null)
@@ -55,11 +74,28 @@ function TasksPage() {
         subtitle={t('tasks.subtitle')}
         actions={
           <>
-            <SegmentedControl aria-label={t('tasks.view')} value={view} onChange={setView} items={[{ id: 'list', label: <><List aria-hidden /> {t('tasks.view.list')}</> }, { id: 'calendar', label: <><CalendarDays aria-hidden /> {t('tasks.view.calendar')}</> }]} />
+            <SegmentedControl
+              aria-label={t('tasks.view')}
+              value={view}
+              onChange={setView}
+              items={[
+                { id: 'board', label: <><Columns3 aria-hidden /> {t('tasks.view.board')}</> },
+                { id: 'table', label: <><Table2 aria-hidden /> {t('tasks.view.table')}</> },
+                { id: 'list', label: <><List aria-hidden /> {t('tasks.view.list')}</> },
+                { id: 'calendar', label: <><CalendarDays aria-hidden /> {t('tasks.view.calendar')}</> },
+              ]}
+            />
             {can('task.write') && <Button variant="primary" onPress={() => setEditing('new')}><Plus /> {t('tasks.newTask')}</Button>}
           </>
         }
       />
+      {view === 'board' || view === 'table' ? (
+        <>
+          <p className="text-sm text-muted mb-3">{t('tasks.boardHint')}</p>
+          <OperationsBoard view={view} />
+        </>
+      ) : (
+      <>
       <div className="flex flex-wrap gap-3 mb-4">
         <SegmentedControl aria-label={t('common.status')} value={status} onChange={setStatus} items={[{ id: 'active', label: t('tasks.filter.open') }, { id: 'done', label: t('tasks.filter.done') }, { id: 'all', label: t('tasks.filter.all') }]} />
         <Select aria-label={t('tasks.filter.assignee')} className="w-52" items={[{ id: 'all', name: t('tasks.filter.everyone') }, ...(employees.data ?? [])]} value={assignee} onChange={(v) => setAssignee(String(v ?? 'all'))}>
@@ -74,6 +110,8 @@ function TasksPage() {
         <TaskList tasks={tasks.data ?? []} onEdit={setEditing} onNew={() => setEditing('new')} />
       ) : (
         <TaskCalendar tasks={tasks.data ?? []} onEdit={setEditing} />
+      )}
+      </>
       )}
       {editing && <TaskDialog task={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
     </>
@@ -320,6 +358,11 @@ function TaskDialog({ task, onClose }: { task: Task | null; onClose: () => void 
           <Button type="submit" variant="primary" isPending={save.isPending} isDisabled={!effectiveFarm}>{task ? t('common.save') : t('tasks.dialog.create')}</Button>
         </div>
       </Form>
+      {task && (
+        <div className="mt-6 pt-4 border-t border-line">
+          <Comments entityType="task" entityId={task.id} />
+        </div>
+      )}
     </ModalDialog>
   )
 }

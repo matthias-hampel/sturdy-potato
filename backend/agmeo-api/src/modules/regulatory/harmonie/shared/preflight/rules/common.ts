@@ -23,9 +23,16 @@ type BaseMetadata = object;
 export const FORMAT_STATES: Record<ExportFormat, readonly string[]> = {
   enni: ['NI'],
   endo: ['SH'],
+  besyd: ['BB', 'SN', 'ST', 'TH'],
+  st: ['ST'],
 };
 
-const FLIK_MAX_LENGTH: Record<ExportFormat, number> = { enni: 16, endo: 16 };
+const FLIK_MAX_LENGTH: Record<ExportFormat, number> = {
+  enni: 16,
+  endo: 16,
+  besyd: 20,
+  st: 16,
+};
 
 const SOIL_SAMPLE_MAX_AGE_MS = 6 * 365.25 * 86400000;
 /** Plausibility caps (same values as the sanity checker of the settings page). */
@@ -68,10 +75,26 @@ const exportEmpty: Rule<BaseMetadata> = {
   check: ({ data }) => (data.fields.length > 0 ? [] : [{ scope: 'betrieb' }]),
 };
 
+/** Human-readable name of the formats whose rows need a crop (used in `field_without_cultivation_skipped`). */
+const CROP_BOUND_FORMAT_NAMES: Partial<Record<ExportFormat, string>> = {
+  besyd: 'webBESyD',
+  st: 'LLG-Mitteilung',
+};
+
+/**
+ * Fields that end up in the file: every field for the Dube2.5 dialects (a
+ * crop-less field is a KEINE-AUFZEICHNUNGSPFLICHT Schlag), only fields with a
+ * cultivation for the table formats whose rows need a crop.
+ */
+const exportedFields = (fields: ExportField[], format: ExportFormat) =>
+  CROP_BOUND_FORMAT_NAMES[format]
+    ? fields.filter((f) => f.cultivations.length > 0)
+    : fields;
+
 const fieldsWithCultivation = (fields: ExportField[]) =>
   fields.filter((f) => f.cultivations.length > 0);
 
-/** The farm's Bundesland does not accept this format (blocking for both Dube2.5 dialects). */
+/** The farm's Bundesland does not accept this format — blocking for the XML dialects, a warning for the multi-state BESyD. */
 export function bundeslandMismatch(
   severity: Rule<BaseMetadata>['severity'],
 ): Rule<BaseMetadata> {
@@ -100,9 +123,9 @@ const schlagnameMissing: Rule<BaseMetadata> = {
   code: 'schlagname_missing',
   severity: 'warning',
   stage: 'pflichtfelder',
-  check: ({ data }) => {
+  check: ({ data, format }) => {
     // The placeholder must match the Schlagnummer the export itself assigns.
-    const fields = data.fields;
+    const fields = exportedFields(data.fields, format);
     const nummern = assignSchlagnummern(fields);
     return fields
       .filter((f) => !f.name)
@@ -118,8 +141,8 @@ const schlagnummerMissing: Rule<BaseMetadata> = {
   code: 'schlagnummer_missing',
   severity: 'warning',
   stage: 'pflichtfelder',
-  check: ({ data }) =>
-    data.fields
+  check: ({ data, format }) =>
+    exportedFields(data.fields, format)
       .filter((f) => !f.parcelId)
       .map((f) => ({ ...fieldRef(f), value: '' })),
 };
@@ -143,8 +166,8 @@ const schlagnummerDuplicate: Rule<BaseMetadata> = {
   code: 'schlagnummer_duplicate',
   severity: 'warning',
   stage: 'eingaberoutinen',
-  check: ({ data }) => {
-    const fields = data.fields;
+  check: ({ data, format }) => {
+    const fields = exportedFields(data.fields, format);
     const assigned = assignSchlagnummern(fields);
     return fields
       .filter(
@@ -164,10 +187,16 @@ export const flikMissing: Rule<BaseMetadata> = {
   code: 'flik_missing',
   severity: 'warning',
   stage: 'pflichtfelder',
-  check: ({ data }) =>
-    data.fields
+  check: ({ data, format }) =>
+    exportedFields(data.fields, format)
       .filter((f) => !f.flik)
       .map((f) => ({ ...fieldRef(f), value: '' })),
+};
+
+/** BESyD: FELDBLOCK is a Pflichtfeld of IMPANBAU. */
+export const flikMissingBlocking: Rule<BaseMetadata> = {
+  ...flikMissing,
+  severity: 'blocking',
 };
 
 const flikTooLong: Rule<BaseMetadata> = {
@@ -189,8 +218,24 @@ const fieldWithoutCultivation: Rule<BaseMetadata> = {
   code: 'field_without_cultivation',
   severity: 'info',
   stage: 'eingaberoutinen',
-  check: ({ data }) =>
-    data.fields.filter((f) => f.cultivations.length === 0).map(fieldRef),
+  check: ({ data, format }) =>
+    CROP_BOUND_FORMAT_NAMES[format]
+      ? []
+      : data.fields.filter((f) => f.cultivations.length === 0).map(fieldRef),
+};
+
+/** The table formats have no row without a crop; the field is left out. */
+const fieldWithoutCultivationSkipped: Rule<BaseMetadata> = {
+  code: 'field_without_cultivation_skipped',
+  severity: 'info',
+  stage: 'eingaberoutinen',
+  check: ({ data, format }) => {
+    const formatName = CROP_BOUND_FORMAT_NAMES[format];
+    if (!formatName) return [];
+    return data.fields
+      .filter((f) => f.cultivations.length === 0)
+      .map((f) => ({ ...fieldRef(f), params: { format: formatName } }));
+  },
 };
 
 const datesParam = (dates: Date[]) => dates.map(formatGermanDate).join(', ');
@@ -359,8 +404,10 @@ const soilSampleMissing: Rule<BaseMetadata> = {
   code: 'soil_sample_missing',
   severity: 'info',
   stage: 'stammdaten',
-  check: ({ data }) =>
-    data.fields.filter((f) => f.soilSamples.length === 0).map(fieldRef),
+  check: ({ data, format }) =>
+    exportedFields(data.fields, format)
+      .filter((f) => f.soilSamples.length === 0)
+      .map(fieldRef),
 };
 
 const plusSixYears = (date: Date) => {
@@ -374,8 +421,8 @@ const soilSampleValidUntil: Rule<BaseMetadata> = {
   code: 'soil_sample_valid_until',
   severity: 'info',
   stage: 'stammdaten',
-  check: ({ data }) =>
-    data.fields.flatMap((f) => {
+  check: ({ data, format }) =>
+    exportedFields(data.fields, format).flatMap((f) => {
       const latest = f.soilSamples[0];
       if (
         !latest ||
@@ -401,8 +448,8 @@ const soilSampleOlderThan6Years: Rule<BaseMetadata> = {
   code: 'soil_sample_older_than_6_years',
   severity: 'warning',
   stage: 'stammdaten',
-  check: ({ data }) =>
-    data.fields
+  check: ({ data, format }) =>
+    exportedFields(data.fields, format)
       .filter((f) => {
         const latest = f.soilSamples[0];
         return (
@@ -429,8 +476,8 @@ const pCapExceeded: Rule<BaseMetadata> = {
   code: 'p_cap_exceeded',
   severity: 'warning',
   stage: 'plausibilitaet',
-  check: ({ data }) =>
-    data.fields.flatMap((f) => {
+  check: ({ data, format }) =>
+    exportedFields(data.fields, format).flatMap((f) => {
       const latest = f.soilSamples[0];
       if (!latest || latest.p2o5 === null) return [];
       const { threshold, unit } = pCap(latest);
@@ -732,8 +779,8 @@ const fieldAreaTooLarge: Rule<BaseMetadata> = {
   code: 'field_area_too_large',
   severity: 'warning',
   stage: 'plausibilitaet',
-  check: ({ data }) =>
-    data.fields
+  check: ({ data, format }) =>
+    exportedFields(data.fields, format)
       .filter((f) => f.areaInHa > MAX_FIELD_SIZE_HA)
       .map((f) => ({
         ...fieldRef(f),
@@ -750,6 +797,7 @@ export const COMMON_RULES: Rule<BaseMetadata>[] = [
   schlagnummerDuplicate,
   flikTooLong,
   fieldWithoutCultivation,
+  fieldWithoutCultivationSkipped,
   fertilizationPreviousDuengejahr,
   fertilizationOutsideDuengejahr,
   fertilizationReportedAsHerbstansaat,

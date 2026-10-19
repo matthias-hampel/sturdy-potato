@@ -11,6 +11,9 @@ export const HarvestInput = z.object({
   quality: shortText,
   pricePerT: amount.nullish(),
   priceBasis: z.enum(['actual', 'expected']).default('expected'),
+  /** Books the harvested quantity into stock as this product (category harvest). */
+  productId: id.nullish(),
+  storageLocationId: id.nullish(),
   notes: longText,
 });
 export type HarvestInput = z.input<typeof HarvestInput>;
@@ -29,6 +32,8 @@ export interface Harvest {
   pricePerT: number | null;
   priceBasis: 'actual' | 'expected';
   revenue: number | null;
+  /** The product the harvest was booked into stock as. */
+  productId: string | null;
   notes: string | null;
 }
 

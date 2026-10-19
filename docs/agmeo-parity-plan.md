@@ -1,6 +1,6 @@
 # agmeo parity plan
 
-Status: gap analysis and decisions (2026-10-18); phases in §6 not started. Reference: `AGVOLUTION/agmeo`, branch `development` at `489bfe464`
+Status: gap analysis and decisions (2026-10-18). Phase 0 built on `feat/parity-phase0` (see §7); phases 1–5 open. Reference: `AGVOLUTION/agmeo`, branch `development` at `489bfe464`
 (Next.js + drizzle, ~540k lines of TypeScript, 116 pages, 160 tables, 28 cron jobs, 11 locales).
 Target: this repository (57 tables, 27 routes). Goal: the same user-visible functionality.
 
@@ -219,3 +219,86 @@ Each phase ends usable on its own. Effort is relative (S < M < L < XL).
 | 3 | Soil and yield: soil zonation and sampling suite, lab upload and matching, sample cards, history, analysis dashboard, share links; yield-map import and analytics; application maps from soil, yield, single-scene or uploaded zonations, brush editor, bulk maps; satellite annotations, field documents and overview PDF; harvest yield estimate | XL |
 | 4 | Economics and carbon: multi-year profitability, grouping, ranking, coverage stats, diesel and hours, map choropleth, full overhead and CAP fields, benchmarks, market prices; CO2 analysis depth and Excel export, RothC carbon tab, scope 2, emission recommendations; overview table; news feed | L |
 | 5 | Monitoring extras: maize dry-matter monitoring, predictions (yield, DMC, LAI, nFK), N model for zone optimisation and DüV comparison, LAI/SAVI indices, remaining languages | L |
+
+## 7. Progress
+
+### Phase 0 — foundations (built 2026-10-18)
+
+- **F1 Keycloak/OIDC**: realm `agmeo` imported by docker compose (public client `agmeo-web`, PKCE, audience
+  `agmeo-api`, registration, e-mail verification, password reset, demo users). API verifies tokens via JWKS
+  (`AUTH_MODE=oidc`) and requires a verified e-mail; the dev sign-in stays for tests and refuses production.
+  Web app: `oidc-client-ts`, callback route, silent renewal, retry on 401, sign-out ends the Keycloak session.
+  Sign-in relinks an account by verified e-mail (migration 000030).
+- **F2 Jobs**: Postgres queue `jobs` (migration 000026), worker runner with leases, backoff and cleanup;
+  UTC-slot schedules with dedupe keys; role `agmeo_jobs`.
+- **F3 Files**: `file_folders`, `files` (migration 000029), local or S3 storage driver; folders, upload of
+  files and folder trees, search, move, copy, rename/edit, trash with restore and purge job, folder ZIP,
+  compress, extract (1000 entries / 512 MiB), allowance with 80 % warning, viewer role read-only, system
+  folders and `storeGenerated` for app-written files. UI: explorer with grid/list, sorting, multi-select,
+  keyboard shortcuts, context menus, drag & drop (move and desktop upload), paste upload, table / image /
+  PDF preview, geo viewer (Shapefile with sidecars, GeoJSON, KML/KMZ, zipped Shapefile) with layers and
+  attribute table.
+- **F4 Mail**: `email.send` jobs, typed German/English templates, SMTP (Mailpit locally); invitation e-mails.
+- **F9 Language and units**: language from account, browser or German, switch in the account menu;
+  organization measurement setting (auto/metric/imperial) with the reference app's 28-dimension unit system;
+  areas, weather values and the map scale convert.
+
+Differences from the reference that remain deliberate or open:
+- Storage: no 14-day grace period and no plan-based allowance (billing is out of scope); a per-organization
+  `storage_limit_bytes` with a deployment default instead.
+- Files are not yet linked to articles, cultivations or soil imports (phases 1 and 3), and existing exports
+  do not yet archive themselves into the Exports folder (phase 1, "export history").
+- Units: forms that take input in hectares or kg/ha still take metric values; they convert as their screens
+  are reworked in the following phases.
+- Languages: German and English only; the other nine follow in phase 5.
+
+### Phase 1 — core workflow gaps (in progress, 2026-10-19)
+
+Done:
+- **Field manager** (migration 000031): archive and restore, delete, renumber (parcel numbers), merge with
+  preview; boundary versions with reason and restore; advanced drawing (cut, holes, simplify); field groups;
+  crop rotation page and carry-forward of crop cycles into the next season.
+- **Task board** (000032): operations by status with priority, due date and assignee; comments; delta sync
+  for tasks.
+- **Crop calendar** (000033): several years at once with drag editing, seed multiplication (lot,
+  generation, usage), own crop colours.
+- **BESyD and Sachsen-Anhalt** (000034): builders ported from the reference (byte-identical files on
+  test data), farm data per format, region detection with deadlines and upload guides, export history;
+  ENNI, ENDO, BESyD, ST and Agrarantrag downloads are archived into the Exports folder.
+- **Warehouse and prices** (000035): receipts and issues with lot, expiry, supplier or buyer, invoice,
+  total price and VAT; voids as compensating movements; stocktake; CSV exports; expiry warnings and
+  category totals; harvests booked into stock as harvested goods. Prices per year: own price, else the
+  year's weighted receipt average, else the latest earlier year, else the product default
+  (`app.product_price`); operations and economics value inputs with it. Products gain humus C,
+  N effectiveness, website and datasheet. Read-only calculation parameters (emission factors).
+- **Fertilizer-report wizard** (no migration): compliance tab "Düngemeldungen" with the reference's four
+  steps (Bundesland and formats with deadlines, readiness with fix links, farm data per format with crop
+  code overrides and 170 N, download with upload guide and export history); Agrarantrag and land-use codes
+  moved to their own tab; code lists also serve the ENNI and ENDO-SH Fruchtart catalogues.
+
+- **Machinery and actions** (000036): machines and implements with the reference's categories, mount
+  types and statuses; masses, axle share and tyres (SCI-ready badge); purchase, depreciation, financing,
+  TÜV and insurance dates; irrigation data; default operator; archive; make/model lookup in the machinery
+  catalogue taken from the reference (3,049 machines, 10,376 implements). Operators gain role, staff
+  number and notes. Organization action catalogue with diesel and hours per hectare and default machine,
+  implement and operator; operations planned from an action take them over; an operation's diesel per
+  hectare drives its diesel emissions.
+- **Crop table columns**: column picker with quick views (overview, planning, application, all),
+  remembered per browser; new columns parcel number, field group, usage and land-use code.
+
+Open in phase 1: PSM record after EU 2023/564 (in progress on its own branch).
+
+Differences from the reference:
+- BESyD/ST: grazing is not modelled (IMPWEIDE stays empty); ST Phosphorgebiet is always false as in the
+  reference; no Regierungsbezirk or centroid fallback for the federal state.
+- Expiry of stock on hand assumes first in, first out, since outflows carry no lot.
+- Fertilizer-report wizard: the Bundesland override is the farm's stored state (no org-level setting);
+  no "request a format" button for unsupported states; the Düngebericht PDF is the printable
+  Düngedokumentation; one farm address serves as Ansprechpartner and Betriebsstätte; Boden-Klima-Raum and
+  Naturraum get no preselected default; 170 N data are saved by their own editor.
+- Action catalogue: the reference's default actions come with KTBL diesel and hours per hectare from its
+  article database, which is not in the repository; here each organization builds its own catalogue.
+- Machinery: `equipment.kind` stays as a coarse group derived from the category (icons, older code); no
+  water sources, tyre history, telemetry or John Deere sync (integrations are out of scope).
+- Crop table: data columns of later phases (BBCH, GDD, weather windows, NDVI/LAI, rain) are not there yet;
+  field groups are a column with a filter rather than row grouping.

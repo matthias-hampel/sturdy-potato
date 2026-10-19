@@ -16,11 +16,11 @@ import { Button as AriaButton, Form, type Selection } from 'react-aria-component
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
-import { ApplyTemplateDialog, CycleFields, EditCycleDialog, useVarietyResolver, type CycleForm } from '#/components/crops/CycleDialogs'
+import { ApplyTemplateDialog, CycleFields, EMPTY_CYCLE_FORM, EditCycleDialog, seedPayload, useVarietyResolver, type CycleForm } from '#/components/crops/CycleDialogs'
 import { OPERATION_TABS, OperationTabPanel, operationTabType, type OperationTab } from '#/components/crops/OperationTab'
 import { PartUsageBadge } from '#/components/fields/FieldParts'
 import { FieldShape } from '#/components/map/FieldShape'
-import { NoMatches, SelectionBar, selectedIds, useBulkMutation, useTableView, type ColumnDef } from '#/components/table/tableTools'
+import { ColumnConfigButton, NoMatches, SelectionBar, selectedIds, useBulkMutation, useColumnConfig, useTableView, type ColumnDef, type ColumnPreset } from '#/components/table/tableTools'
 import { CropCycleStatusBadge, CropRoleBadge, CropTag } from '#/components/labels'
 import { cropRoleLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
@@ -244,6 +244,33 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
         render: (r) => fmt.ha(r.cycles[0]?.areaHa ?? r.areaHa),
       },
       {
+        id: 'parcel',
+        label: t('crops.plan.parcelNumber'),
+        value: (r) => r.field.parcelNumber,
+        render: (r) => r.field.parcelNumber ?? <span className="text-muted">—</span>,
+      },
+      {
+        id: 'group',
+        label: t('crops.plan.group'),
+        filter: 'select',
+        value: (r) => r.field.groups[0]?.name,
+        options: (r) => r.field.groups.map((g) => g.name),
+        text: (r) => r.field.groups.map((g) => g.name).join(', '),
+        render: (r) =>
+          r.field.groups.length ? (
+            <div className="flex flex-wrap gap-1">
+              {r.field.groups.map((g) => (
+                <span key={g.id} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-xs">
+                  <span className="size-2 rounded-full" style={{ background: g.color }} aria-hidden />
+                  {g.name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-muted">—</span>
+          ),
+      },
+      {
         id: 'previous',
         label: t('crops.plan.previousCrop'),
         filter: 'select',
@@ -284,6 +311,28 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
           ),
       },
       {
+        id: 'usage',
+        label: t('crops.plan.usage'),
+        filter: 'select',
+        value: (r) => (r.cycles[0] ? t(`crops.usage.${r.cycles[0].usage}`) : null),
+        render: (r) =>
+          r.cycles[0] ? (
+            <>
+              {t(`crops.usage.${r.cycles[0].usage}`)}
+              {r.cycles[0].seedLot && <div className="text-xs text-muted">{[r.cycles[0].seedLot, r.cycles[0].multiplicationGeneration].filter(Boolean).join(' · ')}</div>}
+            </>
+          ) : (
+            <span className="text-muted">—</span>
+          ),
+      },
+      {
+        id: 'landUse',
+        label: t('crops.plan.landUseCode'),
+        filter: 'select',
+        value: (r) => r.cycles[0]?.landUseCode,
+        render: (r) => (r.cycles[0]?.landUseCode ? <span className={cx('tabular', r.cycles[0].landUseCodeIsDefault && 'text-muted')}>{r.cycles[0].landUseCode}</span> : <span className="text-muted">—</span>),
+      },
+      {
         id: 'sown',
         label: t('crops.plan.sown'),
         filter: 'date',
@@ -322,6 +371,17 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
     ],
     [t, writable, onAssign],
   )
+  const presets = useMemo<ColumnPreset[]>(
+    () => [
+      { id: 'overview', label: t('crops.plan.views.overview'), columns: ['area', 'previous', 'crop', 'sown', 'expected', 'status'] },
+      { id: 'planning', label: t('crops.plan.views.planning'), columns: ['area', 'group', 'previous', 'crop', 'usage', 'expected'] },
+      { id: 'regulatory', label: t('crops.plan.views.regulatory'), columns: ['parcel', 'area', 'crop', 'landUse', 'status'] },
+      { id: 'all', label: t('crops.plan.views.all'), columns: columns.map((c) => c.id) },
+    ],
+    [t, columns],
+  )
+  const config = useColumnConfig('agmeo.cropPlan.columns', { all: columns.map((c) => c.id), fixed: ['field', 'crop'], defaults: presets[0].columns })
+  const visibleColumns = columns.filter((c) => config.isVisible(c.id))
   const view = useTableView(columns, rows)
   const shown = useMemo(() => {
     const list = rows.filter(view.matches)
@@ -338,6 +398,9 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
 
   return (
     <div className="min-w-0">
+      <div className="flex justify-end mb-2">
+        <ColumnConfigButton columns={columns} fixed={['field', 'crop']} presets={presets} config={config} />
+      </div>
       <Card padded={false}>
         <Table
           aria-label={t('crops.plan.label')}
@@ -353,7 +416,7 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
                 <Checkbox slot="selection" />
               </Column>
             )}
-            {columns.map((c) => (
+            {visibleColumns.map((c) => (
               <Column key={c.id} id={c.id} isRowHeader={c.id === 'field'} align={c.align} allowsSorting>
                 {view.head(c)}
               </Column>
@@ -368,7 +431,7 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
                     <Checkbox slot="selection" />
                   </Cell>
                 )}
-                {columns.map((c) => (
+                {visibleColumns.map((c) => (
                   <Cell key={c.id} align={c.align}>{c.render(r)}</Cell>
                 ))}
                 <Cell>
@@ -543,7 +606,7 @@ function AssignDialog({ season, fields, initialFieldIds, onClose }: { season: Se
   const crops = useOrgQuery<Crop[]>('/crops')
   const resolveVariety = useVarietyResolver()
   const [fieldIds, setFieldIds] = useState<string[]>(initialFieldIds)
-  const [form, setForm] = useState<CycleForm>({ cropId: null, varietyName: '', status: 'planned', role: 'main', sowingDate: null, expectedHarvestDate: null, expectedYieldTHa: NaN, expectedPricePerT: NaN, areaHa: NaN, notes: '' })
+  const [form, setForm] = useState<CycleForm>(EMPTY_CYCLE_FORM)
   const area = fields.filter((f) => fieldIds.includes(f.id)).reduce((s, f) => s + f.areaHa, 0)
   const save = useOrgMutation(
     async (base, _: void) => {
@@ -561,6 +624,7 @@ function AssignDialog({ season, fields, initialFieldIds, onClose }: { season: Se
         expectedYieldTHa: num(form.expectedYieldTHa),
         expectedPricePerT: num(form.expectedPricePerT),
         areaHa: fieldIds.length === 1 ? num(form.areaHa) : null,
+        ...seedPayload(form),
         notes: form.notes || null,
       })
     },

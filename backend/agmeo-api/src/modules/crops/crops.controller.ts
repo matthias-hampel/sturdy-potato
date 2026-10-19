@@ -1,5 +1,5 @@
 import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
-import { CreateCropCyclesInput, CreateCropInput, CreateVarietyInput, SeasonInput, UpdateCropCycleInput } from '@agmeo/contracts';
+import { CreateCropCyclesInput, CropColorsInput, CreateCropInput, CreateVarietyInput, SeasonInput, UpdateCropCycleInput } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
 import { type Out, ZBody } from '../../core/validation.js';
 import { CropsService } from './crops.service.js';
@@ -11,6 +11,17 @@ export class CropsController {
   @Get('crops')
   list(@OrgCtx() ctx: Ctx) {
     return this.crops.crops(ctx);
+  }
+
+  @Get('crop-colors')
+  cropColors(@OrgCtx() ctx: Ctx) {
+    return this.crops.cropColors(ctx);
+  }
+
+  @Put('crop-colors')
+  @Requires('crop.write')
+  setCropColors(@OrgCtx() ctx: Ctx, @ZBody(CropColorsInput) input: Out<typeof CropColorsInput>) {
+    return this.crops.setCropColors(ctx, input);
   }
 
   @Post('crops')

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { amount, id, isoDate, isoDateTime, longText, positive, shortText, type Ref } from './common.js';
 import type { BaseUnit, ProductCategory } from './inventory.js';
 import type { NutrientRates } from './nutrients.js';
+import { PSM_USAGE_TYPES } from './psmRecord.js';
 
 export const OPERATION_TYPES = ['tillage', 'sowing', 'fertilization', 'crop_protection', 'irrigation', 'harvest', 'inspection', 'other'] as const;
 export type OperationType = (typeof OPERATION_TYPES)[number];
@@ -78,7 +79,7 @@ export const OPERATION_DETAILS = {
     incorporationHours: optNum(1000),
     applicationTechnique: z.enum(['broadcast', 'trailing_hose', 'trailing_shoe', 'injection', 'other']).nullish(),
   }),
-  crop_protection: z.looseObject({ waterLHa: optNum(5000), psmUseId: z.string().max(40).nullish() }),
+  crop_protection: z.looseObject({ waterLHa: optNum(5000), psmUseId: z.string().max(40).nullish(), usageType: z.enum(PSM_USAGE_TYPES).nullish() }),
   irrigation: z.looseObject({ waterMm: optNum(500) }),
   harvest: z.looseObject({ strawRemoved: z.boolean().nullish() }),
   inspection: z.looseObject({}),
@@ -98,6 +99,10 @@ export const OperationInput = z.object({
   responsibleEmployeeId: id.nullish(),
   contractorName: shortText,
   contractorCost: amount.nullish(),
+  /** The catalogue action the operation was planned from. */
+  actionId: id.nullish(),
+  /** Diesel per treated hectare; without it, diesel is estimated from machine hours. */
+  dieselLPerHa: z.number().min(0).max(1000).nullish(),
   bbchStage: shortText,
   targetOrganism: shortText,
   weatherConditions: shortText,
@@ -190,9 +195,13 @@ export interface Operation {
   status: OperationStatus;
   plannedOn: string | null;
   performedAt: string | null;
+  priority: TaskPriority;
+  dueOn: string | null;
   responsibleEmployee: Ref | null;
   contractorName: string | null;
   contractorCost: number | null;
+  actionId: string | null;
+  dieselLPerHa: number | null;
   bbchStage: string | null;
   targetOrganism: string | null;
   weatherConditions: string | null;
@@ -223,6 +232,70 @@ export interface StockShortage {
   required: number;
   available: number;
 }
+
+// ---------------------------------------------------------------------------
+// Task board: operations as cards in planned / in progress / completed
+// ---------------------------------------------------------------------------
+
+export const TASK_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+/** Completed operations stay on the board this many days. */
+export const BOARD_DONE_DAYS = 14;
+
+export const OperationBoardQuery = z.object({
+  seasonId: id.optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+  type: z.enum(OPERATION_TYPES).optional(),
+  cropId: id.optional(),
+  fieldId: id.optional(),
+  assigneeEmployeeId: id.optional(),
+  unassigned: z.coerce.boolean().optional(),
+});
+export type OperationBoardQuery = z.input<typeof OperationBoardQuery>;
+
+export interface BoardCard {
+  id: string;
+  type: OperationType;
+  title: string;
+  status: OperationStatus;
+  plannedOn: string | null;
+  performedAt: string | null;
+  completedAt: string | null;
+  priority: TaskPriority;
+  dueOn: string | null;
+  assignee: Ref | null;
+  crops: { name: string; color: string }[];
+  fields: Ref[];
+  inputs: string[];
+  equipment: string[];
+  totalAreaHa: number;
+  commentCount: number;
+  version: number;
+}
+
+export interface OperationBoard {
+  planned: BoardCard[];
+  in_progress: BoardCard[];
+  completed: BoardCard[];
+}
+
+/** Board metadata: editable in any status without touching the operation's version. */
+export const OperationMetaInput = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  priority: z.enum(TASK_PRIORITIES).optional(),
+  dueOn: isoDate.nullish(),
+  responsibleEmployeeId: id.nullish(),
+});
+export type OperationMetaInput = z.input<typeof OperationMetaInput>;
+
+export const BulkOperationMetaInput = OperationMetaInput.omit({ title: true }).extend({ operationIds: z.array(id).min(1).max(500) });
+export type BulkOperationMetaInput = z.input<typeof BulkOperationMetaInput>;
+
+/** Moves an open operation between planned and in progress (completion has its own endpoint). */
+export const SetOperationStatusInput = z.object({ status: z.enum(['planned', 'in_progress']), version: z.int().positive() });
+export type SetOperationStatusInput = z.input<typeof SetOperationStatusInput>;
 
 export const OperationListQuery = z.object({
   status: z.enum(OPERATION_STATUSES).optional(),
@@ -265,7 +338,9 @@ export interface PsmFinding {
   productId: string;
   productName: string;
   kennr: string | null;
+  fieldId: string;
   fieldName: string | null;
+  cropCycleId: string | null;
   cropName: string | null;
   /** Approved use the application was measured against. */
   awgId: string | null;

@@ -12,6 +12,11 @@ import {
   type CultivationTemplate,
   type OperationStatus,
   type OperationType,
+  type CalendarYearsQuery,
+  type CarryForwardInput,
+  type CropCalendarYears,
+  type CropUsage,
+  type CarryForwardResult,
   type RollOverInput,
   type RollOverResult,
   type RotationInput,
@@ -25,7 +30,7 @@ import { record } from '../../core/events.js';
 import { iso } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
-import { cropName } from '../crops/crop-name.js';
+import { cropColor, cropName } from '../crops/crop-name.js';
 import { resolveSeason } from '../crops/seasons.js';
 import { OperationsService } from '../operations/operations.service.js';
 import { defaultDateInSeason, nextRotationPosition, stepDate } from './dates.js';
@@ -145,7 +150,7 @@ export class PlanningService {
         't.id',
         't.crop_id',
         cropName('c').as('crop_name'),
-        'c.color',
+        cropColor('c').as('color'),
         't.name',
         't.notes',
         't.updated_at',
@@ -372,6 +377,77 @@ export class PlanningService {
    * year gets the rotation's next crop (and the catch crop sown ahead of it), unless it already has
    * a main crop there. Repeating the roll-over creates nothing new.
    */
+  /**
+   * Plans a season by repeating last season's crops: for each field without a crop in the
+   * target season, its whole-field crops of the previous harvest year are copied (crop,
+   * variety, role, template, expected yield; no dates). Divided fields are skipped.
+   */
+  carryForward(ctx: Ctx, input: Out<typeof CarryForwardInput>): Promise<CarryForwardResult> {
+    return this.db.run(ctx, async (trx) => {
+      if (input.applyTemplates && !can(ctx.role, 'operation.write')) throw forbidden('Applying templates needs permission to plan operations');
+      const season = await trx.selectFrom('growing_seasons').select(['id', 'harvest_year']).where('id', '=', input.targetSeasonId).executeTakeFirst();
+      if (!season) throw notFound('Season');
+      let fq = trx.selectFrom('fields').select(['id', 'name']).where('status', '=', 'active').orderBy('name');
+      if (input.fieldIds) fq = fq.where('id', 'in', input.fieldIds.length ? input.fieldIds : ['00000000-0000-0000-0000-000000000000']);
+      const fields = await fq.execute();
+      const result: CarryForwardResult = { created: 0, fields: [] };
+      if (!fields.length) return result;
+      const ids = fields.map((f) => f.id);
+      const planned = new Set((await trx.selectFrom('crop_cycles').select('field_id').where('season_id', '=', season.id).where('field_id', 'in', ids).execute()).map((r) => r.field_id));
+      const divided = new Set((await trx.selectFrom('field_parts').select('field_id').where('season_id', '=', season.id).where('field_id', 'in', ids).execute()).map((r) => r.field_id));
+      const previous = await trx
+        .selectFrom('crop_cycles as cc')
+        .innerJoin('growing_seasons as s', 's.id', 'cc.season_id')
+        .innerJoin('crops as c', 'c.id', 'cc.crop_id')
+        .select(['cc.field_id', 'cc.crop_id', 'cc.variety_id', 'cc.role', 'cc.template_id', 'cc.expected_yield_t_ha', 'cc.land_use_code', cropName('c').as('crop_name')])
+        .where('s.harvest_year', '=', season.harvest_year - 1)
+        .where('cc.field_part_id', 'is', null)
+        .where('cc.field_id', 'in', ids)
+        .orderBy(sql`array_position(array['catch_crop','main','undersown'], cc.role)`)
+        .execute();
+      for (const f of fields) {
+        const prev = previous.filter((p) => p.field_id === f.id)
+        const main = prev.find((p) => p.role === 'main') ?? prev[0]
+        if (planned.has(f.id) || divided.has(f.id)) {
+          result.fields.push({ fieldId: f.id, fieldName: f.name, cropName: main?.crop_name ?? null, outcome: divided.has(f.id) ? 'field_divided' : 'already_planned' });
+          continue;
+        }
+        if (!prev.length) {
+          result.fields.push({ fieldId: f.id, fieldName: f.name, cropName: null, outcome: 'no_previous' });
+          continue;
+        }
+        for (const p of prev) {
+          const { id } = await trx
+            .insertInto('crop_cycles')
+            .values({
+              organization_id: ctx.orgId,
+              field_id: f.id,
+              season_id: season.id,
+              crop_id: p.crop_id,
+              variety_id: p.variety_id,
+              role: p.role,
+              status: 'planned',
+              expected_yield_t_ha: p.expected_yield_t_ha,
+              land_use_code: p.land_use_code,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await record(trx, ctx, {
+            entityType: 'crop_cycle',
+            entityId: id,
+            action: 'created',
+            changes: { fieldId: f.id, cropId: p.crop_id, seasonId: season.id, role: p.role, carriedForward: true },
+            event: { type: 'crop_cycle.created', payload: { cropCycleId: id, fieldId: f.id, fieldPartId: null, cropId: p.crop_id, seasonId: season.id } },
+          });
+          if (p.template_id && input.applyTemplates) await this.applyTemplateIn(trx, ctx, id, p.template_id, false);
+          result.created += 1;
+        }
+        result.fields.push({ fieldId: f.id, fieldName: f.name, cropName: main.crop_name, outcome: 'created' });
+      }
+      return result;
+    });
+  }
+
   rollOver(ctx: Ctx, input: Out<typeof RollOverInput>): Promise<RollOverResult> {
     return this.db.run(ctx, async (trx) => {
       // Applying templates plans operations, which needs the right to plan work.
@@ -508,7 +584,7 @@ export class PlanningService {
         'e.position',
         'e.crop_id',
         cropName('c').as('crop_name'),
-        'c.color',
+        cropColor('c').as('color'),
         'e.template_id',
         't.name as template_name',
         'e.catch_crop_id',
@@ -557,97 +633,148 @@ export class PlanningService {
       const ref = await resolveSeason(trx, seasonId);
       if (!ref) throw notFound('Season');
       const s = await trx.selectFrom('growing_seasons').select(['id', 'harvest_year', 'start_date', 'end_date']).where('id', '=', ref.id).executeTakeFirstOrThrow();
-      const season = { harvestYear: s.harvest_year, startDate: s.start_date, endDate: s.end_date };
-      const cycles = await trx
-        .selectFrom('crop_cycles as cc')
-        .innerJoin('fields as f', 'f.id', 'cc.field_id')
-        .innerJoin('crops as c', 'c.id', 'cc.crop_id')
-        .leftJoin('field_parts as fp', 'fp.id', 'cc.field_part_id')
-        .leftJoin('field_current_geometry as g', 'g.field_id', 'f.id')
-        .select([
-          'cc.id',
-          'cc.field_id',
-          'f.name as field_name',
-          'fp.name as part_name',
-          sql<number>`coalesce(cc.area_ha, fp.area_ha, g.area_ha, 0)`.as('area_ha'),
-          cropName('c').as('crop_name'),
-          'c.color',
-          'c.is_winter_crop',
-          'c.default_sowing_md',
-          'c.default_harvest_md',
-          'cc.role',
-          'cc.sowing_date',
-          'cc.expected_harvest_date',
-        ])
-        .where('cc.season_id', '=', s.id)
-        .orderBy('f.name')
-        .orderBy(sql`fp.sort_order nulls first`)
-        .orderBy(sql`array_position(array['catch_crop','undersown','main'], cc.role)`)
-        .execute();
-      const ops = cycles.length
-        ? await trx
-            .selectFrom('operations as o')
-            .innerJoin('operation_fields as ofl', 'ofl.operation_id', 'o.id')
-            .select([
-              'o.id',
-              'o.type',
-              'o.title',
-              'o.status',
-              'ofl.crop_cycle_id',
-              sql<string>`coalesce((o.performed_at AT TIME ZONE 'Europe/Berlin')::date, o.planned_on)::text`.as('day'),
-            ])
-            .where('ofl.crop_cycle_id', 'in', cycles.map((c) => c.id))
-            .where('o.status', '<>', 'canceled')
-            .where(sql<boolean>`coalesce(o.performed_at::date, o.planned_on) IS NOT NULL`)
-            .orderBy('day')
-            .execute()
-        : [];
-      const harvests = cycles.length
-        ? await trx.selectFrom('harvests').select(['crop_cycle_id', (eb) => eb.fn.max('harvest_date').as('last')]).where('crop_cycle_id', 'in', cycles.map((c) => c.id)).groupBy('crop_cycle_id').execute()
-        : [];
-      const harvestOf = new Map(harvests.map((h) => [h.crop_cycle_id, h.last as string]));
-
-      const rows: CalendarRow[] = cycles.map((c) => {
-        const own = ops.filter((o) => o.crop_cycle_id === c.id);
-        const done = (type: string) => own.filter((o) => o.type === type && o.status === 'completed').map((o) => o.day);
-        const plannedOp = (type: string) => own.find((o) => o.type === type && o.status !== 'completed')?.day ?? null;
-        const sownEarly = c.is_winter_crop || c.role !== 'main';
-        const recordedSowing = done('sowing')[0];
-        const recordedHarvest = harvestOf.get(c.id) ?? done('harvest').at(-1);
-        const sowing = recordedSowing
-          ? { date: recordedSowing, source: 'recorded' as const }
-          : (c.sowing_date ?? plannedOp('sowing'))
-            ? { date: (c.sowing_date ?? plannedOp('sowing'))!, source: 'planned' as const }
-            : c.default_sowing_md
-              ? { date: defaultDateInSeason(c.default_sowing_md, season, sownEarly), source: 'default' as const }
-              : null;
-        let harvest = recordedHarvest
-          ? { date: recordedHarvest, source: 'recorded' as const }
-          : (c.expected_harvest_date ?? plannedOp('harvest'))
-            ? { date: (c.expected_harvest_date ?? plannedOp('harvest'))!, source: 'planned' as const }
-            : c.default_harvest_md
-              ? { date: defaultDateInSeason(c.default_harvest_md, season), source: 'default' as const }
-              : null;
-        // A default that would end before the crop is sown is no information.
-        if (harvest && sowing && harvest.date < sowing.date) harvest = harvest.source === 'default' ? null : harvest;
-        return {
-          cropCycleId: c.id,
-          fieldId: c.field_id,
-          fieldName: c.field_name,
-          fieldPartName: c.part_name,
-          areaHa: c.area_ha,
-          cropName: c.crop_name,
-          cropColor: c.color,
-          role: c.role as CropRole,
-          sowing,
-          harvest,
-          operations: own.map((o) => ({ id: o.id, type: o.type as OperationType, title: o.title, status: o.status as OperationStatus, date: o.day })),
-        };
-      });
+      const rows = await this.calendarRows(trx, s);
       const dates = rows.flatMap((r) => [r.sowing?.date, r.harvest?.date, ...r.operations.map((o) => o.date)]).filter((d): d is string => !!d);
       const from = [s.start_date, ...dates].sort()[0];
       const to = [s.end_date, ...dates].sort().at(-1)!;
       return { seasonId: s.id, from, to, rows };
+    });
+  }
+
+  /** The calendar of several harvest years, with every active field as a row. */
+  calendarYears(ctx: Ctx, q: Out<typeof CalendarYearsQuery>): Promise<CropCalendarYears> {
+    if (q.toYear < q.fromYear || q.toYear - q.fromYear > 10) throw badRequest('invalid_range', 'Choose up to ten consecutive years');
+    return this.db.run(ctx, async (trx) => {
+      const seasons = await trx
+        .selectFrom('growing_seasons')
+        .select(['id', 'name', 'harvest_year', 'start_date', 'end_date'])
+        .where('harvest_year', '>=', q.fromYear)
+        .where('harvest_year', '<=', q.toYear)
+        .orderBy('harvest_year')
+        .execute();
+      const rows: CalendarRow[] = [];
+      for (const s of seasons) rows.push(...(await this.calendarRows(trx, s)));
+      const fields = await trx
+        .selectFrom('fields as f')
+        .innerJoin('field_current_geometry as g', 'g.field_id', 'f.id')
+        .select(['f.id', 'f.name', 'g.area_ha'])
+        .where('f.status', '=', 'active')
+        .orderBy('f.name')
+        .execute();
+      return {
+        seasons: seasons.map((s) => ({ id: s.id, name: s.name, harvestYear: s.harvest_year, startDate: s.start_date, endDate: s.end_date })),
+        fields: fields.map((f) => ({ id: f.id, name: f.name, areaHa: f.area_ha ?? 0 })),
+        rows,
+      };
+    });
+  }
+
+  private async calendarRows(trx: Trx, s: { id: string; harvest_year: number; start_date: string; end_date: string }): Promise<CalendarRow[]> {
+    const season = { harvestYear: s.harvest_year, startDate: s.start_date, endDate: s.end_date };
+    const cycles = await trx
+      .selectFrom('crop_cycles as cc')
+      .innerJoin('fields as f', 'f.id', 'cc.field_id')
+      .innerJoin('crops as c', 'c.id', 'cc.crop_id')
+      .leftJoin('field_parts as fp', 'fp.id', 'cc.field_part_id')
+      .leftJoin('field_current_geometry as g', 'g.field_id', 'f.id')
+      .leftJoin('crop_varieties as v', 'v.id', 'cc.variety_id')
+      .select([
+        'cc.id',
+        'cc.crop_id',
+        'cc.variety_id',
+        'v.name as variety_name',
+        'cc.field_part_id',
+        'cc.usage',
+        'cc.seed_lot',
+        'cc.multiplication_generation',
+        'cc.template_id',
+        'cc.field_id',
+        'f.name as field_name',
+        'fp.name as part_name',
+        sql<number>`coalesce(cc.area_ha, fp.area_ha, g.area_ha, 0)`.as('area_ha'),
+        cropName('c').as('crop_name'),
+        cropColor('c').as('color'),
+        'c.is_winter_crop',
+        'c.default_sowing_md',
+        'c.default_harvest_md',
+        'cc.role',
+        'cc.sowing_date',
+        'cc.expected_harvest_date',
+      ])
+      .where('cc.season_id', '=', s.id)
+      .orderBy('f.name')
+      .orderBy(sql`fp.sort_order nulls first`)
+      .orderBy(sql`array_position(array['catch_crop','undersown','main'], cc.role)`)
+      .execute();
+    const ops = cycles.length
+      ? await trx
+          .selectFrom('operations as o')
+          .innerJoin('operation_fields as ofl', 'ofl.operation_id', 'o.id')
+          .select([
+            'o.id',
+            'o.type',
+            'o.title',
+            'o.status',
+            'ofl.crop_cycle_id',
+            sql<string>`coalesce((o.performed_at AT TIME ZONE 'Europe/Berlin')::date, o.planned_on)::text`.as('day'),
+          ])
+          .where('ofl.crop_cycle_id', 'in', cycles.map((c) => c.id))
+          .where('o.status', '<>', 'canceled')
+          .where(sql<boolean>`coalesce(o.performed_at::date, o.planned_on) IS NOT NULL`)
+          .orderBy('day')
+          .execute()
+      : [];
+    const harvests = cycles.length
+      ? await trx.selectFrom('harvests').select(['crop_cycle_id', (eb) => eb.fn.max('harvest_date').as('last')]).where('crop_cycle_id', 'in', cycles.map((c) => c.id)).groupBy('crop_cycle_id').execute()
+      : [];
+    const harvestOf = new Map(harvests.map((h) => [h.crop_cycle_id, h.last as string]));
+
+    return cycles.map((c) => {
+      const own = ops.filter((o) => o.crop_cycle_id === c.id);
+      const done = (type: string) => own.filter((o) => o.type === type && o.status === 'completed').map((o) => o.day);
+      const plannedOp = (type: string) => own.find((o) => o.type === type && o.status !== 'completed')?.day ?? null;
+      const sownEarly = c.is_winter_crop || c.role !== 'main';
+      const recordedSowing = done('sowing')[0];
+      const recordedHarvest = harvestOf.get(c.id) ?? done('harvest').at(-1);
+      const sowing = recordedSowing
+        ? { date: recordedSowing, source: 'recorded' as const }
+        : (c.sowing_date ?? plannedOp('sowing'))
+          ? { date: (c.sowing_date ?? plannedOp('sowing'))!, source: 'planned' as const }
+          : c.default_sowing_md
+            ? { date: defaultDateInSeason(c.default_sowing_md, season, sownEarly), source: 'default' as const }
+            : null;
+      let harvest = recordedHarvest
+        ? { date: recordedHarvest, source: 'recorded' as const }
+        : (c.expected_harvest_date ?? plannedOp('harvest'))
+          ? { date: (c.expected_harvest_date ?? plannedOp('harvest'))!, source: 'planned' as const }
+          : c.default_harvest_md
+            ? { date: defaultDateInSeason(c.default_harvest_md, season), source: 'default' as const }
+            : null;
+      // A default that would end before the crop is sown is no information.
+      if (harvest && sowing && harvest.date < sowing.date) harvest = harvest.source === 'default' ? null : harvest;
+      return {
+        cropCycleId: c.id,
+        seasonId: s.id,
+        harvestYear: s.harvest_year,
+        cropId: c.crop_id,
+        varietyId: c.variety_id,
+        varietyName: c.variety_name,
+        fieldPartId: c.field_part_id,
+        usage: c.usage as CropUsage,
+        seedLot: c.seed_lot,
+        multiplicationGeneration: c.multiplication_generation,
+        templateId: c.template_id,
+        fieldId: c.field_id,
+        fieldName: c.field_name,
+        fieldPartName: c.part_name,
+        areaHa: c.area_ha,
+        cropName: c.crop_name,
+        cropColor: c.color,
+        role: c.role as CropRole,
+        sowing,
+        harvest,
+        operations: own.map((o) => ({ id: o.id, type: o.type as OperationType, title: o.title, status: o.status as OperationStatus, date: o.day })),
+      };
     });
   }
 

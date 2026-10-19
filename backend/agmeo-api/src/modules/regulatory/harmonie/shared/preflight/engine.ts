@@ -16,7 +16,7 @@ import type {
   PreflightStage,
 } from '../../types.js';
 
-export type ExportFormat = 'enni' | 'endo';
+export type ExportFormat = 'enni' | 'endo' | 'besyd' | 'st';
 
 export type RuleContext<M> = {
   data: ExportData;
