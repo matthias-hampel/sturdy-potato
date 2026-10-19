@@ -155,6 +155,8 @@ export interface CarbonAnalysis {
   nuts2Code: string | null;
   /** Regional reference emissions in kg CO2e per t dry matter by crop code (EU 2024/2666). */
   regionalReference: Record<string, number>;
+  /** Scope 2 of the farm by harvest year; not part of the crop rows, as in the reference. */
+  scope2: Scope2Year[];
 }
 
 export interface CarbonComparisonRow extends CarbonReportRow {
@@ -165,6 +167,7 @@ export interface CarbonComparisonRow extends CarbonReportRow {
 export interface CarbonComparison {
   organizations: { id: string; name: string }[];
   rows: CarbonComparisonRow[];
+  scope2: (Scope2Year & { orgId: string; orgName: string })[];
 }
 
 export interface CarbonSettings {
@@ -258,3 +261,50 @@ export interface RothCResult {
   intervals: Record<string, { input: unknown; output: RothCResultItem[] }>;
   averaged: AveragedRothCResult[];
 }
+
+// ---------------------------------------------------------------------------
+// Scope 2: purchased electricity and heat per harvest year
+// ---------------------------------------------------------------------------
+
+export const SCOPE2_ELECTRICITY_KINDS = ['electricityGrid', 'electricityRenewable'] as const;
+export const SCOPE2_HEATING_KINDS = [
+  'heatingHeizoelDiesel',
+  'heatingErdgas',
+  'heatingFluessiggas',
+  'heatingBiogas',
+  'heatingPellets',
+  'heatingBiomasseHolz',
+  'heatingNahFernwaerme',
+] as const;
+export const SCOPE2_KINDS = [...SCOPE2_ELECTRICITY_KINDS, ...SCOPE2_HEATING_KINDS] as const;
+export type Scope2Kind = (typeof SCOPE2_KINDS)[number];
+
+export interface Scope2Parameter {
+  id: string;
+  name: string;
+  /** kg CO2e per kWh. */
+  value: number;
+  unit: string;
+  source: string;
+}
+
+export interface Scope2Year {
+  harvestYear: number;
+  entries: { kind: Scope2Kind; kwh: number; kgCo2e: number }[];
+  /** kg CO2e of electricity only, and of electricity and heat. */
+  electricityKg: number;
+  totalKg: number;
+}
+
+export interface Scope2 extends Scope2Year {
+  parameters: Record<Scope2Kind, Scope2Parameter>;
+}
+
+export const Scope2Input = z.object({
+  harvestYear: z.int().min(1990).max(2200),
+  entries: z
+    .array(z.object({ kind: z.enum(SCOPE2_KINDS), kwh: z.number().min(0).max(1e9) }))
+    .max(SCOPE2_KINDS.length)
+    .refine((rows) => new Set(rows.map((r) => r.kind)).size === rows.length, { message: 'Each kind once' }),
+});
+export type Scope2Input = z.input<typeof Scope2Input>;

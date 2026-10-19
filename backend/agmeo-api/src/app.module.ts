@@ -4,6 +4,8 @@ import { AuthGuard, OrgGuard } from './auth/auth.guards.js';
 import { TokenService } from './auth/token.service.js';
 import { ApiExceptionFilter } from './core/errors.js';
 import { DatabaseModule } from './db/database.js';
+import { CarbonController } from './modules/carbon/carbon.controller.js';
+import { CarbonService } from './modules/carbon/carbon.service.js';
 import { ComplianceController } from './modules/compliance/compliance.controller.js';
 import { ComplianceService } from './modules/compliance/compliance.service.js';
 import { CropsController } from './modules/crops/crops.controller.js';
@@ -82,6 +84,7 @@ export const DOMAIN_SERVICES = [
   FilesService,
   BoardService,
   CommentsService,
+  CarbonService,
 ];
 
 /**
@@ -116,6 +119,7 @@ export const DOMAIN_SERVICES = [
     FilesController,
     BoardController,
     CommentsController,
+    CarbonController,
   ],
   providers: [
     TokenService,

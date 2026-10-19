@@ -1,22 +1,11 @@
 /**
  * Scope 2 (purchased electricity and heat) factors per kWh (agmeo src/lib/co2calculator/src/scope2.ts).
- * The entries themselves belong to the farm overview, which is not ported yet; the factors are
- * listed with the calculation parameters.
+ * Entries are kept per organization and harvest year (carbon.service.ts).
  */
+import { SCOPE2_KINDS, type Scope2Kind } from '@agmeo/contracts';
 import { parametersWithDetails as paramsCited } from './parameters-sources.js';
 
-export const SCOPE2_KINDS = [
-  'electricityGrid',
-  'electricityRenewable',
-  'heatingHeizoelDiesel',
-  'heatingErdgas',
-  'heatingFluessiggas',
-  'heatingBiogas',
-  'heatingPellets',
-  'heatingBiomasseHolz',
-  'heatingNahFernwaerme',
-] as const;
-export type Scope2Kind = (typeof SCOPE2_KINDS)[number];
+export { SCOPE2_KINDS, type Scope2Kind };
 
 export type Scope2ParameterDetails = {
   id: string;
