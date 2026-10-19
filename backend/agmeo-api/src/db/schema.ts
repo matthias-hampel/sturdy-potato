@@ -497,6 +497,22 @@ export interface FieldRasters {
   valid_pixel_pct: Numeric;
 }
 
+export interface FieldAnnotations {
+  color: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  field_id: string;
+  geometry: string;
+  id: Generated<string>;
+  kind: string;
+  layer: string | null;
+  note: string | null;
+  observed_on: string;
+  organization_id: string;
+  source: Generated<string>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface FieldCarbonSoil {
   bulk_density: Numeric;
   clay_pct: Numeric;
@@ -1318,6 +1334,7 @@ export interface DB {
   field_observations: FieldObservations;
   field_parts: FieldParts;
   field_rasters: FieldRasters;
+  field_annotations: FieldAnnotations;
   field_carbon_soil: FieldCarbonSoil;
   fields: Fields;
   file_folders: FileFolders;

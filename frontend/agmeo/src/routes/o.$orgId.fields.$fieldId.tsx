@@ -19,6 +19,7 @@ import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, Opacity
 import { INDEX_INFO, type ShownIndex } from '#/components/monitoring/indices'
 import { ObservationsChart } from '#/components/monitoring/ObservationsChart'
 import { SceneStats } from '#/components/monitoring/SceneStats'
+import { useSceneAnnotations } from '#/components/monitoring/SceneAnnotations'
 import { ProductivityZones } from '#/components/monitoring/ProductivityZones'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
 import { OperationsTable } from '#/components/operations/OperationsTable'
@@ -430,6 +431,8 @@ function SatelliteTab({
   const index: ShownIndex = layer === 'rgb' ? 'ndvi' : layer
   const select = satellite.setDate
   const [map, setMap] = useState<MapLibreMap | null>(null)
+  const { can } = useOrg()
+  const notes = useSceneAnnotations({ fieldId: field.id, date: shown?.date ?? null, layer, map, canEdit: can('field.write') })
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -443,11 +446,25 @@ function SatelliteTab({
       )}
       <div className="grid xl:grid-cols-[1fr_1.2fr] gap-6 items-start">
         <div className="space-y-2">
-          <FieldMap fields={[field]} fillOpacity={0} raster={satellite.raster} labels={false} className="h-96 xl:h-[28rem]" onMap={setMap}>
+          <FieldMap fields={[field]} fillOpacity={0} raster={satellite.raster} labels={false} className="h-96 xl:h-[28rem]" onMap={setMap} annotations={notes.collection} onAnnotationClick={notes.onClick}>
             <IndexLegend index={layer} stretch={stretch} />
+            {notes.toolbar}
           </FieldMap>
           {satellite.dates.length > 0 && <AcquisitionTimeline dates={satellite.dates} date={shown} onDate={select} single />}
           {shown && layer === 'rgb' && !shown.hasRgb && <p className="text-xs text-muted">{t('fieldPage.satellite.noRgb')}</p>}
+          {notes.notes.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label={t('annotations.listLabel')}>
+              {notes.notes.map((n) => (
+                <li key={n.id}>
+                  <AriaButton onPress={() => notes.edit(n.id)} className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-fg-2 hover:bg-surface-2">
+                    <span className="size-2.5 rounded-full border border-line" style={{ backgroundColor: n.color }} />
+                    {n.note || t(`annotations.tool.${n.kind}`)}
+                  </AriaButton>
+                </li>
+              ))}
+            </ul>
+          )}
+          {notes.dialogs}
         </div>
         <div className="space-y-6">
           <Card title={t('fieldPage.satellite.overTime', { index: INDEX_INFO[index].label })} description={INDEX_INFO[index].description}>

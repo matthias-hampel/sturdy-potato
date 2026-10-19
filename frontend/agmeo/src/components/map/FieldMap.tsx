@@ -18,6 +18,8 @@ const HIGHLIGHT = `${OWN}highlight`
 const RASTER = `${OWN}raster`
 const OVERLAY = `${OWN}overlay`
 const IMAGE = `${OWN}image`
+const NOTES = `${OWN}notes`
+const NOTE_LAYERS = [`${NOTES}-fill`, `${NOTES}-line`, `${NOTES}-point`]
 
 /** A georeferenced image over the map, e.g. a radar frame; corners as [west, south, east, north]. */
 export interface MapImageOverlay {
@@ -55,6 +57,9 @@ export interface FieldMapProps {
   occludedBy?: RefObject<HTMLElement | null>
   /** Receives the MapLibre map once it is ready (and null when it goes away), e.g. for an image export. */
   onMap?: (map: MapLibreMap | null) => void
+  /** Notes drawn on the map (points, lines, polygons), coloured by their `color` and labelled with their `note`. */
+  annotations?: FeatureCollection | null
+  onAnnotationClick?: (id: string) => void
 }
 
 export function FieldMap({
@@ -77,6 +82,8 @@ export function FieldMap({
   image,
   occludedBy,
   onMap,
+  annotations,
+  onAnnotationClick,
 }: FieldMapProps) {
   const { t } = useTranslation()
   const [basemap, setBasemap] = useState<Basemap>(defaultBasemap)
@@ -88,6 +95,8 @@ export function FieldMap({
   const { containerRef, map, styleVersion } = useMap({ basemap, interactive, ...initial })
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
+  const onAnnotationClickRef = useRef(onAnnotationClick)
+  onAnnotationClickRef.current = onAnnotationClick
   const onMapRef = useRef(onMap)
   onMapRef.current = onMap
   useEffect(() => {
@@ -182,6 +191,64 @@ export function FieldMap({
   useEffect(() => {
     if (map?.getLayer(IMAGE) && image) map.setPaintProperty(IMAGE, 'raster-opacity', image.opacity ?? 0.85)
   }, [map, image?.opacity])
+
+  // Annotations: drawn above everything else, data updated in place, layers created once per style.
+  useEffect(() => {
+    if (!map || !map.getLayer(`${OWN}fields-outline`)) return
+    const empty: FeatureCollection = { type: 'FeatureCollection', features: [] }
+    if (!annotations && !map.getSource(NOTES)) return
+    if (!map.getSource(NOTES)) {
+      map.addSource(NOTES, { type: 'geojson', data: empty })
+      const polygon: ['==', ['geometry-type'], string] = ['==', ['geometry-type'], 'Polygon']
+      map.addLayer({ id: `${NOTES}-fill`, type: 'fill', source: NOTES, filter: polygon, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.25 } })
+      map.addLayer({
+        id: `${NOTES}-line`,
+        type: 'line',
+        source: NOTES,
+        filter: ['!=', ['geometry-type'], 'Point'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': ['case', polygon, 2, 3] },
+      })
+      map.addLayer({
+        id: `${NOTES}-point`,
+        type: 'circle',
+        source: NOTES,
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: { 'circle-radius': 7, 'circle-color': ['get', 'color'], 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+      })
+      map.addLayer({
+        id: `${NOTES}-label`,
+        type: 'symbol',
+        source: NOTES,
+        filter: ['has', 'note'],
+        layout: { 'text-field': ['get', 'note'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-max-width': 15, 'text-offset': [0, 1.3], 'text-anchor': 'top' },
+        paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.7)', 'text-halo-width': 1.2 },
+      })
+    }
+    ;(map.getSource(NOTES) as GeoJSONSource).setData(annotations ?? empty)
+  }, [map, annotations, styleVersion, data])
+
+  useEffect(() => {
+    if (!map) return
+    const click = (e: MapLayerMouseEvent) => {
+      const id = e.features?.[0]?.properties?.id as string | undefined
+      if (id) onAnnotationClickRef.current?.(id)
+    }
+    const enter = () => (map.getCanvas().style.cursor = onAnnotationClickRef.current ? 'pointer' : '')
+    const leave = () => (map.getCanvas().style.cursor = '')
+    for (const layer of NOTE_LAYERS) {
+      map.on('click', layer, click)
+      map.on('mouseenter', layer, enter)
+      map.on('mouseleave', layer, leave)
+    }
+    return () => {
+      for (const layer of NOTE_LAYERS) {
+        map.off('click', layer, click)
+        map.off('mouseenter', layer, enter)
+        map.off('mouseleave', layer, leave)
+      }
+    }
+  }, [map])
 
   useEffect(() => {
     if (!map) return
