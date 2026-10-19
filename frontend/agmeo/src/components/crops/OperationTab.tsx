@@ -17,15 +17,18 @@ import {
   type OperationType,
   type CropTableConditionsRow,
   type CycleWaterBalance,
+  type CycleNitrogen,
   type PsmFinding,
 } from '@agmeo/contracts'
 import { useNavigate } from '@tanstack/react-router'
-import { Ban, ChartLine, CheckCircle2, Map as MapIcon, Pencil, Plus, Scale } from 'lucide-react'
+import { Ban, ChartLine, Split, CheckCircle2, Map as MapIcon, Pencil, Plus, Scale } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Form, type Selection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { useCropTableMetrics } from '#/components/crops/cropTableMetrics'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
+import { ApplyStrategyDialog, DuevCell, NLossCell, NSupplyCell } from '#/components/crops/Nitrogen'
+import { FertilizerNeedDialog } from '#/components/nutrients/FertilizerNeedDialog'
 import { IrrigationInfoButton, IrrigationMapCard, RootDepthCell, SoilTypeCell, SoilWaterBadge, WaterBalanceDialog, WaterBalanceSparkline } from '#/components/crops/Irrigation'
 import { PhenologyDialog } from '#/components/crops/PhenologyDialog'
 import { ComplianceInfoButton, FindingsFlag, MixBadge, ProductInfo } from '#/components/crops/ProtectionExtras'
@@ -85,6 +88,10 @@ export interface ColumnCtx {
   waterLoading: boolean
   openWaterBalance: (wb: CycleWaterBalance, fieldName: string) => void
   writable: boolean
+  /** agmeo N balance of a crop cycle (nitrogen). */
+  nitrogen: (cycle: CropCycle | null) => CycleNitrogen | undefined
+  nitrogenLoading: boolean
+  openNeed: (cropCycleId: string) => void
 }
 
 interface TabConfig {
@@ -102,6 +109,8 @@ interface TabConfig {
   conditions?: boolean
   /** The tab shows the water balances (irrigation). */
   water?: boolean
+  /** The tab shows the agmeo N balance and applies strategies (nitrogen). */
+  nitrogen?: boolean
   /** Columns shown before the viewer picks their own; all when not set. */
   defaults?: string[]
   edits?: () => DetailEdit[]
@@ -293,6 +302,36 @@ const waterColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
   waterColumn('waterBalance', tt('irrigation.waterBalance'), ctx, (wb, r) => <WaterBalanceSparkline wb={wb} onOpen={() => wb && ctx.openWaterBalance(wb, r.field.name)} />),
 ]
 
+// ---- Nitrogen: the agmeo N balance per field (reference nitrogen page) ----
+
+const nColumn = (id: string, label: string, ctx: ColumnCtx, get: (n: CycleNitrogen) => number | null, render?: (n: CycleNitrogen) => ReactNode): ColumnDef<GroupRow> => ({
+  id,
+  label,
+  align: 'end',
+  filter: 'number',
+  value: (r) => {
+    const n = r.first ? ctx.nitrogen(r.cycle) : undefined
+    return n ? get(n) : null
+  },
+  render: (r) => {
+    if (!r.first) return null
+    if (ctx.nitrogenLoading) return <span className="text-muted">…</span>
+    const n = ctx.nitrogen(r.cycle)
+    if (!n) return dash
+    if (render) return render(n)
+    const v = get(n)
+    return v == null ? dash : <span className="tabular">{fmt.num(v)}</span>
+  },
+})
+const nitrogenColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
+  nColumn('nDemand', tt('nitrogen.col.demand'), ctx, (n) => n.nDemand),
+  nColumn('nSupply', tt('nitrogen.col.supply'), ctx, (n) => n.nSupply, (n) => <NSupplyCell row={n} writable={ctx.writable} />),
+  nColumn('nLoss', tt('nitrogen.col.loss'), ctx, (n) => n.nLoss, (n) => <NLossCell row={n} writable={ctx.writable} />),
+  nColumn('nDifference', tt('nitrogen.col.difference'), ctx, (n) => n.nDifference, (n) => (n.nDifference == null ? dash : <span className="tabular font-semibold">{fmt.num(n.nDifference)}</span>)),
+  nColumn('fieldTotalN', tt('nitrogen.col.totalN'), ctx, (n) => n.totalN),
+  nColumn('duev', tt('nitrogen.col.duev'), ctx, (n) => n.duevNeed, (n) => <DuevCell row={n} onOpen={() => ctx.openNeed(n.cropCycleId)} />),
+]
+
 // ---- Plant protection: BBCH at the application date, products with mix and register info, findings ----
 
 /** The stage recorded on the operation, else the (calibrated) model's on its date. */
@@ -417,6 +456,8 @@ const TABS: Record<OperationTab, TabConfig> = {
   },
   nitrogen: {
     type: 'fertilization',
+    nitrogen: true,
+    fieldColumns: nitrogenColumns,
     include: hasNitrogen,
     cumulative: (op) => op.nutrientTotals?.n ?? null,
     columns: () => [
@@ -512,9 +553,13 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   const [phenology, setPhenology] = useState<{ cycle: CropCycle; fieldName: string; date: string | null } | null>(null)
   const water = useOrgQuery<CycleWaterBalance[]>('/water-balances', { seasonId }, { enabled: !!cfg.water && !!seasonId, staleTime: 5 * 60_000 })
   const [waterDialog, setWaterDialog] = useState<{ wb: CycleWaterBalance; fieldName: string } | null>(null)
+  const nitrogen = useOrgQuery<CycleNitrogen[]>('/nitrogen', { seasonId }, { enabled: !!cfg.nitrogen && !!seasonId, staleTime: 5 * 60_000 })
+  const [needDialog, setNeedDialog] = useState<string | null>(null)
+  const [strategyFor, setStrategyFor] = useState<string[] | null>(null)
   const ctx = useMemo<ColumnCtx>(() => {
     const codes = new Map((crops.data ?? []).map((c) => [c.id, c.code]))
     const waterBy = new Map((water.data ?? []).map((w) => [w.cropCycleId, w]))
+    const nitrogenBy = new Map((nitrogen.data ?? []).map((n) => [n.cropCycleId, n]))
     const findings = new Map<string, PsmFinding[]>()
     for (const f of checks.data ?? []) findings.set(f.operationId, [...(findings.get(f.operationId) ?? []), f])
     return {
@@ -528,8 +573,11 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
       waterLoading: water.isLoading,
       openWaterBalance: (wb, fieldName) => setWaterDialog({ wb, fieldName }),
       writable: can('crop.write'),
+      nitrogen: (c) => (c ? nitrogenBy.get(c.id) : undefined),
+      nitrogenLoading: nitrogen.isLoading,
+      openNeed: (id) => setNeedDialog(id),
     }
-  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId, water.data, water.isLoading, can])
+  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId, water.data, water.isLoading, can, nitrogen.data, nitrogen.isLoading])
 
   const allColumns = useMemo<ColumnDef<GroupRow>[]>(
     () => [
@@ -628,6 +676,8 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
     return { count: fieldIds.size, ops: [...opsById.values()], fieldIds: [...fieldIds] }
   }, [selection, shown])
   const openOps = selected.ops.filter(isOpen)
+  // Main crops of the selected fields, for strategies.
+  const selectedCycles = useMemo(() => [...new Set(shown.filter((r) => r.first && selected.fieldIds.includes(r.field.id) && r.cycle).map((r) => r.cycle!.id))], [shown, selected.fieldIds])
   const clear = () => setSelection(new Set())
 
   const cancel = useBulkMutation((base, op: Operation) => api.post(`${base}/operations/${op.id}/cancel`, { version: op.version }), {
@@ -732,6 +782,11 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         <Button size="sm" isDisabled={!openOps.length} onPress={() => setDialog('complete')}>
           <CheckCircle2 /> {t('fieldOps.bulk.complete')}
         </Button>
+        {cfg.nitrogen && (
+          <Button size="sm" isDisabled={!selectedCycles.length} onPress={() => setStrategyFor(selectedCycles)}>
+            <Split /> {t('nitrogen.strategy.applyButton', { count: selectedCycles.length })}
+          </Button>
+        )}
         {cfg.seed && (
           <Button size="sm" isDisabled={!openOps.length} onPress={() => setDialog('distribute')}>
             <Scale /> {t('fieldOps.distribute.open')}
@@ -756,6 +811,8 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
       {dialog === 'edit' && <BulkEditDialog ops={openOps} skipped={selected.ops.length - openOps.length} cfg={cfg} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'complete' && <CompleteDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'distribute' && <DistributeSeedDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
+      {needDialog && <FertilizerNeedDialog cropCycleId={needDialog} onClose={() => setNeedDialog(null)} />}
+      {strategyFor && <ApplyStrategyDialog cropCycleIds={strategyFor} onClose={() => { setStrategyFor(null); clear() }} />}
       {waterDialog && <WaterBalanceDialog wb={waterDialog.wb} fieldName={waterDialog.fieldName} onClose={() => setWaterDialog(null)} />}
       {phenology && <PhenologyDialog cropCycleId={phenology.cycle.id} fieldName={phenology.fieldName} initialDate={phenology.date} onClose={() => setPhenology(null)} />}
     </>
