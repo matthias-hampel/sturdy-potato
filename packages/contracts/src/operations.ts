@@ -103,6 +103,8 @@ export const OperationInput = z.object({
   actionId: id.nullish(),
   /** Diesel per treated hectare; without it, diesel is estimated from machine hours. */
   dieselLPerHa: z.number().min(0).max(1000).nullish(),
+  /** Electricity per treated hectare (electric machines, irrigation pumps). */
+  electricityKWhPerHa: z.number().min(0).max(10000).nullish(),
   bbchStage: shortText,
   targetOrganism: shortText,
   weatherConditions: shortText,
@@ -177,6 +179,8 @@ export interface OperationLabor {
 export interface OperationEquipment {
   equipmentId: string;
   equipmentName: string;
+  /** Machine (tractor, self-propelled) or implement. */
+  equipmentClass: 'machine' | 'implement';
   hours: number;
   hourlyCost: number | null;
 }
@@ -202,6 +206,7 @@ export interface Operation {
   contractorCost: number | null;
   actionId: string | null;
   dieselLPerHa: number | null;
+  electricityKWhPerHa: number | null;
   bbchStage: string | null;
   targetOrganism: string | null;
   weatherConditions: string | null;

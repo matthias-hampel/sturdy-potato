@@ -1,6 +1,23 @@
-import type { CropCycle, Field, Operation, OperationType } from '@agmeo/contracts'
+import {
+  DEFAULT_GERMINATION_RATE,
+  EQUIPMENT_GONE_STATUSES,
+  SEED_PACKAGE_SIZES,
+  distributeTotalSeedKg,
+  grainsPerM2FromKgHa,
+  kgHaFromGrainsPerM2,
+  plantsPerM2FromGrains,
+  seedPackagesForGrains,
+  type Crop,
+  type CropCycle,
+  type Employee,
+  type Equipment,
+  type Field,
+  type Operation,
+  type OperationInputLine,
+  type OperationType,
+} from '@agmeo/contracts'
 import { useNavigate } from '@tanstack/react-router'
-import { Ban, CheckCircle2, Pencil, Plus } from 'lucide-react'
+import { Ban, CheckCircle2, Map as MapIcon, Pencil, Plus, Scale } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Form, type Selection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
@@ -8,14 +25,14 @@ import { FieldNameLink } from '#/components/crops/FieldNameLink'
 import { CropTag, OperationStatusBadge } from '#/components/labels'
 import { FieldShape } from '#/components/map/FieldShape'
 import { initialState, toPayload } from '#/components/operations/OperationForm'
-import { NoMatches, SelectionBar, selectedIds, useBulkMutation, useTableView, type ColumnDef, type FilterKind } from '#/components/table/tableTools'
+import { ColumnConfigButton, NoMatches, SelectionBar, selectedIds, useBulkMutation, useColumnConfig, useTableView, type ColumnDef, type FilterKind } from '#/components/table/tableTools'
 import { t as tt } from '#/i18n'
 import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
 import { Button, Link } from '#/ui/Button'
-import { Checkbox, DatePicker, NumberField, TextField } from '#/ui/Field'
+import { Checkbox, DatePicker, NumberField, Option, Select, TextField } from '#/ui/Field'
 import { Card, ErrorNotice, Loading, Notice } from '#/ui/Layout'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
@@ -43,16 +60,29 @@ interface DetailEdit {
   max: number
 }
 
+/** What column factories need besides the entry: crop codes and the season's field conditions. */
+export interface ColumnCtx {
+  cropCode: (cycle: CropCycle | null) => string | null
+}
+
 interface TabConfig {
   type: OperationType
   /** Which operations of the type belong in the tab (fertilization is split into base and N). */
   include?: (op: Operation) => boolean
   /** Key figure per entry that is summed up per field. */
   cumulative?: (op: Operation) => number | null
-  columns: () => ColumnDef<Entry>[]
+  columns: (ctx: ColumnCtx) => ColumnDef<Entry>[]
+  /** Columns about the field rather than one operation (shown on the field's first row). */
+  fieldColumns?: (orgId: string) => ColumnDef<GroupRow>[]
+  /** Columns shown before the viewer picks their own; all when not set. */
+  defaults?: string[]
   edits?: () => DetailEdit[]
   /** BBCH stage and target organism can be edited. */
   protection?: boolean
+  /** Machine, implement, operator, diesel, electricity and working time can be edited. */
+  work?: boolean
+  /** Seed can be distributed over the selected fields. */
+  seed?: boolean
 }
 
 const dash = <span className="text-muted">—</span>
@@ -120,10 +150,66 @@ const textColumn = (id: string, label: string, get: (e: Entry) => string | null 
   value: get,
   render: (e) => get(e) ?? dash,
 })
-const equipmentNames = (e: Entry) => {
+
+// ---- Machine, implement, operator and consumption (reference seeding/tillage columns) ----
+
+const namesOf = (op: Operation, cls: 'machine' | 'implement') => op.equipment.filter((q) => q.equipmentClass === cls).map((q) => q.equipmentName)
+const implementNames = (e: Entry) => {
   const tool = typeof e.op.details.tool === 'string' ? e.op.details.tool : null
-  return [...e.op.equipment.map((q) => q.equipmentName), ...(tool ? [tool] : [])]
+  return [...namesOf(e.op, 'implement'), ...(tool ? [tool] : [])]
 }
+/** Working time of the operation: machine and implement run together, so the longest line counts. */
+const workHours = (op: Operation): number | null => {
+  const hours = op.equipment.length ? op.equipment.map((q) => q.hours) : op.labor.map((l) => l.hours)
+  return hours.length ? Math.max(...hours) : null
+}
+export const hoursPerHa = (op: Operation): number | null => {
+  const h = workHours(op)
+  return h != null && op.totalAreaHa > 0 ? h / op.totalAreaHa : null
+}
+const operatorName = (op: Operation) => op.responsibleEmployee?.name ?? (op.labor.map((l) => l.employeeName).join(', ') || null)
+const workColumns = (): ColumnDef<Entry>[] => [
+  textColumn('machine', tt('fieldOps.machine'), (e) => namesOf(e.op, 'machine').join(', ') || null, 'select', (e) => namesOf(e.op, 'machine')),
+  textColumn('implement', tt('fieldOps.implement'), (e) => implementNames(e).join(', ') || null, 'select', implementNames),
+  textColumn('operator', tt('fieldOps.operator'), (e) => operatorName(e.op), 'select'),
+  numberColumn('diesel', tt('fieldOps.diesel'), (e) => e.op.dieselLPerHa, { unit: 'l/ha' }),
+  numberColumn('electricity', tt('fieldOps.electricity'), (e) => e.op.electricityKWhPerHa, { unit: 'kWh/ha' }),
+  numberColumn('hoursPerHa', tt('fieldOps.hoursPerHa'), (e) => hoursPerHa(e.op), { unit: 'h/ha', digits: 2 }),
+]
+
+// ---- Seed figures (reference seeding columns; conversions from contracts/seeding) ----
+
+const seedLine = (op: Operation): OperationInputLine | undefined => op.inputs.find((i) => i.category === 'seed')
+const KG_PER: Partial<Record<OperationInputLine['baseUnit'], number>> = { kg: 1, t: 1000 }
+/** kg seed per hectare: the seed line's rate when it is weighed, else the drill setting × TKG. */
+export const seedRateKgHa = (op: Operation): number | null => {
+  const line = seedLine(op)
+  const factor = line ? KG_PER[line.baseUnit] : undefined
+  if (line?.ratePerHa != null && factor) return line.ratePerHa * factor
+  return kgHaFromGrainsPerM2(detail(op, 'seedsPerM2'), detail(op, 'thousandGrainWeightG'))
+}
+const germination = (op: Operation) => detail(op, 'germinationPct') ?? DEFAULT_GERMINATION_RATE
+const grainsPerM2 = (op: Operation) => detail(op, 'seedsPerM2') ?? grainsPerM2FromKgHa(seedRateKgHa(op), detail(op, 'thousandGrainWeightG'))
+/** Seed units (packages) for the entry's area: counted seed directly, else grains over the crop's package size. */
+const seedUnits = (e: Entry, ctx: ColumnCtx): number | null => {
+  const line = seedLine(e.op)
+  if (line?.baseUnit === 'unit' && line.ratePerHa != null) return line.ratePerHa * e.areaHa
+  const size = SEED_PACKAGE_SIZES[ctx.cropCode(e.cycle) ?? '']
+  return size ? seedPackagesForGrains(grainsPerM2(e.op), e.areaHa, size) : null
+}
+
+/** Field-level column: the button that opens the field's application maps to draw a seeding map. */
+const seedMapColumn = (orgId: string): ColumnDef<GroupRow> => ({
+  id: 'seedMap',
+  label: tt('fieldOps.seedMap'),
+  value: () => null,
+  render: (r) =>
+    r.first ? (
+      <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: r.field.id }} search={{ tab: 'maps' }} variant="quiet" size="sm" aria-label={tt('fieldOps.seedMapFor', { field: r.field.name })}>
+        <MapIcon /> {tt('fieldOps.seedMap')}
+      </Link>
+    ) : null,
+})
 
 const hasBaseNutrients = (op: Operation) => {
   const n = op.nutrientTotals
@@ -134,13 +220,8 @@ const hasNitrogen = (op: Operation) => !op.nutrientTotals || (op.nutrientTotals.
 const TABS: Record<OperationTab, TabConfig> = {
   tillage: {
     type: 'tillage',
-    columns: () => [
-      dateColumn(),
-      titleColumn(),
-      detailColumn('depth', tt('fieldOps.depth'), 'depthCm', 'cm'),
-      textColumn('equipment', tt('fieldOps.equipment'), (e) => equipmentNames(e).join(', ') || null, 'select', equipmentNames),
-      numberColumn('hours', tt('fieldOps.hours'), (e) => (e.op.equipment.length ? e.op.equipment.reduce((s, q) => s + q.hours, 0) : null), { unit: 'h' }),
-    ],
+    work: true,
+    columns: () => [dateColumn(), titleColumn(), detailColumn('depth', tt('fieldOps.depth'), 'depthCm', 'cm'), ...workColumns()],
     edits: () => [{ key: 'depthCm', label: tt('fieldOps.depth'), unit: 'cm', max: 100 }],
   },
   base_fertilization: {
@@ -158,13 +239,25 @@ const TABS: Record<OperationTab, TabConfig> = {
   },
   sowing: {
     type: 'sowing',
-    columns: () => [
+    work: true,
+    seed: true,
+    fieldColumns: (orgId) => [seedMapColumn(orgId)],
+    defaults: ['date', 'variety', 'products', 'seeds', 'tgw', 'germination', 'seedRate', 'totalSeed', 'seedUnits', 'machine', 'operator', 'seedMap'],
+    columns: (ctx) => [
       dateColumn(),
       textColumn('variety', tt('crops.form.variety'), (e) => e.cycle?.varietyName, 'select'),
       productsColumn(),
       detailColumn('seeds', tt('fieldOps.seedsPerM2'), 'seedsPerM2', undefined, 0),
+      numberColumn('density', tt('fieldOps.targetDensity'), (e) => plantsPerM2FromGrains(detail(e.op, 'seedsPerM2'), germination(e.op)), { digits: 0 }),
       detailColumn('tgw', tt('fieldOps.tgw'), 'thousandGrainWeightG', 'g'),
       detailColumn('germination', tt('fieldOps.germination'), 'germinationPct', '%', 0),
+      numberColumn('seedRate', tt('fieldOps.seedRate'), (e) => seedRateKgHa(e.op), { unit: 'kg/ha' }),
+      numberColumn('totalSeed', tt('fieldOps.totalSeed'), (e) => {
+        const rate = seedRateKgHa(e.op)
+        return rate == null ? null : rate * e.areaHa
+      }, { unit: 'kg', digits: 0 }),
+      numberColumn('seedUnits', tt('fieldOps.seedUnits'), (e) => seedUnits(e, ctx), { digits: 1 }),
+      ...workColumns(),
     ],
     edits: () => [
       { key: 'seedsPerM2', label: tt('fieldOps.seedsPerM2'), max: 5000 },
@@ -227,6 +320,9 @@ const opDate = (op: Operation) => op.performedAt?.slice(0, 10) ?? op.plannedOn
 const isOpen = (op: Operation) => op.status === 'planned' || op.status === 'in_progress'
 const STATUS_ORDER = { planned: 0, in_progress: 1, completed: 2, canceled: 3 } as const
 
+/** Field, crop, area and status always show. */
+const FIXED_COLUMNS = ['field', 'crop', 'area', 'status']
+
 interface GroupRow {
   id: string
   field: Field
@@ -247,11 +343,16 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   const fields = useOrgQuery<Field[]>('/fields', { seasonId })
   const cycles = useOrgQuery<CropCycle[]>('/crop-cycles', { seasonId }, { enabled: !!seasonId })
   const ops = useOrgQuery<Operation[]>('/operations', { seasonId, type: cfg.type })
+  const crops = useOrgQuery<Crop[]>('/crops')
   const [selection, setSelection] = useState<Selection>(new Set())
-  const [dialog, setDialog] = useState<'edit' | 'complete' | null>(null)
+  const [dialog, setDialog] = useState<'edit' | 'complete' | 'distribute' | null>(null)
   const writable = can('operation.write')
+  const ctx = useMemo<ColumnCtx>(() => {
+    const codes = new Map((crops.data ?? []).map((c) => [c.id, c.code]))
+    return { cropCode: (c) => (c ? (codes.get(c.cropId) ?? null) : null) }
+  }, [crops.data])
 
-  const columns = useMemo<ColumnDef<GroupRow>[]>(
+  const allColumns = useMemo<ColumnDef<GroupRow>[]>(
     () => [
       { id: 'field', label: t('crops.plan.field'), value: (r) => r.field.name, text: (r) => `${r.field.name} ${r.field.farmName}`, render: () => null },
       { id: 'crop', label: t('crops.plan.crop'), filter: 'select', value: (r) => r.cycle?.cropName, render: (r) => (r.sameCycle ? null : r.cycle ? <CropTag name={r.cycle.cropName} color={r.cycle.cropColor} /> : r.first ? dash : null) },
@@ -264,8 +365,9 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         text: (r) => fmt.ha(r.entry?.areaHa ?? r.field.croppedAreaHa),
         render: (r) => fmt.ha(r.entry?.areaHa ?? r.field.croppedAreaHa),
       },
+      ...(cfg.fieldColumns?.(orgId) ?? []),
       // The tab's own columns are about the operation; a field without one has nothing to show or match.
-      ...cfg.columns().map<ColumnDef<GroupRow>>((c) => ({
+      ...cfg.columns(ctx).map<ColumnDef<GroupRow>>((c) => ({
         ...c,
         value: (r) => (r.entry ? c.value(r.entry) : null),
         text: (r) => (r.entry ? (c.text ?? c.value)(r.entry)?.toString() : null),
@@ -281,8 +383,12 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         render: (r) => r.entry && <OperationStatusBadge status={r.entry.op.status} />,
       },
     ],
-    [cfg, t],
+    [cfg, t, ctx, orgId],
   )
+  const fixed = FIXED_COLUMNS
+  const config = useColumnConfig(`agmeo.fieldOps.${tab}.columns`, { all: allColumns.map((c) => c.id), fixed, defaults: cfg.defaults ?? allColumns.map((c) => c.id) })
+  const visibleIds = allColumns.flatMap((c) => (config.isVisible(c.id) ? [c.id] : [])).join(',')
+  const columns = useMemo(() => allColumns.filter((c) => visibleIds.split(',').includes(c.id)), [allColumns, visibleIds])
   const rows = useMemo(() => {
     const visible = (ops.data ?? []).filter((o) => o.status !== 'canceled' && (!cfg.include || cfg.include(o)))
     const cyclesById = new Map((cycles.data ?? []).map((c) => [c.id, c]))
@@ -352,9 +458,21 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   if (fields.isLoading || ops.isLoading) return <Loading />
   if (ops.error) return <ErrorNotice error={ops.error} />
 
-  const firstColumn = columns[3]?.id
+  // The plan link sits in the first column about the operation.
+  const firstColumn = columns.find((c) => !fixed.includes(c.id) && !(cfg.fieldColumns?.(orgId) ?? []).some((f) => f.id === c.id))?.id
   return (
     <>
+      <div className="flex justify-end mb-2">
+        <ColumnConfigButton
+          columns={allColumns}
+          fixed={fixed}
+          presets={[
+            ...(cfg.defaults ? [{ id: 'default', label: t('fieldOps.views.default'), columns: cfg.defaults }] : []),
+            { id: 'all', label: t('fieldOps.views.all'), columns: allColumns.map((c) => c.id) },
+          ]}
+          config={config}
+        />
+      </div>
       <Card padded={false}>
         <Table
           aria-label={label}
@@ -424,6 +542,11 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         <Button size="sm" isDisabled={!openOps.length} onPress={() => setDialog('complete')}>
           <CheckCircle2 /> {t('fieldOps.bulk.complete')}
         </Button>
+        {cfg.seed && (
+          <Button size="sm" isDisabled={!openOps.length} onPress={() => setDialog('distribute')}>
+            <Scale /> {t('fieldOps.distribute.open')}
+          </Button>
+        )}
         <ConfirmButton
           title={t('fieldOps.bulk.cancelTitle', { count: openOps.length })}
           message={t('fieldOps.bulk.cancelMessage')}
@@ -442,6 +565,7 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
 
       {dialog === 'edit' && <BulkEditDialog ops={openOps} skipped={selected.ops.length - openOps.length} cfg={cfg} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'complete' && <CompleteDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
+      {dialog === 'distribute' && <DistributeSeedDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
     </>
   )
 }
@@ -461,9 +585,16 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
   const [bbch, setBbch] = useState('')
   const [target, setTarget] = useState('')
   const [rates, setRates] = useState<Record<string, number>>({})
+  const [work, setWork] = useState<WorkEdit>({ machineId: null, implementId: null, operatorId: null, diesel: NaN, electricity: NaN, hoursPerHa: NaN })
+  const equipment = useOrgQuery<Equipment[]>('/equipment', undefined, { enabled: !!cfg.work })
+  const employees = useOrgQuery<Employee[]>('/employees', undefined, { enabled: !!cfg.work })
   const filled = (v: number | undefined) => v != null && !Number.isNaN(v)
-  const changed = !!plannedOn || !!bbch.trim() || !!target.trim() || Object.values(details).some(filled) || Object.values(rates).some(filled)
+  const workChanged = !!work.machineId || !!work.implementId || !!work.operatorId || filled(work.diesel) || filled(work.electricity) || filled(work.hoursPerHa)
+  const changed = !!plannedOn || !!bbch.trim() || !!target.trim() || Object.values(details).some(filled) || Object.values(rates).some(filled) || workChanged
   const multiField = ops.some((op) => new Set(op.fields.map((f) => f.fieldId)).size > 1)
+  // A machine or implement is recorded with its hours; operations without any need the time per hectare.
+  const needsHours = (!!work.machineId || !!work.implementId) && !filled(work.hoursPerHa) && ops.some((op) => workHours(op) == null)
+  const classOf = useMemo(() => new Map((equipment.data ?? []).map((e) => [e.id, e.class])), [equipment.data])
 
   const save = useBulkMutation(
     (base, op: Operation) => {
@@ -474,6 +605,7 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
       if (bbch.trim()) s.bbchStage = bbch.trim()
       if (target.trim()) s.targetOrganism = target.trim()
       s.inputs = s.inputs.map((i) => (i.productId && filled(rates[i.productId]) ? { ...i, ratePerHa: rates[i.productId] } : i))
+      if (cfg.work) applyWork(s, op, work, classOf)
       return api.put(`${base}/operations/${op.id}`, { ...toPayload(s, fields, op.version), status: op.status === 'in_progress' ? 'in_progress' : 'planned' })
     },
     { label: (op) => op.title, success: (count) => t('fieldOps.bulk.updated', { count }), onDone: onClose },
@@ -496,6 +628,8 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
             <NumberField key={d.key} label={d.label} unit={d.unit} minValue={0} maxValue={d.max} value={details[d.key] ?? NaN} onChange={(v) => setDetails((x) => ({ ...x, [d.key]: v }))} placeholder={t('fieldOps.bulk.unchanged')} />
           ))}
         </div>
+        {cfg.work && <WorkFields value={work} onChange={setWork} equipment={equipment.data ?? []} employees={employees.data ?? []} />}
+        {needsHours && <Notice tone="warning">{t('fieldOps.bulk.needsHours')}</Notice>}
         {products.length > 0 && (
           <section className="space-y-2">
             <h3 className="text-sm font-semibold text-fg">{t('fieldOps.bulk.rates')}</h3>
@@ -508,7 +642,136 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
         )}
         <div className="flex justify-end gap-2">
           <Button onPress={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" variant="primary" isDisabled={!changed || !allFields.data} isPending={save.isPending}>
+          <Button type="submit" variant="primary" isDisabled={!changed || needsHours || !allFields.data} isPending={save.isPending}>
+            {t('fieldOps.bulk.apply', { count: ops.length })}
+          </Button>
+        </div>
+      </Form>
+    </ModalDialog>
+  )
+}
+
+interface WorkEdit {
+  machineId: string | null
+  implementId: string | null
+  operatorId: string | null
+  diesel: number
+  electricity: number
+  hoursPerHa: number
+}
+
+type FormState = ReturnType<typeof initialState>
+
+/**
+ * Puts the chosen machine, implement and operator on the operation (replacing the line of the same
+ * class), and sets diesel, electricity and the working time per hectare. The time goes on every
+ * machine and implement line; without one it stays as recorded.
+ */
+function applyWork(s: FormState, op: Operation, w: WorkEdit, classOf: Map<string, string>) {
+  const ok = (v: number) => !Number.isNaN(v)
+  const hours = ok(w.hoursPerHa) ? Math.round(w.hoursPerHa * op.totalAreaHa * 100) / 100 : (workHours(op) ?? 0)
+  const line = (id: string) => ({ key: Math.random(), id, hours })
+  for (const [id, cls] of [[w.machineId, 'machine'], [w.implementId, 'implement']] as const) {
+    if (!id) continue
+    s.equipment = [...s.equipment.filter((l) => l.id && (classOf.get(l.id) ?? 'machine') !== cls), line(id)]
+  }
+  if (ok(w.hoursPerHa)) s.equipment = s.equipment.map((l) => ({ ...l, hours }))
+  if (w.operatorId) {
+    s.responsibleEmployeeId = w.operatorId
+    if (!s.labor.some((l) => l.id === w.operatorId) && hours > 0) s.labor = [...s.labor, line(w.operatorId)]
+  }
+  if (ok(w.diesel)) s.dieselLPerHa = w.diesel
+  if (ok(w.electricity)) s.electricityKWhPerHa = w.electricity
+}
+
+function WorkFields({ value: w, onChange, equipment, employees }: { value: WorkEdit; onChange: (w: WorkEdit) => void; equipment: Equipment[]; employees: Employee[] }) {
+  const { t } = useTranslation()
+  const active = equipment.filter((e) => !EQUIPMENT_GONE_STATUSES.includes(e.status) && !e.archivedAt)
+  const keep = { id: '__keep', name: t('fieldOps.bulk.unchanged') }
+  const pick = (v: unknown) => (v && v !== '__keep' ? String(v) : null)
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold text-fg">{t('fieldOps.bulk.work')}</h3>
+      <div className="grid sm:grid-cols-3 gap-4">
+        <Select label={t('fieldOps.machine')} items={[keep, ...active.filter((e) => e.class === 'machine')]} value={w.machineId ?? '__keep'} onChange={(v) => onChange({ ...w, machineId: pick(v) })}>
+          {(e) => <Option id={e.id}>{e.name}</Option>}
+        </Select>
+        <Select label={t('fieldOps.implement')} items={[keep, ...active.filter((e) => e.class === 'implement')]} value={w.implementId ?? '__keep'} onChange={(v) => onChange({ ...w, implementId: pick(v) })}>
+          {(e) => <Option id={e.id}>{e.name}</Option>}
+        </Select>
+        <Select label={t('fieldOps.operator')} items={[keep, ...employees.filter((e) => e.active)]} value={w.operatorId ?? '__keep'} onChange={(v) => onChange({ ...w, operatorId: pick(v) })}>
+          {(e) => <Option id={e.id}>{e.name}</Option>}
+        </Select>
+        <NumberField label={t('fieldOps.diesel')} unit="l/ha" minValue={0} maxValue={1000} formatOptions={{ maximumFractionDigits: 2 }} value={w.diesel} onChange={(diesel) => onChange({ ...w, diesel })} placeholder={t('fieldOps.bulk.unchanged')} />
+        <NumberField label={t('fieldOps.electricity')} unit="kWh/ha" minValue={0} maxValue={10000} formatOptions={{ maximumFractionDigits: 2 }} value={w.electricity} onChange={(electricity) => onChange({ ...w, electricity })} placeholder={t('fieldOps.bulk.unchanged')} />
+        <NumberField label={t('fieldOps.hoursPerHa')} unit="h/ha" minValue={0} maxValue={100} formatOptions={{ maximumFractionDigits: 3 }} value={w.hoursPerHa} onChange={(hoursPerHa) => onChange({ ...w, hoursPerHa })} placeholder={t('fieldOps.bulk.unchanged')} />
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Spreads a total seed weight over the selected sowings as one kg/ha rate (reference "Gesamtmenge auf
+ * die Schläge verteilen"): every operation gets the same rate on its seed line; operations without the
+ * seed get it as a new line.
+ */
+function DistributeSeedDialog({ ops, onClose }: { ops: Operation[]; onClose: () => void }) {
+  const { t } = useTranslation()
+  const allFields = useOrgQuery<Field[]>('/fields')
+  const weighed = useMemo(() => {
+    const m = new Map<string, { name: string; unit: 'kg' | 't'; stock: number }>()
+    for (const op of ops) for (const i of op.inputs) if (i.category === 'seed' && (i.baseUnit === 'kg' || i.baseUnit === 't') && !m.has(i.productId)) m.set(i.productId, { name: i.productName, unit: i.baseUnit, stock: i.availableStock })
+    return [...m.entries()].map(([id, p]) => ({ id, ...p }))
+  }, [ops])
+  const [productId, setProductId] = useState<string | null>(weighed[0]?.id ?? null)
+  const [totalKg, setTotalKg] = useState(NaN)
+  const product = weighed.find((p) => p.id === productId)
+  const areas = ops.map((op) => op.totalAreaHa)
+  const rateKg = distributeTotalSeedKg(Number.isNaN(totalKg) ? null : totalKg, areas)
+  const stockKg = product ? product.stock * (product.unit === 't' ? 1000 : 1) : null
+
+  const save = useBulkMutation(
+    (base, op: Operation) => {
+      const fields = allFields.data ?? []
+      const s = initialState({ farmId: op.farmId, fields, operation: op })
+      const rate = product!.unit === 't' ? rateKg! / 1000 : rateKg!
+      s.inputs = s.inputs.some((i) => i.productId === product!.id)
+        ? s.inputs.map((i) => (i.productId === product!.id ? { ...i, ratePerHa: rate } : i))
+        : [...s.inputs, { key: Math.random(), productId: product!.id, ratePerHa: rate, storageLocationId: null, unitCost: NaN }]
+      return api.put(`${base}/operations/${op.id}`, { ...toPayload(s, fields, op.version), status: op.status === 'in_progress' ? 'in_progress' : 'planned' })
+    },
+    { label: (op) => op.title, success: (count) => t('fieldOps.bulk.updated', { count }), onDone: onClose },
+  )
+
+  return (
+    <ModalDialog isOpen onOpenChange={(o) => !o && onClose()} title={t('fieldOps.distribute.title')} description={t('fieldOps.distribute.tooltip')} size="sm">
+      <Form onSubmit={(e) => { e.preventDefault(); save.mutate(ops) }} className="space-y-4">
+        {weighed.length === 0 ? (
+          <Notice tone="info">{t('fieldOps.distribute.noSeed')}</Notice>
+        ) : (
+          <>
+            <Select label={t('fieldOps.distribute.product')} items={weighed} value={productId} onChange={(v) => setProductId(v ? String(v) : null)}>
+              {(p) => <Option id={p.id}>{p.name}</Option>}
+            </Select>
+            <NumberField
+              label={t('fieldOps.distribute.total')}
+              unit="kg"
+              minValue={0}
+              value={totalKg}
+              onChange={setTotalKg}
+              placeholder={t('fieldOps.distribute.placeholder')}
+              description={stockKg != null ? t('fieldOps.distribute.stock', { kg: fmt.num(stockKg) }) : undefined}
+            />
+            {rateKg != null && (
+              <p className="text-sm text-fg-2">
+                {t('fieldOps.distribute.applied', { total: `${fmt.num(totalKg)} kg`, count: ops.length, rate: `${fmt.num(rateKg, 1)} kg/ha` })}
+              </p>
+            )}
+          </>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button onPress={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" variant="primary" isDisabled={rateKg == null || !product || !allFields.data} isPending={save.isPending}>
             {t('fieldOps.bulk.apply', { count: ops.length })}
           </Button>
         </div>

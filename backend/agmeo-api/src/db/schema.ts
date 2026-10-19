@@ -917,6 +917,7 @@ export interface Operations {
   details: Generated<Json>;
   diesel_l_per_ha: Numeric | null;
   due_on: string | null;
+  electricity_kwh_per_ha: Numeric | null;
   farm_id: string;
   id: Generated<string>;
   notes: string | null;
