@@ -1,9 +1,9 @@
 import type { Crop, Farm, Field, ImportFieldsResult, LandUseCode } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import type { FeatureCollection } from 'geojson'
+import type { FeatureCollection, Geometry } from 'geojson'
 import { AlertTriangle, CheckCircle2, FileText, FileUp, type LucideIcon, Shapes, Tractor } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { DropZone, FileTrigger, Radio, RadioGroup } from 'react-aria-components'
+import { Button as AriaButton, DropZone, FileTrigger, Radio, RadioGroup } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { CRS_OPTIONS, type CrsId } from '#/components/import/crs'
@@ -38,6 +38,8 @@ import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx, focusRing } from '#/ui/utils'
 
 const SOURCES = ['antrag', 'shapefile', 'isoxml'] as const
+// The import preview frames only the file's fields, not the farm's existing ones.
+const NO_FIELDS: string[] = []
 
 export const Route = createFileRoute('/o/$orgId/import')({
   validateSearch: z.object({ source: z.enum(SOURCES).optional() }),
@@ -135,6 +137,8 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   const [assignCrops, setAssignCrops] = useState(true)
   const [cropChoice, setCropChoice] = useState<Record<string, string | null>>({})
   const [result, setResult] = useState<ImportFieldsResult | null>(null)
+  // What the map moves to: all fields of a newly read file, or the row clicked in the table.
+  const [focus, setFocus] = useState<Geometry | FeatureCollection | null>(null)
 
   // Parse whenever the files or the chosen reference system change.
   useEffect(() => {
@@ -181,6 +185,14 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     if (source === 'antrag') return antragMapping ? antragRows(layer.features, antragMapping) : []
     return shapeMapping ? shapeRows(layer.features, shapeMapping) : []
   }, [parsed, layer, source, antragMapping, shapeMapping])
+
+  // A new file, layer or reference system frames all its fields; a changed column mapping keeps the camera.
+  useEffect(() => {
+    const geometries =
+      parsed?.kind === 'isoxml' ? parsed.rows.flatMap((r) => (r.geometry ? [r.geometry] : [])) : layer && layer.crs.source !== 'unknown' ? layer.features.map((f) => f.geometry) : []
+    const features = geometries.map((geometry) => ({ type: 'Feature' as const, geometry, properties: {} }))
+    setFocus(features.length ? { type: 'FeatureCollection', features } : null)
+  }, [parsed, layer])
 
   const duplicates = useMemo(() => new Map(rows.map((r) => [r.key, existingField(r, fields, farmId)])), [rows, fields, farmId])
   const invalid = useMemo(() => new Set(rows.filter((r) => !r.geometry).map((r) => r.key)), [rows])
@@ -244,7 +256,14 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   return (
     <div className="grid xl:grid-cols-[1fr_26rem] gap-4 items-start">
       <div className="space-y-4 min-w-0">
-        <FieldMap fields={fields} highlight={selected.length ? preview : null} view={farmView(farms.find((f) => f.id === farmId))} className="h-[50vh] min-h-80" />
+        <FieldMap
+          fields={fields}
+          fitIds={NO_FIELDS}
+          highlight={selected.length ? preview : null}
+          focus={focus}
+          view={farmView(farms.find((f) => f.id === farmId))}
+          className="h-[50vh] min-h-80"
+        />
         {rows.length > 0 && !result && (
           <Card
             title={t('import.rows.title')}
@@ -270,7 +289,6 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   {cropKeys.length > 0 && <Column>{t('import.rows.crop')}</Column>}
                   {source === 'isoxml' && <Column>{t('import.rows.origin')}</Column>}
                   <Column align="end">{t('import.rows.area')}</Column>
-                  <Column>{t('import.rows.status')}</Column>
                 </TableHeader>
                 <TableBody items={rows}>
                   {(r) => {
@@ -281,7 +299,26 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                         <Cell>
                           <Checkbox slot="selection" />
                         </Cell>
-                        <Cell className="max-w-64 truncate">{r.name}</Cell>
+                        <Cell>
+                          <span className="flex items-center gap-2 min-w-0">
+                            {r.geometry ? (
+                              // A press on the name moves the map there (also again, after panning away); the rest of the row toggles the selection.
+                              <AriaButton
+                                className="truncate max-w-64 text-left cursor-pointer hover:underline underline-offset-2 outline-none focus-visible:underline"
+                                onPress={() => setFocus({ ...r.geometry! })}
+                              >
+                                {r.name}
+                              </AriaButton>
+                            ) : (
+                              <span className="truncate max-w-64">{r.name}</span>
+                            )}
+                            {!r.geometry ? (
+                              <Badge tone="danger">{t('import.rows.noBoundary')}</Badge>
+                            ) : (
+                              dup && <Badge tone="warning">{t('import.rows.exists', { name: dup.name })}</Badge>
+                            )}
+                          </span>
+                        </Cell>
                         <Cell className="text-muted">{r.identifier}</Cell>
                         {cropKeys.length > 0 && (
                           <Cell>
@@ -294,15 +331,6 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                         )}
                         {source === 'isoxml' && <Cell className="text-muted">{r.origin}</Cell>}
                         <Cell align="end">{r.areaHa != null ? fmt.ha(r.areaHa, 2) : '–'}</Cell>
-                        <Cell>
-                          {!r.geometry ? (
-                            <Badge tone="danger">{t('import.rows.noBoundary')}</Badge>
-                          ) : dup ? (
-                            <Badge tone="warning">{t('import.rows.exists', { name: dup.name })}</Badge>
-                          ) : (
-                            <Badge tone="success">{t('import.rows.new')}</Badge>
-                          )}
-                        </Cell>
                       </Row>
                     )
                   }}
