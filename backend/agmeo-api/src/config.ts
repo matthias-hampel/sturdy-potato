@@ -43,6 +43,12 @@ export const config = {
     // Local development delivers to Mailpit (docker compose), web UI on http://localhost:8025.
     smtpUrl: env('SMTP_URL', 'smtp://localhost:1025'),
     from: env('MAIL_FROM', 'agmeo <no-reply@agmeo.local>'),
+    /** Signs the unsubscribe links of notification e-mails; falls back to the dev auth secret outside production. */
+    unsubscribeSecret: env('EMAIL_UNSUBSCRIBE_SECRET', process.env.NODE_ENV === 'production' ? '' : 'agmeo-dev-unsubscribe-secret'),
+    /** Weekly storage overview for operations (comma-separated addresses); empty sends none. */
+    storageOverviewTo: env('STORAGE_DIGEST_RECIPIENTS', ''),
+    /** Language of the operations overview. */
+    storageOverviewLocale: env('STORAGE_DIGEST_LOCALE', 'de'),
   },
   storage: {
     // 'local' keeps objects in a directory (development, tests); 's3' uses an S3-compatible bucket.

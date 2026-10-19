@@ -15,7 +15,7 @@ import {
 } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
-import { notFound } from '../../core/errors.js';
+import { conflict, notFound } from '../../core/errors.js';
 import { record } from '../../core/events.js';
 import { iso, round } from '../../core/mappers.js';
 import { Database, type Trx } from '../../db/database.js';
@@ -114,6 +114,17 @@ export class SoilHistoryService {
     return this.db.run(ctx, async (trx) => {
       const targets = await trx.selectFrom('soil_zonations').select(['id', 'field_id', 'superseded_at']).where('id', 'in', zonationIds).where('status', '=', 'ready').execute();
       if (targets.length !== new Set(zonationIds).size) throw notFound('Zonation');
+      const org = await trx.selectFrom('organizations').select('lock_zoned_fields').where('id', '=', ctx.orgId).executeTakeFirst();
+      if (org?.lock_zoned_fields && targets.some((t) => t.superseded_at)) {
+        const active = await trx
+          .selectFrom('soil_zonations')
+          .select('field_id')
+          .where('field_id', 'in', targets.map((t) => t.field_id))
+          .where('status', '=', 'ready')
+          .where('superseded_at', 'is', null)
+          .execute();
+        if (active.length) throw conflict('zonation_locked', 'Fields with a soil zonation are locked in this organization (Settings → Soil)');
+      }
       let restored = 0;
       for (const t of targets) {
         if (!t.superseded_at) continue;

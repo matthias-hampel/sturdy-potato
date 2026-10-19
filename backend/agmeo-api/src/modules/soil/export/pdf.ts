@@ -4,6 +4,7 @@
  * app rendered these with jsPDF in the browser.
  */
 import { deflateSync } from 'node:zlib';
+import type { PdfImage } from '../../../core/images.js';
 
 export type Rgb = [number, number, number];
 
@@ -54,10 +55,27 @@ export class PdfDoc {
   private ops: string[] = [];
   readonly width: number;
   readonly height: number;
+  /** The organization's logo, drawn by `logo()` (one shared XObject for every page). */
+  readonly logoImage: PdfImage | null;
 
-  constructor(size = A4_LANDSCAPE) {
+  constructor(size = A4_LANDSCAPE, opts: { logo?: PdfImage | null } = {}) {
     this.width = size.width;
     this.height = size.height;
+    this.logoImage = opts.logo ?? null;
+  }
+
+  /**
+   * Draws the logo inside a box whose top right corner is (right, top), keeping its aspect ratio.
+   * Returns the drawn width (0 without a logo).
+   */
+  logo(right: number, top: number, maxWidth: number, maxHeight: number): number {
+    const img = this.logoImage;
+    if (!img) return 0;
+    const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+    const w = img.width * scale;
+    const h = img.height * scale;
+    this.ops.push(`q ${n(w)} 0 0 ${n(h)} ${n(right - w)} ${n(this.height - top - h)} cm /Logo Do Q`);
+    return w;
   }
 
   get pageCount() {
@@ -140,13 +158,26 @@ export class PdfDoc {
     const font = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
     const bold = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
     const info = add(`<< /Producer (agmeo) /Title (${escape(encode(meta.title ?? ''))}) >>`);
+    let xobjects = '';
+    const img = this.logoImage;
+    if (img) {
+      const streamOf = (dict: string, data: Buffer) => Buffer.concat([Buffer.from(`${dict.slice(0, -2)} /Length ${data.length} >>\nstream\n`, 'latin1'), data, Buffer.from('\nendstream', 'latin1')]);
+      const mask = img.alpha ? add(streamOf(`<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode >>`, img.alpha)) : null;
+      const image = add(
+        streamOf(
+          `<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /${img.colorSpace} /BitsPerComponent 8 /Filter /${img.filter}${mask ? ` /SMask ${mask} 0 R` : ''} >>`,
+          img.data,
+        ),
+      );
+      xobjects = ` /XObject << /Logo ${image} 0 R >>`;
+    }
     const kids: number[] = [];
     for (const content of pages) {
       const data = deflateSync(Buffer.from(content, 'latin1'));
       const stream = add(Buffer.concat([Buffer.from(`<< /Length ${data.length} /Filter /FlateDecode >>\nstream\n`, 'latin1'), data, Buffer.from('\nendstream', 'latin1')]));
       kids.push(
         add(
-          `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${this.width} ${this.height}] /Resources << /Font << /F1 ${font} 0 R /F2 ${bold} 0 R >> >> /Contents ${stream} 0 R >>`,
+          `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${this.width} ${this.height}] /Resources << /Font << /F1 ${font} 0 R /F2 ${bold} 0 R >>${xobjects} >> /Contents ${stream} 0 R >>`,
         ),
       );
     }

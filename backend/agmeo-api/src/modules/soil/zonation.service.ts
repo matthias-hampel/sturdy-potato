@@ -19,7 +19,7 @@ import type { MultiPolygon, Point } from 'geojson';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
-import { badRequest, notFound } from '../../core/errors.js';
+import { badRequest, conflict, notFound } from '../../core/errors.js';
 import { record } from '../../core/events.js';
 import { iso, round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
@@ -182,10 +182,15 @@ export class SoilZonationService {
         .where('f.id', 'in', input.fieldIds)
         .execute();
       const results: BatchResult['results'] = [];
+      const locked = await this.lockedFields(trx, ctx, input.fieldIds);
       for (const fieldId of input.fieldIds) {
         const field = fields.find((f) => f.id === fieldId);
         if (!field) {
           results.push({ fieldId, status: 'failed', reason: 'field-not-found' });
+          continue;
+        }
+        if (locked.has(fieldId)) {
+          results.push({ fieldId, status: 'skipped', reason: 'locked' });
           continue;
         }
         if (!field.gv || field.status !== 'active') {
@@ -229,6 +234,7 @@ export class SoilZonationService {
   createPlan(ctx: Ctx, fieldId: string, input: Out<typeof SamplingPlanInput>): Promise<FieldSoilZonation> {
     return this.db.run(ctx, async (trx) => {
       const field = await this.field(trx, fieldId);
+      await this.assertUnlocked(trx, ctx, [fieldId]);
       const plan = await this.plan(trx, field, input);
       if (plan.tooMany) throw badRequest('too_many_cells', 'The cell size is too small for this field');
       if (!plan.zones.length) throw badRequest('no_zones', 'The plan has no zones');
@@ -241,10 +247,15 @@ export class SoilZonationService {
     return this.db.run(ctx, async (trx) => {
       const batchId = randomUUID();
       const results: BatchResult['results'] = [];
+      const locked = await this.lockedFields(trx, ctx, input.fieldIds);
       for (const fieldId of input.fieldIds) {
         const field = await this.field(trx, fieldId).catch(() => null);
         if (!field) {
           results.push({ fieldId, status: 'skipped', reason: 'no-geometry' });
+          continue;
+        }
+        if (locked.has(fieldId)) {
+          results.push({ fieldId, status: 'skipped', reason: 'locked' });
           continue;
         }
         const planInput: Out<typeof SamplingPlanInput> = { mode: input.mode, cellHa: input.cellHa, axis: null, points: null, zoningId: null };
@@ -449,6 +460,7 @@ export class SoilZonationService {
     return this.db.run(ctx, async (trx) => {
       await noJit(trx);
       const field = await this.field(trx, fieldId);
+      await this.assertUnlocked(trx, ctx, [fieldId]);
       let zonation = await trx
         .selectFrom('soil_zonations')
         .select(['id', 'params'])
@@ -524,6 +536,8 @@ export class SoilZonationService {
         .where('z.id', '=', zoneId)
         .executeTakeFirst();
       if (!zone) throw notFound('Zone');
+      // Lab values and probe numbers stay editable; the zone layout does not.
+      if (input.label !== undefined) await this.assertUnlocked(trx, ctx, [zone.field_id]);
       const patch: Record<string, unknown> = {};
       if (input.label !== undefined) patch.label = input.label;
       if (input.probeNr !== undefined) patch.probe_nr = input.probeNr;
@@ -601,6 +615,7 @@ export class SoilZonationService {
         .executeTakeFirst();
       if (!target) throw notFound('Zonation');
       if (target.superseded_at) {
+        await this.assertUnlocked(trx, ctx, [fieldId]);
         await this.supersedeActive(trx, fieldId);
         await trx.updateTable('soil_zonations').set({ superseded_at: null }).where('id', '=', zonationId).execute();
         await record(trx, ctx, { entityType: 'field', entityId: fieldId, action: 'soil_zonation_restored', changes: { zonationId } });
@@ -613,10 +628,36 @@ export class SoilZonationService {
   remove(ctx: Ctx, fieldId: string): Promise<void> {
     return this.db.run(ctx, async (trx) => {
       await this.field(trx, fieldId);
+      await this.assertUnlocked(trx, ctx, [fieldId]);
       await this.supersedeActive(trx, fieldId);
       await trx.deleteFrom('soil_zonations').where('field_id', '=', fieldId).where('status', 'in', ['queued', 'failed']).execute();
       await record(trx, ctx, { entityType: 'field', entityId: fieldId, action: 'soil_zonation_removed', changes: {} });
     });
+  }
+
+  /**
+   * Fields that keep their zonation: with Settings → Soil → "lock fields with a zonation", a field
+   * with an active zonation cannot be re-zoned, edited, restored or cleared (reference:
+   * lockFieldsWithExistingZonation).
+   */
+  async lockedFields(trx: Trx, ctx: Ctx, fieldIds: string[]): Promise<Set<string>> {
+    if (!fieldIds.length) return new Set();
+    const org = await trx.selectFrom('organizations').select('lock_zoned_fields').where('id', '=', ctx.orgId).executeTakeFirst();
+    if (!org?.lock_zoned_fields) return new Set();
+    const rows = await trx
+      .selectFrom('soil_zonations')
+      .select('field_id')
+      .where('field_id', 'in', fieldIds)
+      .where('status', '=', 'ready')
+      .where('superseded_at', 'is', null)
+      .execute();
+    return new Set(rows.map((r) => r.field_id));
+  }
+
+  async assertUnlocked(trx: Trx, ctx: Ctx, fieldIds: string[]) {
+    if ((await this.lockedFields(trx, ctx, fieldIds)).size) {
+      throw conflict('zonation_locked', 'Fields with a soil zonation are locked in this organization (Settings → Soil)');
+    }
   }
 
   async field(trx: Trx, fieldId: string): Promise<FieldGeometry> {
