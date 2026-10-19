@@ -40,6 +40,7 @@ import { Route as OOrgIdCropsIndexRouteImport } from './routes/o.$orgId.crops.in
 import { Route as OOrgIdCropsCropCycleIdRouteImport } from './routes/o.$orgId.crops.$cropCycleId'
 import { Route as OOrgIdFieldsIndexRouteImport } from './routes/o.$orgId.fields.index'
 import { Route as OOrgIdFieldsFieldIdRouteImport } from './routes/o.$orgId.fields.$fieldId'
+import { Route as OOrgIdFieldsLeasesRouteImport } from './routes/o.$orgId.fields.leases'
 import { Route as OOrgIdFieldsManageRouteImport } from './routes/o.$orgId.fields.manage'
 import { Route as OOrgIdFieldsNewRouteImport } from './routes/o.$orgId.fields.new'
 import { Route as OOrgIdMachineryIndexRouteImport } from './routes/o.$orgId.machinery.index'
@@ -206,6 +207,11 @@ const OOrgIdFieldsFieldIdRoute = OOrgIdFieldsFieldIdRouteImport.update({
   path: '/fields/$fieldId',
   getParentRoute: () => OOrgIdRoute,
 } as any)
+const OOrgIdFieldsLeasesRoute = OOrgIdFieldsLeasesRouteImport.update({
+  id: '/fields/leases',
+  path: '/fields/leases',
+  getParentRoute: () => OOrgIdRoute,
+} as any)
 const OOrgIdFieldsManageRoute = OOrgIdFieldsManageRouteImport.update({
   id: '/fields/manage',
   path: '/fields/manage',
@@ -283,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/leases': typeof OOrgIdFieldsLeasesRoute
   '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
@@ -324,6 +331,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/leases': typeof OOrgIdFieldsLeasesRoute
   '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
@@ -367,6 +375,7 @@ export interface FileRoutesById {
   '/o/$orgId/compliance/report': typeof OOrgIdComplianceReportRoute
   '/o/$orgId/crops/$cropCycleId': typeof OOrgIdCropsCropCycleIdRoute
   '/o/$orgId/fields/$fieldId': typeof OOrgIdFieldsFieldIdRoute
+  '/o/$orgId/fields/leases': typeof OOrgIdFieldsLeasesRoute
   '/o/$orgId/fields/manage': typeof OOrgIdFieldsManageRoute
   '/o/$orgId/fields/new': typeof OOrgIdFieldsNewRoute
   '/o/$orgId/machinery/$equipmentId': typeof OOrgIdMachineryEquipmentIdRoute
@@ -411,6 +420,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/leases'
     | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/leases'
     | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/compliance/report'
     | '/o/$orgId/crops/$cropCycleId'
     | '/o/$orgId/fields/$fieldId'
+    | '/o/$orgId/fields/leases'
     | '/o/$orgId/fields/manage'
     | '/o/$orgId/fields/new'
     | '/o/$orgId/machinery/$equipmentId'
@@ -736,6 +748,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdFieldsFieldIdRouteImport
       parentRoute: typeof OOrgIdRoute
     }
+    '/o/$orgId/fields/leases': {
+      id: '/o/$orgId/fields/leases'
+      path: '/fields/leases'
+      fullPath: '/o/$orgId/fields/leases'
+      preLoaderRoute: typeof OOrgIdFieldsLeasesRouteImport
+      parentRoute: typeof OOrgIdRoute
+    }
     '/o/$orgId/fields/manage': {
       id: '/o/$orgId/fields/manage'
       path: '/fields/manage'
@@ -825,6 +844,7 @@ interface OOrgIdRouteChildren {
   OOrgIdComplianceReportRoute: typeof OOrgIdComplianceReportRoute
   OOrgIdCropsCropCycleIdRoute: typeof OOrgIdCropsCropCycleIdRoute
   OOrgIdFieldsFieldIdRoute: typeof OOrgIdFieldsFieldIdRoute
+  OOrgIdFieldsLeasesRoute: typeof OOrgIdFieldsLeasesRoute
   OOrgIdFieldsManageRoute: typeof OOrgIdFieldsManageRoute
   OOrgIdFieldsNewRoute: typeof OOrgIdFieldsNewRoute
   OOrgIdMachineryEquipmentIdRoute: typeof OOrgIdMachineryEquipmentIdRoute
@@ -862,6 +882,7 @@ const OOrgIdRouteChildren: OOrgIdRouteChildren = {
   OOrgIdComplianceReportRoute: OOrgIdComplianceReportRoute,
   OOrgIdCropsCropCycleIdRoute: OOrgIdCropsCropCycleIdRoute,
   OOrgIdFieldsFieldIdRoute: OOrgIdFieldsFieldIdRoute,
+  OOrgIdFieldsLeasesRoute: OOrgIdFieldsLeasesRoute,
   OOrgIdFieldsManageRoute: OOrgIdFieldsManageRoute,
   OOrgIdFieldsNewRoute: OOrgIdFieldsNewRoute,
   OOrgIdMachineryEquipmentIdRoute: OOrgIdMachineryEquipmentIdRoute,

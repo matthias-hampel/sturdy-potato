@@ -1,11 +1,12 @@
 import type { Farm, Field, ImportFieldsResult } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { FeatureCollection } from 'geojson'
-import { AlertTriangle, CheckCircle2, FileUp, PenLine, Upload } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, FileUp, Landmark, PenLine, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DropZone, FileTrigger, Form } from 'react-aria-components'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
+import { ParcelPicker } from '#/components/cadastral/ParcelPicker'
 import { FieldDetailsForm, detailsPayload, emptyDetails, type FieldDetails } from '#/components/fields/FieldDetailsForm'
 import { guessProperty, parseBoundaryFile, propertyKeys, type ImportCandidate } from '#/components/fields/importFile'
 import { useGeometryCheck } from '#/components/fields/useGeometryCheck'
@@ -22,7 +23,7 @@ import { Card, EmptyState, Notice, PageHeader } from '#/ui/Layout'
 import { cx } from '#/ui/utils'
 
 export const Route = createFileRoute('/o/$orgId/fields/new')({
-  validateSearch: z.object({ onboarding: z.boolean().optional(), mode: z.enum(['draw', 'import']).optional() }),
+  validateSearch: z.object({ onboarding: z.boolean().optional(), mode: z.enum(['draw', 'import', 'parcels']).optional() }),
   component: NewField,
 })
 
@@ -30,7 +31,7 @@ function NewField() {
   const { orgId, can } = useOrg()
   const { t } = useTranslation()
   const { onboarding, mode: initialMode } = Route.useSearch()
-  const [mode, setMode] = useState<'draw' | 'import'>(initialMode ?? 'draw')
+  const [mode, setMode] = useState<'draw' | 'import' | 'parcels'>(initialMode ?? 'draw')
   const farms = useOrgQuery<Farm[]>('/farms')
   const fields = useOrgQuery<Field[]>('/fields')
 
@@ -56,12 +57,20 @@ function NewField() {
             onChange={setMode}
             items={[
               { id: 'draw', label: <><PenLine aria-hidden /> {t('fields.new.modeDraw')}</> },
+              { id: 'parcels', label: <><Landmark aria-hidden /> {t('fields.new.modeParcels')}</> },
               { id: 'import', label: <><Upload aria-hidden /> {t('fields.new.modeImport')}</> },
             ]}
           />
         }
       />
-      {farms.data && fields.data && (mode === 'draw' ? <DrawMode farms={farms.data} fields={fields.data} onboarding={!!onboarding} /> : <ImportMode farms={farms.data} fields={fields.data} onboarding={!!onboarding} />)}
+      {farms.data && fields.data &&
+        (mode === 'draw' ? (
+          <DrawMode farms={farms.data} fields={fields.data} onboarding={!!onboarding} />
+        ) : mode === 'parcels' ? (
+          <ParcelPicker farms={farms.data} fields={fields.data} />
+        ) : (
+          <ImportMode farms={farms.data} fields={fields.data} onboarding={!!onboarding} />
+        ))}
     </>
   )
 }
