@@ -14,6 +14,7 @@ import {
   FileUp,
   FlaskConical,
   FolderOpen,
+  HelpCircle,
   Grid2x2,
   Languages,
   LayoutDashboard,
@@ -189,6 +190,19 @@ function Sidebar({ user, onNavigate }: { user: CurrentUser; onNavigate?: () => v
         >
           <Settings className="size-4.5 text-sidebar-muted" aria-hidden />
           {t('nav.settings')}
+        </RouterLink>
+        <RouterLink
+          to="/o/$orgId/help"
+          params={{ orgId }}
+          onClick={onNavigate}
+          className={cx(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-fg/85 hover:bg-sidebar-active/60 hover:text-white',
+            pathname.startsWith(`/o/${orgId}/help`) && 'bg-sidebar-active text-white',
+            focusRing,
+          )}
+        >
+          <HelpCircle className="size-4.5 text-sidebar-muted" aria-hidden />
+          {t('nav.help')}
         </RouterLink>
       </div>
     </>

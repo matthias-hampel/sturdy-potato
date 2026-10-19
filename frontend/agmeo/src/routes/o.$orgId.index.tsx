@@ -48,6 +48,16 @@ function Overview() {
   return (
     <>
       <PageHeader eyebrow={org.name} title={t('dashboard.title')} subtitle={season ? t('dashboard.subtitleSeason', { season: season.harvestYear }) : t('dashboard.subtitle')} />
+      {org.onboardingStep && (
+        <Notice className="mb-6">
+          <span className="flex flex-wrap items-center gap-3">
+            <span className="flex-1">{t('onboarding.resume.text')}</span>
+            <Link to="/o/$orgId/onboarding" params={{ orgId }} variant="primary" size="sm">
+              {t('onboarding.resume.action')}
+            </Link>
+          </span>
+        </Notice>
+      )}
 
       {!setupDone && <SetupChecklist setup={d.setup} orgId={orgId} />}
 

@@ -1,11 +1,12 @@
 import type { Farm, Organization } from '@agmeo/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
-import { Building2, Check, MapPin } from 'lucide-react'
+import { Building2, MapPin } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Form } from 'react-aria-components'
 import { Logo } from '#/components/Logo'
+import { OnboardingSteps } from '#/components/onboarding/OnboardingSteps'
 import { LOCALE } from '#/i18n'
 import { AddressField, useFarmPlace } from '#/components/map/AddressField'
 import { LocationPicker } from '#/components/map/LocationPicker'
@@ -14,7 +15,6 @@ import { useAuth } from '#/lib/auth'
 import { Button } from '#/ui/Button'
 import { Option, Select, TextField } from '#/ui/Field'
 import { Notice } from '#/ui/Layout'
-import { cx } from '#/ui/utils'
 
 export const Route = createFileRoute('/onboarding')({ component: Onboarding })
 
@@ -61,8 +61,9 @@ function Onboarding() {
     setError(null)
     try {
       await api.post<Farm>(`/orgs/${org.id}/farms`, { name: farmName, address: address || null, country, location, mapZoom })
+      await api.patch(`/orgs/${org.id}`, { onboardingStep: 'crops' })
       await qc.invalidateQueries({ queryKey: ['me'] })
-      await navigate({ to: '/o/$orgId/fields/new', params: { orgId: org.id }, search: { onboarding: true } })
+      await navigate({ to: '/o/$orgId/onboarding', params: { orgId: org.id } })
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -80,22 +81,7 @@ function Onboarding() {
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-6 pb-16">
-        <ol className="flex items-center gap-3 mb-8 text-sm" aria-label={t('onboarding.steps')}>
-          {[t('onboarding.step.organization'), t('onboarding.step.farm'), t('onboarding.step.fields'), t('onboarding.step.crops')].map((label, i) => {
-            const n = i + 1
-            const done = n < step
-            const current = n === step
-            return (
-              <li key={label} className="flex items-center gap-3">
-                <span className={cx('size-7 rounded-full flex items-center justify-center text-xs font-semibold border', done ? 'bg-primary border-primary text-primary-fg' : current ? 'border-primary text-primary bg-primary-soft' : 'border-line-strong text-muted')}>
-                  {done ? <Check className="size-4" /> : n}
-                </span>
-                <span className={cx(current ? 'text-fg font-medium' : 'text-muted')} aria-current={current ? 'step' : undefined}>{label}</span>
-                {n < 4 && <span className="w-8 h-px bg-line-strong" aria-hidden />}
-              </li>
-            )
-          })}
-        </ol>
+        <OnboardingSteps current={step === 1 ? 'organization' : 'farm'} />
 
         {step === 1 && (
           <Form className="max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-xs space-y-5" onSubmit={(e) => { e.preventDefault(); void createOrg() }}>
