@@ -309,7 +309,7 @@ export class EconomicsService {
                  sum(oi.total_quantity * coalesce(oi.unit_cost, app.product_price(oi.product_id, extract(year FROM coalesce(o.planned_on, current_date))::int), 0)) AS amount
           FROM operation_inputs oi JOIN products p ON p.id = oi.product_id JOIN operations o ON o.id = oi.operation_id GROUP BY 1, 2
           UNION ALL
-          SELECT l.operation_id, 'labor', sum(l.hours * coalesce(l.hourly_rate, e.hourly_rate, 0))
+          SELECT l.operation_id, 'labor', sum(l.hours * coalesce(l.hourly_rate, e.hourly_rate, (SELECT fo.salary_per_hour FROM farm_overheads fo WHERE fo.season_id = ${season.id}), 0))
           FROM operation_labor l JOIN employees e ON e.id = l.employee_id GROUP BY 1
           UNION ALL
           SELECT q.operation_id, 'machinery', sum(q.hours * coalesce(q.hourly_cost, eq.hourly_cost, 0))
@@ -524,6 +524,12 @@ export class EconomicsService {
         redistributive2_per_ha: input.redistributive2PerHa,
         eco_schemes_per_ha: input.ecoSchemesPerHa,
         other_payments_per_ha: input.otherPaymentsPerHa,
+        accident_insurance_per_ha: input.accidentInsurancePerHa,
+        rights_per_ha: input.rightsPerHa,
+        salary_per_hour: input.salaryPerHour,
+        agri_env_per_ha: input.agriEnvPerHa,
+        young_farmers_per_ha: input.youngFarmersPerHa,
+        total_ha_for_redistribution: input.totalHaForRedistribution ?? null,
       };
       const row = await trx
         .insertInto('farm_overheads')
@@ -573,6 +579,8 @@ export class EconomicsService {
 type OverheadRow = {
   lease_per_ha: number; land_tax_per_ha: number; insurance_per_ha: number; buildings_per_ha: number; accounting_per_ha: number; other_per_ha: number;
   basic_payment_per_ha: number; redistributive1_per_ha: number; redistributive2_per_ha: number; eco_schemes_per_ha: number; other_payments_per_ha: number;
+  accident_insurance_per_ha: number; rights_per_ha: number; salary_per_hour: number; agri_env_per_ha: number; young_farmers_per_ha: number;
+  total_ha_for_redistribution: number | null;
 };
 
 /**
@@ -586,19 +594,32 @@ export function farmResult(db2AfterOther: number, areaHa: number, unallocated: n
   const overheads = {
     lease: per(o.lease_per_ha),
     landTax: per(o.land_tax_per_ha),
+    accidentInsurance: per(o.accident_insurance_per_ha),
     insurance: per(o.insurance_per_ha),
     buildings: per(o.buildings_per_ha),
+    rights: per(o.rights_per_ha),
     accounting: per(o.accounting_per_ha),
     other: per(o.other_per_ha),
     total: 0,
   };
-  overheads.total = round(overheads.lease + overheads.landTax + overheads.insurance + overheads.buildings + overheads.accounting + overheads.other);
-  const redistributive = round(Math.min(areaHa, 40) * o.redistributive1_per_ha + Math.min(Math.max(areaHa - 40, 0), 20) * o.redistributive2_per_ha);
-  const payments = { basic: per(o.basic_payment_per_ha), redistributive, ecoSchemes: per(o.eco_schemes_per_ha), other: per(o.other_payments_per_ha), total: 0 };
-  payments.total = round(payments.basic + payments.redistributive + payments.ecoSchemes + payments.other);
+  overheads.total = round(overheads.lease + overheads.landTax + overheads.accidentInsurance + overheads.insurance + overheads.buildings + overheads.rights + overheads.accounting + overheads.other);
+  const payments = capPayments(areaHa, o);
   const resultBeforePayments = round(db2AfterOther - overheads.total - unallocated);
   const result = round(resultBeforePayments + payments.total);
   return { db2: round(db2AfterOther), overheads, unallocatedCosts: round(unallocated), resultBeforePayments, payments, result, resultPerHa: areaHa ? round(result / areaHa) : 0 };
+}
+
+/**
+ * CAP direct payments after the reference (lib/economics/capSubsidies.ts): the redistributive
+ * payment is degressive (first 40 ha, next 20 ha) on the redistribution area, the rest per ha.
+ */
+export function capPayments(areaHa: number, o: OverheadRow): FarmResult['payments'] {
+  const per = (v: number) => round(v * areaHa);
+  const redistributionHa = o.total_ha_for_redistribution ?? areaHa;
+  const redistributive = round(Math.min(redistributionHa, 40) * o.redistributive1_per_ha + Math.min(Math.max(redistributionHa - 40, 0), 20) * o.redistributive2_per_ha);
+  const p = { basic: per(o.basic_payment_per_ha), redistributive, ecoSchemes: per(o.eco_schemes_per_ha), agriEnv: per(o.agri_env_per_ha), youngFarmers: per(o.young_farmers_per_ha), other: per(o.other_payments_per_ha), total: 0 };
+  p.total = round(p.basic + p.redistributive + p.ecoSchemes + p.agriEnv + p.youngFarmers + p.other);
+  return p;
 }
 
 function overheadsOut(r: OverheadRow & { season_id: string }): FarmOverheads {
@@ -615,5 +636,11 @@ function overheadsOut(r: OverheadRow & { season_id: string }): FarmOverheads {
     redistributive2PerHa: r.redistributive2_per_ha,
     ecoSchemesPerHa: r.eco_schemes_per_ha,
     otherPaymentsPerHa: r.other_payments_per_ha,
+    accidentInsurancePerHa: r.accident_insurance_per_ha,
+    rightsPerHa: r.rights_per_ha,
+    salaryPerHour: r.salary_per_hour,
+    agriEnvPerHa: r.agri_env_per_ha,
+    youngFarmersPerHa: r.young_farmers_per_ha,
+    totalHaForRedistribution: r.total_ha_for_redistribution,
   };
 }

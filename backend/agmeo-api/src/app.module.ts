@@ -12,6 +12,8 @@ import { DashboardController } from './modules/dashboard/dashboard.controller.js
 import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { EconomicsController } from './modules/economics/economics.controller.js';
 import { EconomicsService } from './modules/economics/economics.service.js';
+import { EconomicsInsightsController } from './modules/economics/insights.controller.js';
+import { ProfitabilityService } from './modules/economics/profitability.service.js';
 import { FarmsController } from './modules/farms/farms.controller.js';
 import { FilesController } from './modules/files/files.controller.js';
 import { FilesService } from './modules/files/files.service.js';
@@ -73,6 +75,7 @@ export const DOMAIN_SERVICES = [
   NutrientsService,
   RegulatoryService,
   EconomicsService,
+  ProfitabilityService,
   ComplianceService,
   WeatherService,
   MonitoringService,
@@ -107,6 +110,7 @@ export const DOMAIN_SERVICES = [
     NutrientsController,
     RegulatoryController,
     EconomicsController,
+    EconomicsInsightsController,
     ComplianceController,
     WeatherController,
     MonitoringController,

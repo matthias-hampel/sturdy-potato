@@ -95,6 +95,21 @@ export interface CostEntries {
   source: string;
 }
 
+export interface CropBenchmarks {
+  created_at: Generated<Timestamp>;
+  crop_id: string;
+  db1_per_ha: Numeric | null;
+  db2_per_ha: Numeric | null;
+  direct_costs_per_ha: Numeric | null;
+  id: Generated<string>;
+  name: string;
+  organization_id: string;
+  revenue_per_ha: Numeric | null;
+  source: string | null;
+  variable_costs_per_ha: Numeric | null;
+  yield_t_ha: Numeric | null;
+}
+
 export interface CropCycles {
   area_ha: Numeric | null;
   created_at: Generated<Timestamp>;
@@ -282,7 +297,9 @@ export interface Equipment {
 }
 
 export interface FarmOverheads {
+  accident_insurance_per_ha: Generated<Numeric>;
   accounting_per_ha: Generated<Numeric>;
+  agri_env_per_ha: Generated<Numeric>;
   basic_payment_per_ha: Generated<Numeric>;
   buildings_per_ha: Generated<Numeric>;
   eco_schemes_per_ha: Generated<Numeric>;
@@ -295,8 +312,12 @@ export interface FarmOverheads {
   other_per_ha: Generated<Numeric>;
   redistributive1_per_ha: Generated<Numeric>;
   redistributive2_per_ha: Generated<Numeric>;
+  rights_per_ha: Generated<Numeric>;
+  salary_per_hour: Generated<Numeric>;
   season_id: string;
+  total_ha_for_redistribution: Numeric | null;
   updated_at: Generated<Timestamp>;
+  young_farmers_per_ha: Generated<Numeric>;
 }
 
 export interface Farms {
@@ -473,6 +494,7 @@ export interface Fields {
   farm_id: string;
   id: Generated<string>;
   identifier: string | null;
+  lease_per_ha: Numeric | null;
   merged_into_id: string | null;
   name: string;
   nitrate_sensitive_zone: Generated<boolean>;
@@ -578,6 +600,15 @@ export interface MaintenanceRecords {
   next_due_on: string | null;
   organization_id: string;
   performed_on: string;
+}
+
+export interface MarketQuotes {
+  commodity: string;
+  country: string;
+  fetched_at: Generated<Timestamp>;
+  price: Numeric;
+  quote_date: string;
+  source: Generated<string>;
 }
 
 export interface Memberships {
@@ -1102,6 +1133,7 @@ export interface DB {
   bsa_varieties: BsaVarieties;
   comments: Comments;
   cost_entries: CostEntries;
+  crop_benchmarks: CropBenchmarks;
   crop_cycles: CropCycles;
   crop_prices: CropPrices;
   crop_rotation_entries: CropRotationEntries;
@@ -1133,6 +1165,7 @@ export interface DB {
   jobs: Jobs;
   land_use_codes: LandUseCodes;
   maintenance_records: MaintenanceRecords;
+  market_quotes: MarketQuotes;
   memberships: Memberships;
   n170_inputs: N170Inputs;
   nmin_reference_values: NminReferenceValues;
