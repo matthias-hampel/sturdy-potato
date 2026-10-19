@@ -83,7 +83,10 @@ for (const f of readdirSync(join(root, 'i18n'))) {
     // `_one` forms may drop {{count}} ("ein Schlag").
     const got = new Set(tokens(v).split(' ').filter(Boolean))
     for (const tok of want) if (!got.has(tok) && !(tok === 'count' && (k.endsWith('_one') || form))) problems.push(`${f}: ${k} lacks ${tok.startsWith('<') ? tok : `{{${tok}}}`}`)
-    for (const tok of got) if (!want.has(tok)) problems.push(`${f}: ${k} has unknown ${tok.startsWith('<') ? tok : `{{${tok}}}`}`)
+    // A `_one` form may count where the German says "1"/"ein": in Ukrainian, Lithuanian or Latvian it
+    // also serves 21, 31, ...
+    const countOk = (tok) => tok === 'count' && k.endsWith('_one') && (de[k.slice(0, -4)] ?? '').includes('{{count}}')
+    for (const tok of got) if (!want.has(tok) && !countOk(tok)) problems.push(`${f}: ${k} has unknown ${tok.startsWith('<') ? tok : `{{${tok}}}`}`)
   }
 }
 
