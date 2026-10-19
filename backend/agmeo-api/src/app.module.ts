@@ -35,6 +35,8 @@ import { PlanningService } from './modules/planning/planning.service.js';
 import { ProtectionController } from './modules/protection/protection.controller.js';
 import { ProtectionService } from './modules/protection/protection.service.js';
 import { PsmRecordController } from './modules/protection/record/psm-record.controller.js';
+import { RadarController } from './modules/radar/radar.controller.js';
+import { RadarService } from './modules/radar/radar.service.js';
 import { PsmRecordService } from './modules/protection/record/psm-record.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
@@ -82,6 +84,7 @@ export const DOMAIN_SERVICES = [
   FilesService,
   BoardService,
   CommentsService,
+  RadarService,
 ];
 
 /**
@@ -116,6 +119,7 @@ export const DOMAIN_SERVICES = [
     FilesController,
     BoardController,
     CommentsController,
+    RadarController,
   ],
   providers: [
     TokenService,

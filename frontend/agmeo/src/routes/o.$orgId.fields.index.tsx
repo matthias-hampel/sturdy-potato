@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { CropTag } from '#/components/labels'
 import { FieldMap } from '#/components/map/FieldMap'
 import { FieldShape } from '#/components/map/FieldShape'
+import { RadarPanel, RadarToggle, useRadar } from '#/components/map/Radar'
 import { farmView } from '#/components/map/useMap'
 import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
 import { INDEX_INFO, indexColor, NO_DATA_COLOR, type ShownIndex } from '#/components/monitoring/indices'
@@ -58,6 +59,7 @@ function FieldsPage() {
   // Keeps the previous index's values while another loads, so the map's framing (fitIds) doesn't jump.
   const monitoring = useOrgQuery<FieldMonitoringSummary[]>('/monitoring/fields', { index }, { enabled: layer !== 'crops', keepPrevious: true })
   const [stretch, setStretch] = useState<ImageryStretch>('absolute')
+  const radar = useRadar()
   const satellite = useSatelliteLayer({ enabled: layer === 'imagery', layer: imageryLayer, stretch, fields: allFields.data ?? [] })
 
   const visible = useMemo(() => {
@@ -239,6 +241,7 @@ function FieldsPage() {
                   <OpacityPicker value={satellite.opacity} onChange={satellite.setOpacity} />
                 </>
               )}
+              <RadarToggle radar={radar} />
             </div>
             {layer === 'imagery' && <ImageryProgress status={satellite.status} />}
             <FieldMap
@@ -250,11 +253,13 @@ function FieldsPage() {
               overlay={partOverlay}
               overlayOpacity={0.45}
               raster={satellite.raster}
+              image={radar.image}
               fitIds={fitIds}
               occludedBy={popupRef}
               view={farmView(farmId === ALL ? farms.data?.[0] : farms.data?.find((f) => f.id === farmId))}
               className="h-[55vh] xl:h-auto xl:flex-1 min-h-96"
             >
+              {radar.enabled && <RadarPanel radar={radar} className="absolute top-14 left-3" />}
               {layer === 'imagery' && !selectedField && <IndexLegend index={imageryLayer} stretch={stretch} uncovered={uncovered} />}
               {selectedField && (
                 <FieldPopup ref={popupRef} field={selectedField} parts={layer === 'crops' ? partsByField.get(selectedField.id) : undefined} summary={latest.get(selectedField.id)} index={index} showIndex={layer !== 'crops'} missing={missing} orgId={orgId} />

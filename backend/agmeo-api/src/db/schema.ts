@@ -855,6 +855,25 @@ export interface PsmUses {
   water_min_l_ha: Numeric | null;
 }
 
+export interface RadarFrames {
+  created_at: Generated<Timestamp>;
+  key: string;
+  kind: string;
+  lead_minutes: Generated<number>;
+  run_at: Timestamp;
+  storage_key: string;
+  valid_at: Timestamp;
+}
+
+export interface RadarState {
+  id: Generated<boolean>;
+  last_error: string | null;
+  last_error_at: Timestamp | null;
+  last_viewed_at: Timestamp | null;
+  nowcast_run_at: Timestamp | null;
+  refreshed_at: Timestamp | null;
+}
+
 export interface SatelliteScenes {
   acquired_at: Timestamp;
   /**
@@ -1153,6 +1172,8 @@ export interface DB {
   psm_crop_groups: PsmCropGroups;
   psm_products: PsmProducts;
   psm_uses: PsmUses;
+  radar_frames: RadarFrames;
+  radar_state: RadarState;
   satellite_scenes: SatelliteScenes;
   soil_samples: SoilSamples;
   stock_balances: StockBalances;
