@@ -874,6 +874,23 @@ export interface SatelliteScenes {
   tile: string | null;
 }
 
+export interface SoilLabImportZones {
+  import_id: string;
+  organization_id: string;
+  sampled_on: string;
+  values: Json;
+  zone_id: string;
+}
+
+export interface SoilLabImports {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  file_ids: Generated<string[]>;
+  file_names: string[];
+  id: Generated<string>;
+  organization_id: string;
+}
+
 export interface SoilSamples {
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -885,6 +902,7 @@ export interface SoilSamples {
   k2o_mg_100g: Numeric | null;
   kind: string;
   lab: string | null;
+  lab_import_id: string | null;
   mgo_mg_100g: Numeric | null;
   nmin_0_30: Numeric | null;
   nmin_30_60: Numeric | null;
@@ -898,6 +916,7 @@ export interface SoilSamples {
   sample_number: string | null;
   sampled_on: string;
   soil_texture: string | null;
+  soil_zonation_id: string | null;
 }
 
 export interface SoilZonations {
@@ -1192,6 +1211,8 @@ export interface DB {
   psm_products: PsmProducts;
   psm_uses: PsmUses;
   satellite_scenes: SatelliteScenes;
+  soil_lab_import_zones: SoilLabImportZones;
+  soil_lab_imports: SoilLabImports;
   soil_samples: SoilSamples;
   soil_zonations: SoilZonations;
   soil_zones: SoilZones;

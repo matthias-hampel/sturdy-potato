@@ -307,3 +307,63 @@ export interface SoilExportResult {
   /** Probe numbers stamped on the zones for the sample card. */
   probeNumbers: number;
 }
+
+// ---------------------------------------------------------------------------
+// Lab results
+// ---------------------------------------------------------------------------
+
+export type LabFileRejection = 'unsupported-format' | 'unit-mismatch' | 'no-shapefile-found';
+
+/** One analysed sample of a lab file, values in canonical units. */
+export interface LabResultRow {
+  probeNr: number | null;
+  fieldNameHint: string | null;
+  date: string;
+  values: Partial<Record<SoilParameter, number>>;
+  methods: Partial<Record<SoilParameter, string>>;
+  stages: Partial<Record<SoilParameter, string>>;
+  kalkbedarf: { dtHa: number | null; kg: number | null } | null;
+  labNr: string | null;
+  point: [number, number] | null;
+}
+
+export interface LabPreviewField {
+  fieldId: string;
+  fieldName: string;
+  fieldAreaHa: number;
+  zonationId: string;
+  probes: { zoneId: string; zoneLabel: string; probeNr: number | null; match: 'probe' | 'location'; row: LabResultRow }[];
+  params: SoilParameter[];
+  /** Every value of the file is already stored on the zones. */
+  alreadyImported: boolean;
+  /** Latest sampling date already stored for these parameters. */
+  storedSampleDate: string | null;
+}
+
+export interface LabPreview {
+  fileNames: string[];
+  failedFileNames: string[];
+  rejectedFiles: { fileName: string; reason: LabFileRejection }[];
+  rowCount: number;
+  duplicateRows: number;
+  fields: LabPreviewField[];
+  unmatched: LabResultRow[];
+}
+
+export interface LabApplyResult {
+  importId: string | null;
+  /** Archived originals in the "Soil imports" folder. */
+  fileIds: string[];
+  results: { fieldId: string; fieldName: string; status: 'success' | 'failed'; probeCount?: number; sampleIds?: string[]; reason?: string }[];
+}
+
+export interface SoilLabImport {
+  id: string;
+  fileNames: string[];
+  files: { id: string; name: string }[];
+  createdAt: string;
+  createdByName: string | null;
+  zoneCount: number;
+  fields: { id: string; name: string }[];
+  sampledOn: string | null;
+}

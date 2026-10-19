@@ -94,6 +94,8 @@ export interface SoilSample {
   /** Content classes of the basic analysis, for the field's soil class. */
   classes: { ph: ContentClass | null; p: ContentClass | null; k: ContentClass | null; mg: ContentClass | null };
   notes: string | null;
+  /** Written by a lab import (mean of the field's sampling zones). */
+  labImportId: string | null;
 }
 
 export interface FieldSoilSummary {

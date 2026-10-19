@@ -43,6 +43,7 @@ import { DEFAULT_NMIN, DUEV_CROPS, DUEV_RULESET, nitrogenNeed, organicFollowUpSh
 type Overrides = Out<typeof FertilizerNeedOverrides>;
 type SampleRow = {
   id: string;
+  lab_import_id: string | null;
   field_id: string;
   field_name: string;
   field_part_id: string | null;
@@ -229,6 +230,7 @@ export class NutrientsService {
         mg: r.mgo_mg_100g != null ? mgClass(r.mgo_mg_100g, soil) : null,
       },
       notes: r.notes,
+      labImportId: r.lab_import_id,
     };
   }
 

@@ -1,4 +1,7 @@
-import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { z } from 'zod';
 import {
   AssignProbeNumbersInput,
   BatchSamplingPlanInput,
@@ -9,15 +12,46 @@ import {
   UpdateZoneInput,
 } from '@agmeo/contracts';
 import { type Ctx, OrgCtx, Requires } from '../../auth/context.js';
+import { badRequest } from '../../core/errors.js';
 import { type Out, ZBody } from '../../core/validation.js';
 import { SoilExportService } from './export.service.js';
+import { type LabUpload, SoilLabService } from './lab.service.js';
 import { SoilZonationService } from './zonation.service.js';
+
+const MAX_LAB_FILES = 50;
+const LAB_UPLOAD = FilesInterceptor('files', MAX_LAB_FILES, { storage: memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: MAX_LAB_FILES } });
+
+const jsonArray = <T extends z.ZodType>(item: T) =>
+  z.string().transform((s, c) => {
+    try {
+      return z.array(item).parse(JSON.parse(s));
+    } catch {
+      c.addIssue({ code: 'custom', message: 'expected a JSON array' });
+      return z.NEVER;
+    }
+  });
+
+const LabUploadFields = z.object({
+  // File names as a JSON array in upload order: multipart file names are not reliably UTF-8.
+  names: jsonArray(z.string().min(1).max(1000)),
+  fieldIds: jsonArray(z.uuid()).optional(),
+});
+
+function labUploads(uploaded: Express.Multer.File[], body: unknown): { files: LabUpload[]; fieldIds: string[] | null } {
+  const fields = LabUploadFields.safeParse(body);
+  if (!uploaded.length || !fields.success || fields.data.names.length !== uploaded.length) throw badRequest('invalid_upload', 'Every uploaded file needs a name');
+  return {
+    files: uploaded.map((f, i) => ({ name: fields.data.names[i], data: f.buffer, mimeType: f.mimetype })),
+    fieldIds: fields.data.fieldIds ?? null,
+  };
+}
 
 @Controller('orgs/:orgId')
 export class SoilController {
   constructor(
     private readonly zonations: SoilZonationService,
     private readonly exports: SoilExportService,
+    private readonly lab: SoilLabService,
   ) {}
 
   @Get('soil/fields')
@@ -103,5 +137,30 @@ export class SoilController {
   @Requires('field.write')
   export(@OrgCtx() ctx: Ctx, @ZBody(SoilExportInput) input: Out<typeof SoilExportInput>) {
     return this.exports.export(ctx, input);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Lab results
+  // ---------------------------------------------------------------------------
+
+  @Post('soil/lab-results/preview')
+  @HttpCode(200)
+  @Requires('field.write')
+  @UseInterceptors(LAB_UPLOAD)
+  labPreview(@OrgCtx() ctx: Ctx, @UploadedFiles() uploaded: Express.Multer.File[] = [], @Body() body: unknown) {
+    return this.lab.preview(ctx, labUploads(uploaded, body).files);
+  }
+
+  @Post('soil/lab-results')
+  @Requires('field.write')
+  @UseInterceptors(LAB_UPLOAD)
+  labApply(@OrgCtx() ctx: Ctx, @UploadedFiles() uploaded: Express.Multer.File[] = [], @Body() body: unknown) {
+    const { files, fieldIds } = labUploads(uploaded, body);
+    return this.lab.apply(ctx, files, fieldIds);
+  }
+
+  @Get('soil/lab-imports')
+  labImports(@OrgCtx() ctx: Ctx) {
+    return this.lab.imports(ctx);
   }
 }

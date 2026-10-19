@@ -1,12 +1,13 @@
 import { HEADLINE_PARAMS, type SoilFieldRow } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Hash, Layers, Map as MapIcon } from 'lucide-react'
+import { FlaskConical, Hash, Layers, Map as MapIcon } from 'lucide-react'
 import { type ReactNode, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Selection } from 'react-aria-components'
 import { z } from 'zod'
 import { BatchZonationDialog } from '#/components/soil/BatchZonationDialog'
 import { ExportDialog } from '#/components/soil/ExportDialog'
+import { UploadLabResultsDialog } from '#/components/soil/UploadLabResultsDialog'
 import { methodLabel, paramLabel, paramValue, statusText } from '#/components/soil/soilLabels'
 import { SelectionBar, selectedIds } from '#/components/table/tableTools'
 import { api } from '#/lib/api'
@@ -29,12 +30,25 @@ export const Route = createFileRoute('/o/$orgId/soil/')({
 
 function SoilPage() {
   const { t } = useTranslation()
+  const { can } = useOrg()
+  const [labOpen, setLabOpen] = useState(false)
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const tabs: { id: SoilTabId; label: string; panel: ReactNode }[] = [{ id: 'overview', label: t('soil.page.tab.overview'), panel: <Overview /> }]
   return (
     <>
-      <PageHeader title={t('soil.page.title')} subtitle={t('soil.page.subtitle')} />
+      <PageHeader
+        title={t('soil.page.title')}
+        subtitle={t('soil.page.subtitle')}
+        actions={
+          can('field.write') && (
+            <Button variant="primary" onPress={() => setLabOpen(true)}>
+              <FlaskConical /> {t('soil.lab.button')}
+            </Button>
+          )
+        }
+      />
+      <UploadLabResultsDialog isOpen={labOpen} onOpenChange={setLabOpen} />
       <Tabs selectedKey={search.tab ?? 'overview'} onSelectionChange={(key) => navigate({ search: { tab: key === 'overview' ? undefined : (key as SoilTabId) }, replace: true })}>
         <TabList aria-label={t('soil.page.tabs')}>
           {tabs.map((tab) => (
