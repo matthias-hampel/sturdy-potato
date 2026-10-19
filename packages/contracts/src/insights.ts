@@ -30,7 +30,14 @@ export interface WeatherHour {
   windKmh: number | null;
   gustKmh: number | null;
   humidityPct: number | null;
+  /** Direction the wind comes from, degrees (0 = north). */
+  windDirectionDeg: number | null;
+  /** Spraying suitability of the hour; null when the forecast lacks wind or temperature. */
+  spray: SprayRating | null;
 }
+
+/** good: within all spraying thresholds; marginal: slightly outside; poor: clearly unsuitable. */
+export type SprayRating = 'good' | 'marginal' | 'poor';
 
 export interface WeatherNotice {
   kind: 'frost' | 'heavy_rain' | 'strong_wind' | 'heat' | 'dry_spell';

@@ -20,6 +20,7 @@ import { ProductivityZones } from '#/components/monitoring/ProductivityZones'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
 import { OperationsTable } from '#/components/operations/OperationsTable'
 import { RecommendationsCard } from '#/components/recommendations/RecommendationsCard'
+import { SprayWindowCard } from '#/components/insights/SprayWindowCard'
 import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
@@ -154,6 +155,7 @@ function FieldPage() {
               />
             </Card>
           </div>
+          <SprayWindowCard fieldId={f.id} className="mt-6" />
           <RecommendationsCard fieldId={f.id} className="mt-6" />
         </TabPanel>
         <TabPanel id="parts">
