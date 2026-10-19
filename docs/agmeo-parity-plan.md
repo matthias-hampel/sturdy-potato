@@ -388,8 +388,12 @@ Differences from the reference:
   rectangle with colour and note); SAVI and LAI layers (000045).
 - **Field documents and overview** (000048): documents per field and harvest year in the
   "Schlagdokumente" folder; field overview of a harvest year printed to PDF.
-- **Application maps**: in progress on their own branch (base zonations from soil, yield, upload or a
-  single scene, brush editor, bulk maps, batch export).
+- **Application maps** (000095): base zonings from productivity zones, yield maps, the soil zonation, an
+  uploaded file (GeoJSON, shapefile, ISO-XML grid) or one or several satellite scenes classified by the geo
+  worker, plus uniform and hand-drawn ones, with a default per field; the reference's rate logic
+  (proportional or inverse to relative yield, 65–135 % clipping, spreader step, target stand with
+  germination, nutrient columns); brush editor; maps for many fields at once; single and batch export as
+  ISO-XML, shapefile or GeoJSON; saved maps per field, crop and organization.
 
 Differences from the reference:
 - Soil: no TWI, BK50/BÜK200 or soil-rating sources (no such data here); zone edges are simplified rather
@@ -400,6 +404,9 @@ Differences from the reference:
   without streaming (1.5 GB per archive member); no provider downloads (John Deere, CLAAS, AGCO).
 - Field overview PDF: printed through the browser's PDF printing rather than generated with jsPDF.
 - Detaching a field document trashes it only when it was uploaded there and no other field uses it.
+- Application maps: no terminal-specific conversion (the reference sends maps to an external "Machine
+  Maps" service); a map references its zoning, so a zoning in use cannot be changed or deleted; no TWI or
+  5-year-NDVI model bases; no "record the operation" prompt after export.
 
 ### Phase 5 — monitoring extras (2026-10-19)
 
