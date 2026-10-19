@@ -51,6 +51,26 @@ function ConditionBar({ label, days, missing }: { label: string; days: Condition
   )
 }
 
+/**
+ * A condition bar small enough for a table cell: one coloured slice per day, the day's level and
+ * reasons on hover (the reference's TrafficLightBar).
+ */
+export function MiniConditionBar({ days, label }: { days: ConditionDay[] | null | undefined; label: string }) {
+  if (!days?.length || days.every((d) => d.value == null)) return <span className="text-muted">—</span>
+  return (
+    <div role="img" aria-label={`${label}: ${days.map((d) => `${fmt.shortDate(d.date)} ${levelLabel(d.value)}`).join(', ')}`} className="flex h-4 w-28 gap-px overflow-hidden rounded-sm">
+      {days.map((d) => (
+        <span
+          key={d.date}
+          title={[`${fmt.date(d.date)}: ${levelLabel(d.value)}`, ...d.reasons.map(reasonText)].join('\n')}
+          className="flex-1"
+          style={{ background: d.value == null ? 'var(--color-surface-3)' : LEVEL_COLOR[d.value] }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function ConditionsTab({ fieldId }: { fieldId: string }) {
   const { t } = useTranslation()
   const conditions = useOrgQuery<FieldConditions>(`/fields/${fieldId}/conditions`, undefined, { staleTime: 10 * 60_000 })
