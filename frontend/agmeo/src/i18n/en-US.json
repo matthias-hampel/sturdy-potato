@@ -2234,6 +2234,7 @@
   "table.bulkFailed": "{{count}} changes failed",
   "table.bulkFailed_one": "1 change failed",
   "table.clearSelection": "Clear selection",
+  "table.empty": "No entries",
   "table.filterColumn": "Filter {{column}}",
   "table.from": "From",
   "table.noMatches": "No rows match the search.",

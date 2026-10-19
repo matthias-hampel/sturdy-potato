@@ -1,10 +1,12 @@
 import { ROLES, type Employee, type EmployeeInput, type InviteMemberInput, type Member, type Role, type UpdateMemberInput } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
 import { HardHat, KeyRound, Mail, Pencil, Phone, Trash2, UserCheck, UserPlus, UserX, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Form, type Key } from 'react-aria-components'
 import { Trans, useTranslation } from 'react-i18next'
 import { FormActions, NONE, keyOrNull, textOrNull } from '#/components/resources/form'
+import { DataTable } from '#/components/table/DataTable'
+import { useTableView, type ColumnDef } from '#/components/table/tableTools'
 import { t } from '#/i18n'
 import { roleLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
@@ -17,13 +19,14 @@ import { Button } from '#/ui/Button'
 import { NumberField, Option, Select, Switch, TextField, num } from '#/ui/Field'
 import { Badge, type BadgeTone, Card, EmptyState, ErrorNotice, Loading, Notice, PageHeader, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 import { ConfirmButton, Dialog, DialogTrigger, ModalDialog, Tooltip } from '#/ui/Overlay'
-import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx } from '#/ui/utils'
 
 export const Route = createFileRoute('/o/$orgId/team')({ validateSearch: openSearch, component: TeamPage })
 
 const roleDescription = (role: Role) => t(`team.roleDescription.${role}`)
 const roleItems = () => ROLES.map((id) => ({ id, name: roleLabel(id), description: roleDescription(id) }))
+
+const MEMBER_STATUSES = ['active', 'invited', 'disabled'] as const
 
 const MEMBER_STATUS_TONES: Record<Member['status'], BadgeTone> = {
   active: 'success',
@@ -73,9 +76,74 @@ function MembersTab() {
   })
   const remove = useOrgMutation((base, m: Member) => api.delete(`${base}/members/${m.userId}`), { success: t('team.members.removed') })
 
-  const sorted = [...(members.data ?? [])].sort(
-    (a, b) => Number(a.status === 'disabled') - Number(b.status === 'disabled') || ROLES.indexOf(a.role) - ROLES.indexOf(b.role) || a.displayName.localeCompare(b.displayName),
+  const sorted = useMemo(
+    () =>
+      [...(members.data ?? [])]
+        .sort((a, b) => Number(a.status === 'disabled') - Number(b.status === 'disabled') || ROLES.indexOf(a.role) - ROLES.indexOf(b.role) || a.displayName.localeCompare(b.displayName))
+        .map((m) => ({ ...m, id: m.userId })),
+    [members.data],
   )
+  const columns = useMemo<ColumnDef<Member & { id: string }>[]>(
+    () => [
+      {
+        id: 'name',
+        label: t('common.name'),
+        value: (m) => m.displayName,
+        render: (m) => (
+          <span className="flex items-center gap-2.5 min-w-44">
+            <Avatar name={m.displayName} />
+            <span className="font-medium truncate">{m.displayName}</span>
+            {m.userId === user?.id && <Badge tone="primary">{t('team.members.you')}</Badge>}
+          </span>
+        ),
+      },
+      { id: 'email', label: t('team.email'), className: 'whitespace-nowrap text-fg-2', value: (m) => m.email, render: (m) => m.email },
+      {
+        id: 'role',
+        label: t('team.role'),
+        filter: 'select',
+        value: (m) => ROLES.indexOf(m.role),
+        text: (m) => roleLabel(m.role),
+        render: (m) =>
+          canManage ? (
+            <Select
+              aria-label={t('team.members.roleOf', { name: m.displayName })}
+              className="w-44"
+              items={roleItems()}
+              value={m.role}
+              isDisabled={update.isPending}
+              onChange={(v) => v && v !== m.role && update.mutate({ userId: m.userId, role: v as Role })}
+            >
+              {(r) => (
+                <Option id={r.id} description={r.description}>
+                  {r.name}
+                </Option>
+              )}
+            </Select>
+          ) : (
+            <span className="whitespace-nowrap">{roleLabel(m.role)}</span>
+          ),
+      },
+      {
+        id: 'status',
+        label: t('common.status'),
+        filter: 'select',
+        value: (m) => MEMBER_STATUSES.indexOf(m.status),
+        text: (m) => t(`team.memberStatus.${m.status}`),
+        render: (m) => <Badge tone={MEMBER_STATUS_TONES[m.status]}>{t(`team.memberStatus.${m.status}`)}</Badge>,
+      },
+      {
+        id: 'lastSignIn',
+        label: t('team.members.lastSignIn'),
+        filter: 'date',
+        className: 'whitespace-nowrap tabular text-fg-2',
+        value: (m) => m.lastLoginAt,
+        render: (m) => (m.lastLoginAt ? fmt.dateTime(m.lastLoginAt) : <span className="text-muted">{t('team.members.never')}</span>),
+      },
+    ],
+    [t, canManage, user?.id, update.isPending, update.mutate],
+  )
+  const view = useTableView(columns, sorted)
 
   return (
     <div className="space-y-4">
@@ -98,95 +166,44 @@ function MembersTab() {
             <ErrorNotice error={members.error} />
           </div>
         ) : (
-          <Table aria-label={t('team.members.title')}>
-            <TableHeader>
-              <Column isRowHeader>{t('common.name')}</Column>
-              <Column>{t('team.email')}</Column>
-              <Column>{t('team.role')}</Column>
-              <Column>{t('common.status')}</Column>
-              <Column>{t('team.members.lastSignIn')}</Column>
-              {canManage && (
-                <Column>
-                  <span className="sr-only">{t('team.actions')}</span>
-                </Column>
-              )}
-            </TableHeader>
-            <TableBody items={sorted} dependencies={[canManage, user?.id, update.isPending]}>
-              {(m) => {
-                const isSelf = m.userId === user?.id
-                const statusLabel = t(`team.memberStatus.${m.status}`)
-                const statusTone = MEMBER_STATUS_TONES[m.status]
-                return (
-                  <Row id={m.userId} className={m.status === 'disabled' ? 'text-muted' : undefined}>
-                    <Cell>
-                      <span className="flex items-center gap-2.5 min-w-44">
-                        <Avatar name={m.displayName} />
-                        <span className="font-medium truncate">{m.displayName}</span>
-                        {isSelf && <Badge tone="primary">{t('team.members.you')}</Badge>}
-                      </span>
-                    </Cell>
-                    <Cell className="whitespace-nowrap text-fg-2">{m.email}</Cell>
-                    <Cell>
-                      {canManage ? (
-                        <Select
-                          aria-label={t('team.members.roleOf', { name: m.displayName })}
-                          className="w-44"
-                          items={roleItems()}
-                          value={m.role}
-                          isDisabled={update.isPending}
-                          onChange={(v) => v && v !== m.role && update.mutate({ userId: m.userId, role: v as Role })}
-                        >
-                          {(r) => (
-                            <Option id={r.id} description={r.description}>
-                              {r.name}
-                            </Option>
-                          )}
-                        </Select>
-                      ) : (
-                        <span className="whitespace-nowrap">{roleLabel(m.role)}</span>
-                      )}
-                    </Cell>
-                    <Cell>
-                      <Badge tone={statusTone}>{statusLabel}</Badge>
-                    </Cell>
-                    <Cell className="whitespace-nowrap tabular text-fg-2">{m.lastLoginAt ? fmt.dateTime(m.lastLoginAt) : <span className="text-muted">{t('team.members.never')}</span>}</Cell>
-                    {canManage && (
-                      <Cell className="w-0">
-                        {!isSelf && (
-                          <span className="flex items-center justify-end gap-1">
-                            {m.status === 'disabled' ? (
-                              <Tooltip content={t('team.members.enableTooltip')}>
-                                <Button size="icon-sm" variant="ghost" aria-label={t('team.members.enable', { name: m.displayName })} onPress={() => update.mutate({ userId: m.userId, status: 'active' })}>
-                                  <UserCheck />
-                                </Button>
-                              </Tooltip>
-                            ) : (
-                              <Tooltip content={t('team.members.disableTooltip')}>
-                                <Button size="icon-sm" variant="ghost" aria-label={t('team.members.disable', { name: m.displayName })} onPress={() => update.mutate({ userId: m.userId, status: 'disabled' })}>
-                                  <UserX />
-                                </Button>
-                              </Tooltip>
-                            )}
-                            <ConfirmButton
-                              title={t('team.members.removeTitle')}
-                              message={<Trans i18nKey="team.members.removeMessage" values={{ name: m.displayName, email: m.email }} components={{ b: <strong /> }} />}
-                              confirmLabel={t('common.remove')}
-                              onConfirm={() => remove.mutateAsync(m).catch(() => undefined)}
-                              trigger={
-                                <Button size="icon-sm" variant="ghost" aria-label={t('team.members.remove', { name: m.displayName })}>
-                                  <Trash2 />
-                                </Button>
-                              }
-                            />
-                          </span>
+          <DataTable
+            aria-label={t('team.members.title')}
+            view={view}
+            row={(m) => ({ className: m.status === 'disabled' ? 'text-muted' : undefined })}
+            actions={
+              canManage
+                ? (m) =>
+                    m.userId !== user?.id && (
+                      <span className="flex items-center justify-end gap-1">
+                        {m.status === 'disabled' ? (
+                          <Tooltip content={t('team.members.enableTooltip')}>
+                            <Button size="icon-sm" variant="ghost" aria-label={t('team.members.enable', { name: m.displayName })} onPress={() => update.mutate({ userId: m.userId, status: 'active' })}>
+                              <UserCheck />
+                            </Button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip content={t('team.members.disableTooltip')}>
+                            <Button size="icon-sm" variant="ghost" aria-label={t('team.members.disable', { name: m.displayName })} onPress={() => update.mutate({ userId: m.userId, status: 'disabled' })}>
+                              <UserX />
+                            </Button>
+                          </Tooltip>
                         )}
-                      </Cell>
-                    )}
-                  </Row>
-                )
-              }}
-            </TableBody>
-          </Table>
+                        <ConfirmButton
+                          title={t('team.members.removeTitle')}
+                          message={<Trans i18nKey="team.members.removeMessage" values={{ name: m.displayName, email: m.email }} components={{ b: <strong /> }} />}
+                          confirmLabel={t('common.remove')}
+                          onConfirm={() => remove.mutateAsync(m).catch(() => undefined)}
+                          trigger={
+                            <Button size="icon-sm" variant="ghost" aria-label={t('team.members.remove', { name: m.displayName })}>
+                              <Trash2 />
+                            </Button>
+                          }
+                        />
+                      </span>
+                    )
+                : undefined
+            }
+          />
         )}
       </Card>
     </div>
@@ -268,8 +285,68 @@ function EmployeesTab() {
   const [editing, setEditing] = useState<Employee | 'new' | null>(null)
   useOpenParam(employees.data, (e) => canWrite && setEditing(e))
 
-  const memberName = (id: string | null) => (id ? (members.data?.find((m) => m.userId === id)?.displayName ?? t('team.employees.appUser')) : null)
-  const sorted = [...(employees.data ?? [])].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
+  const sorted = useMemo(() => [...(employees.data ?? [])].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name)), [employees.data])
+  const columns = useMemo<ColumnDef<Employee>[]>(() => {
+    const memberName = (id: string | null) => (id ? (members.data?.find((m) => m.userId === id)?.displayName ?? t('team.employees.appUser')) : null)
+    return [
+      {
+        id: 'name',
+        label: t('common.name'),
+        value: (e) => e.name,
+        text: (e) => [e.name, e.email, e.phone].filter(Boolean).join(' '),
+        render: (e) => (
+          <div className="flex items-center gap-2.5 min-w-44">
+            <Avatar name={e.name} />
+            <div className="min-w-0">
+              <div className="font-medium truncate">{e.name}</div>
+              {(e.email || e.phone) && (
+                <div className="text-xs text-muted flex flex-wrap gap-x-3">
+                  {e.email && (
+                    <span className="inline-flex items-center gap-1">
+                      <Mail className="size-3" aria-hidden /> {e.email}
+                    </span>
+                  )}
+                  {e.phone && (
+                    <span className="inline-flex items-center gap-1">
+                      <Phone className="size-3" aria-hidden /> {e.phone}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      { id: 'jobTitle', label: t('team.employees.jobTitle'), filter: 'select', className: 'whitespace-nowrap', value: (e) => e.jobTitle, render: (e) => e.jobTitle ?? <span className="text-muted">—</span> },
+      {
+        id: 'appUser',
+        label: t('team.employees.appUser'),
+        filter: 'select',
+        className: 'whitespace-nowrap',
+        value: (e) => memberName(e.userId),
+        text: (e) => memberName(e.userId) ?? t('team.employees.noAppAccess'),
+        render: (e) => memberName(e.userId) ?? <span className="text-muted">{t('team.employees.noAppAccess')}</span>,
+      },
+      {
+        id: 'hourlyRate',
+        label: t('team.employees.hourlyRate'),
+        align: 'end',
+        filter: 'number',
+        value: (e) => e.hourlyRate,
+        render: (e) => (e.hourlyRate != null ? `${fmt.money(e.hourlyRate, org.currency, 2)} / h` : <span className="text-muted">—</span>),
+      },
+      { id: 'hours', label: t('team.employees.hoursThisYear'), align: 'end', filter: 'number', value: (e) => e.hoursThisYear, render: (e) => `${fmt.num(e.hoursThisYear, 1)} h` },
+      {
+        id: 'status',
+        label: t('common.status'),
+        filter: 'select',
+        value: (e) => (e.active ? 0 : 1),
+        text: (e) => (e.active ? t('team.employees.active') : t('team.employees.inactive')),
+        render: (e) => (e.active ? <Badge tone="success">{t('team.employees.active')}</Badge> : <Badge>{t('team.employees.inactive')}</Badge>),
+      },
+    ]
+  }, [t, members.data, org.currency])
+  const view = useTableView(columns, sorted)
   const addButton = canWrite && (
     <Button size="sm" variant="quiet" onPress={() => setEditing('new')}>
       <UserPlus /> {t('team.employees.add')}
@@ -309,61 +386,20 @@ function EmployeesTab() {
             {t('team.employees.empty.text')}
           </EmptyState>
         ) : (
-          <Table aria-label={t('team.employees.tableLabel')}>
-            <TableHeader>
-              <Column isRowHeader>{t('common.name')}</Column>
-              <Column>{t('team.employees.jobTitle')}</Column>
-              <Column>{t('team.employees.appUser')}</Column>
-              <Column align="end">{t('team.employees.hourlyRate')}</Column>
-              <Column align="end">{t('team.employees.hoursThisYear')}</Column>
-              <Column>{t('common.status')}</Column>
-              {canWrite && (
-                <Column>
-                  <span className="sr-only">{t('team.actions')}</span>
-                </Column>
-              )}
-            </TableHeader>
-            <TableBody items={sorted} dependencies={[canWrite, members.data, org.currency]}>
-              {(e) => (
-                <Row id={e.id} className={cx(!e.active && 'text-muted')}>
-                  <Cell>
-                    <div className="flex items-center gap-2.5 min-w-44">
-                      <Avatar name={e.name} />
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{e.name}</div>
-                        {(e.email || e.phone) && (
-                          <div className="text-xs text-muted flex flex-wrap gap-x-3">
-                            {e.email && (
-                              <span className="inline-flex items-center gap-1">
-                                <Mail className="size-3" aria-hidden /> {e.email}
-                              </span>
-                            )}
-                            {e.phone && (
-                              <span className="inline-flex items-center gap-1">
-                                <Phone className="size-3" aria-hidden /> {e.phone}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Cell>
-                  <Cell className="whitespace-nowrap">{e.jobTitle ?? <span className="text-muted">—</span>}</Cell>
-                  <Cell className="whitespace-nowrap">{memberName(e.userId) ?? <span className="text-muted">{t('team.employees.noAppAccess')}</span>}</Cell>
-                  <Cell align="end">{e.hourlyRate != null ? `${fmt.money(e.hourlyRate, org.currency, 2)} / h` : <span className="text-muted">—</span>}</Cell>
-                  <Cell align="end">{fmt.num(e.hoursThisYear, 1)} h</Cell>
-                  <Cell>{e.active ? <Badge tone="success">{t('team.employees.active')}</Badge> : <Badge>{t('team.employees.inactive')}</Badge>}</Cell>
-                  {canWrite && (
-                    <Cell className="w-0">
-                      <Button size="icon-sm" variant="ghost" aria-label={t('team.editName', { name: e.name })} onPress={() => setEditing(e)}>
-                        <Pencil />
-                      </Button>
-                    </Cell>
-                  )}
-                </Row>
-              )}
-            </TableBody>
-          </Table>
+          <DataTable
+            aria-label={t('team.employees.tableLabel')}
+            view={view}
+            row={(e) => ({ className: cx(!e.active && 'text-muted') })}
+            actions={
+              canWrite
+                ? (e) => (
+                    <Button size="icon-sm" variant="ghost" aria-label={t('team.editName', { name: e.name })} onPress={() => setEditing(e)}>
+                      <Pencil />
+                    </Button>
+                  )
+                : undefined
+            }
+          />
         )}
       </Card>
 

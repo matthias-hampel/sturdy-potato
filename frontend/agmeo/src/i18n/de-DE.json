@@ -2234,6 +2234,7 @@
   "table.bulkFailed": "{{count}} Änderungen fehlgeschlagen",
   "table.bulkFailed_one": "1 Änderung fehlgeschlagen",
   "table.clearSelection": "Auswahl aufheben",
+  "table.empty": "Keine Einträge",
   "table.filterColumn": "{{column}} filtern",
   "table.from": "Von",
   "table.noMatches": "Keine Zeilen passen zur Suche.",

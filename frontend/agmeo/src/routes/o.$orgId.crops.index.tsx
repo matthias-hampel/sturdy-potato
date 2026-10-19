@@ -20,7 +20,8 @@ import { ApplyTemplateDialog, CycleFields, EditCycleDialog, useVarietyResolver, 
 import { OPERATION_TABS, OperationTabPanel, operationTabType, type OperationTab } from '#/components/crops/OperationTab'
 import { PartUsageBadge } from '#/components/fields/FieldParts'
 import { FieldShape } from '#/components/map/FieldShape'
-import { NoMatches, SelectionBar, selectedIds, useBulkMutation, useTableView, type ColumnDef } from '#/components/table/tableTools'
+import { DataTable } from '#/components/table/DataTable'
+import { SelectionBar, selectedIds, useBulkMutation, useTableView, type ColumnDef } from '#/components/table/tableTools'
 import { CropCycleStatusBadge, CropRoleBadge, CropTag } from '#/components/labels'
 import { cropRoleLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
@@ -31,7 +32,6 @@ import { Button, Link, buttonClass } from '#/ui/Button'
 import { Checkbox, ComboBox, DatePicker, NumberField, Option, Select, num } from '#/ui/Field'
 import { Card, EmptyState, Loading, Notice, PageHeader, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 import { ConfirmButton, Menu, MenuItem, MenuSeparator, MenuTrigger, ModalDialog } from '#/ui/Overlay'
-import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx } from '#/ui/utils'
 
 const TABS = ['overview', ...OPERATION_TABS] as const
@@ -214,6 +214,7 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
       {
         id: 'field',
         label: t('crops.plan.field'),
+        isRowHeader: true,
         value: (r) => (r.part ? `${r.field.name} ${r.part.name}` : r.field.name),
         text: (r) => [r.field.name, r.part?.name, r.field.farmName].filter(Boolean).join(' '),
         render: (r) => {
@@ -323,10 +324,7 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
     [t, writable, onAssign],
   )
   const view = useTableView(columns, rows)
-  const shown = useMemo(() => {
-    const list = rows.filter(view.matches)
-    return view.compare ? [...list].sort(view.compare) : list
-  }, [rows, view])
+  const shown = view.shown
 
   const selected = useMemo(() => {
     const ids = selectedIds(selection, shown)
@@ -339,72 +337,44 @@ function PlanTable({ rows, onAssign, onEdit, onApply }: { rows: PlanRow[]; onAss
   return (
     <div className="min-w-0">
       <Card padded={false}>
-        <Table
+        <DataTable
           aria-label={t('crops.plan.label')}
+          view={view}
           selectionMode={writable ? 'multiple' : 'none'}
           selectedKeys={selection}
           onSelectionChange={setSelection}
-          sortDescriptor={view.sort}
-          onSortChange={view.setSort}
-        >
-          <TableHeader>
-            {writable && (
-              <Column className="w-10">
-                <Checkbox slot="selection" />
-              </Column>
-            )}
-            {columns.map((c) => (
-              <Column key={c.id} id={c.id} isRowHeader={c.id === 'field'} align={c.align} allowsSorting>
-                {view.head(c)}
-              </Column>
-            ))}
-            <Column aria-label={t('crops.plan.actions')}> </Column>
-          </TableHeader>
-          <TableBody items={shown} renderEmptyState={() => (view.filtered ? <NoMatches onReset={view.clearFilters} /> : <div className="py-10 text-center text-sm text-muted">{t('crops.plan.empty')}</div>)}>
-            {(r) => (
-              <Row id={r.id}>
-                {writable && (
-                  <Cell>
-                    <Checkbox slot="selection" />
-                  </Cell>
-                )}
-                {columns.map((c) => (
-                  <Cell key={c.id} align={c.align}>{c.render(r)}</Cell>
-                ))}
-                <Cell>
-                  {r.cycles.length > 0 && (can('crop.write') || can('operation.write')) && (
-                    <MenuTrigger>
-                      <AriaButton aria-label={t('crops.plan.actionsFor', { name: r.field.name })} className={buttonClass('ghost', 'icon-sm')}>
-                        <MoreHorizontal className="size-4" />
-                      </AriaButton>
-                      <Menu
-                        onAction={(key) => {
-                          const [action, id] = String(key).split(':')
-                          const cy = r.cycles.find((x) => x.id === id)
-                          if (!cy) return
-                          if (action === 'edit') onEdit(cy)
-                          if (action === 'template') onApply(cy)
-                          if (action === 'delete') remove.mutate(cy.id)
-                        }}
-                      >
-                        {/* One block of actions per crop when a catch or undersown crop shares the field. */}
-                        {r.cycles.flatMap((cy, i) => {
-                          const suffix = r.cycles.length > 1 ? ` · ${cy.cropName}` : ''
-                          return [
-                            ...(i > 0 ? [<MenuSeparator key={`sep:${cy.id}`} />] : []),
-                            ...(can('crop.write') ? [<MenuItem key={`edit:${cy.id}`} id={`edit:${cy.id}`} textValue={t('crops.edit') + suffix}><Pencil /> {t('crops.edit')}{suffix}</MenuItem>] : []),
-                            ...(can('operation.write') ? [<MenuItem key={`template:${cy.id}`} id={`template:${cy.id}`} textValue={t('templates.apply.action') + suffix}><ListChecks /> {t('templates.apply.action')}{suffix}</MenuItem>] : []),
-                            ...(can('crop.write') ? [<MenuItem key={`delete:${cy.id}`} id={`delete:${cy.id}`} textValue={t('crops.remove') + suffix} danger><Trash2 /> {t('crops.remove')}{suffix}</MenuItem>] : []),
-                          ]
-                        })}
-                      </Menu>
-                    </MenuTrigger>
-                  )}
-                </Cell>
-              </Row>
-            )}
-          </TableBody>
-        </Table>
+          empty={<div className="py-10 text-center text-sm text-muted">{t('crops.plan.empty')}</div>}
+          actions={(r) =>
+            r.cycles.length > 0 && (can('crop.write') || can('operation.write')) && (
+              <MenuTrigger>
+                <AriaButton aria-label={t('crops.plan.actionsFor', { name: r.field.name })} className={buttonClass('ghost', 'icon-sm')}>
+                  <MoreHorizontal className="size-4" />
+                </AriaButton>
+                <Menu
+                  onAction={(key) => {
+                    const [action, id] = String(key).split(':')
+                    const cy = r.cycles.find((x) => x.id === id)
+                    if (!cy) return
+                    if (action === 'edit') onEdit(cy)
+                    if (action === 'template') onApply(cy)
+                    if (action === 'delete') remove.mutate(cy.id)
+                  }}
+                >
+                  {/* One block of actions per crop when a catch or undersown crop shares the field. */}
+                  {r.cycles.flatMap((cy, i) => {
+                    const suffix = r.cycles.length > 1 ? ` · ${cy.cropName}` : ''
+                    return [
+                      ...(i > 0 ? [<MenuSeparator key={`sep:${cy.id}`} />] : []),
+                      ...(can('crop.write') ? [<MenuItem key={`edit:${cy.id}`} id={`edit:${cy.id}`} textValue={t('crops.edit') + suffix}><Pencil /> {t('crops.edit')}{suffix}</MenuItem>] : []),
+                      ...(can('operation.write') ? [<MenuItem key={`template:${cy.id}`} id={`template:${cy.id}`} textValue={t('templates.apply.action') + suffix}><ListChecks /> {t('templates.apply.action')}{suffix}</MenuItem>] : []),
+                      ...(can('crop.write') ? [<MenuItem key={`delete:${cy.id}`} id={`delete:${cy.id}`} textValue={t('crops.remove') + suffix} danger><Trash2 /> {t('crops.remove')}{suffix}</MenuItem>] : []),
+                    ]
+                  })}
+                </Menu>
+              </MenuTrigger>
+            )
+          }
+        />
       </Card>
 
       <SelectionBar count={selected.length} onClear={clear}>
