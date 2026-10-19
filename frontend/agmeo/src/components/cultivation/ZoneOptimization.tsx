@@ -5,7 +5,9 @@ import {
   type EconomicsSummary,
   type FertilizerNeed,
   type Field,
+  type NitrogenModel,
   type Operation,
+  type PredictionTimeseries,
   type Product,
   type ProductivityState,
   type VraInputType,
@@ -14,10 +16,10 @@ import {
   type Zoning,
 } from '@agmeo/contracts'
 import { useQueries, type UseQueryResult } from '@tanstack/react-query'
-import { BarChart2, Droplets, Eye, Layers, Leaf, RotateCcw, Save, Shield, SigmaIcon, Sprout, Wand2, type LucideIcon } from 'lucide-react'
+import { BarChart2, Cpu, Droplets, Eye, Layers, Leaf, RotateCcw, Save, Shield, SigmaIcon, Sprout, Wand2, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ColumnChart } from '#/components/charts'
+import { ColumnChart, XYChart } from '#/components/charts'
 import { initialState, toPayload } from '#/components/operations/OperationForm'
 import { api } from '#/lib/api'
 import { fmt } from '#/lib/format'
@@ -34,6 +36,7 @@ import {
   distribute,
   lineKey,
   meanRate,
+  nitrogenChart,
   rateIn,
   zoneLines,
   zoneYield,
@@ -155,6 +158,12 @@ export function ZoneOptimization({
     }),
   })
 
+  // The ESM N model on the zones (and its run state), the DüV need beside it.
+  const nModel = useOrgQuery<NitrogenModel>(needed ? `/crop-cycles/${cycle.id}/nitrogen-model` : null, zoning ? { zoningId: zoning.id } : undefined, {
+    refetchInterval: (d) => (d?.latestRun && (d.latestRun.status === 'queued' || d.latestRun.status === 'running') ? 5_000 : false),
+  })
+  const modelByZone = new Map((nModel.data?.zones ?? []).map((z) => [z.zoneNo, z]))
+
   const save = useOrgMutation(
     async (base, _: void) => {
       if (!zoning) return
@@ -264,7 +273,26 @@ export function ZoneOptimization({
         tone: (v) => (v < -10 ? 'negative' : null),
       },
     )
+    if (modelByZone.size) {
+      const modelNeed = zones.map((z) => modelByZone.get(z.zoneNo)?.nDemandKgHa ?? null)
+      summary.push(
+        { key: 'modelYield', label: t('cultivation.zones.row.modelYield'), values: zones.map((z) => modelByZone.get(z.zoneNo)?.yieldTHa ?? null), format: (v) => `${fmt.fixed(v, 1)} t/ha` },
+        { key: 'nModel', label: t('cultivation.zones.row.nModel'), values: modelNeed, format: (v) => `${fmt.num(v)} kg N/ha` },
+        {
+          key: 'nModelVsDuev',
+          label: t('cultivation.zones.row.nModelVsDuev'),
+          values: modelNeed.map((m, i) => (m == null || needValues[i] == null ? null : m - needValues[i]!)),
+          format: (v) => `${v > 0 ? '+' : ''}${fmt.num(v)} kg N/ha`,
+          tone: (v) => (v > 0 ? 'negative' : null),
+        },
+      )
+    }
   }
+  // N applied per zone and fertilisation, in date order (for the N supply chart).
+  const applicationsOf = (zoneNo: number) =>
+    groups
+      .map((g) => g.lines.reduce((s, l) => s + rateIn(ratesOf(l), l.flatRate, zoneNo) * (availableNPerUnit(l.line, product.get(l.line.productId)) ?? 0), 0))
+      .filter((n) => n > 0)
   const yields = zones.map((z) => (Number.isNaN(yieldLevel) ? null : zoneYield(yieldLevel, z)))
   if (category === 'total' || category === 'harvest') {
     summary.push({ key: 'yield', label: t('cultivation.zones.row.yield'), values: yields, format: (v) => `${fmt.fixed(v, 1)} t/ha` })
@@ -393,6 +421,8 @@ export function ZoneOptimization({
         </div>
       )}
 
+      {category === 'fertilization' && <NitrogenModelCard cycleId={cycle.id} model={nModel} zones={zones.map((z) => z.zoneNo)} zoneCount={zoning.zoneCount} applicationsOf={applicationsOf} />}
+
       {!analysis.current && <Notice tone="warning">{t('cultivation.zones.outdated')}</Notice>}
 
       <Card padded={false}>
@@ -480,6 +510,91 @@ function NoZones({ fieldId, pending }: { fieldId: string; pending: boolean }) {
       >
         {t('cultivation.zones.noZones.description')}
       </EmptyState>
+    </Card>
+  )
+}
+
+/**
+ * The ESM N model: its run state, a run on request, and the N uptake and N supply of a zone over
+ * BBCH from the ESM timeseries (the reference's N balance chart).
+ */
+function NitrogenModelCard({
+  cycleId,
+  model,
+  zones,
+  zoneCount,
+  applicationsOf,
+}: {
+  cycleId: string
+  model: UseQueryResult<NitrogenModel>
+  zones: number[]
+  zoneCount: number
+  applicationsOf: (zoneNo: number) => number[]
+}) {
+  const { t } = useTranslation()
+  const { can } = useOrg()
+  const [zoneNo, setZoneNo] = useState(zones[0] ?? 1)
+  const m = model.data
+  const ts = useOrgQuery<PredictionTimeseries>(m?.configured && m.run ? '/predictions/timeseries' : null, { cropCycleId: cycleId }, { staleTime: 10 * 60_000 })
+  const start = useOrgMutation((base, _: void) => api.post(`${base}/crop-cycles/${cycleId}/nitrogen-model/runs`, { zoneCount }), { success: t('cultivation.nModel.queued') })
+  if (model.isLoading) return <Loading />
+  if (model.error) return <ErrorNotice error={model.error} />
+  if (!m) return null
+  const pending = m.latestRun?.status === 'queued' || m.latestRun?.status === 'running'
+  const zone = m.zones.find((z) => z.zoneNo === zoneNo) ?? m.zones[0] ?? null
+  const chart = zone && ts.data?.available ? nitrogenChart(ts.data.nitrogenCurve, zone, applicationsOf(zone.zoneNo)) : null
+  const action =
+    m.configured && m.esmCrop && can('crop.write') ? (
+      <Button size="sm" onPress={() => start.mutate()} isPending={start.isPending} isDisabled={pending}>
+        <Cpu /> {m.run ? t('cultivation.nModel.rerun') : t('cultivation.nModel.run')}
+      </Button>
+    ) : undefined
+  return (
+    <Card title={t('cultivation.nModel.title')} description={t('cultivation.nModel.description')} actions={action}>
+      <div className="space-y-3">
+        {!m.configured && <Notice tone="info">{t('cultivation.nModel.notConfigured')}</Notice>}
+        {m.configured && !m.esmCrop && <Notice tone="info">{t('cultivation.nModel.cropNotModelled')}</Notice>}
+        {m.configured && m.esmCrop && !m.hasNitrogenModel && <Notice tone="info">{t('cultivation.nModel.noCurve')}</Notice>}
+        {pending && <Notice tone="info">{t('cultivation.nModel.running')}</Notice>}
+        {m.latestRun?.status === 'failed' && <Notice tone="warning">{t('cultivation.nModel.failed', { error: m.latestRun.error ?? '' })}</Notice>}
+        {m.run ? (
+          <p className="text-xs text-muted">
+            {t('cultivation.nModel.lastRun', { date: fmt.date(m.run.finishedAt ?? m.run.requestedAt, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }), count: m.modelZones.length })}
+            {m.zones.some((z) => z.coverage < 0.9) && ` · ${t('cultivation.nModel.partialCoverage')}`}
+          </p>
+        ) : (
+          m.configured && m.esmCrop && !pending && <p className="text-sm text-muted">{t('cultivation.nModel.none')}</p>
+        )}
+        {m.zones.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium mr-auto">{t('cultivation.nModel.chart')}</span>
+              <SegmentedControl
+                aria-label={t('cultivation.nModel.zone')}
+                items={m.zones.map((z) => ({ id: String(z.zoneNo), label: t('cultivation.zone', { number: z.zoneNo }) }))}
+                value={String(zone?.zoneNo ?? '')}
+                onChange={(id) => setZoneNo(Number(id))}
+              />
+            </div>
+            {ts.isLoading ? (
+              <Loading />
+            ) : chart ? (
+              <XYChart
+                ariaLabel={t('cultivation.nModel.chart')}
+                xLabel="BBCH"
+                formatX={(v) => fmt.num(v)}
+                formatY={(v) => `${fmt.num(v)} kg`}
+                series={[
+                  { name: t('cultivation.nModel.uptake'), color: 'var(--color-series-2)', points: chart.uptake },
+                  { name: t('cultivation.nModel.supply'), color: 'var(--color-series-1)', points: chart.supply },
+                ]}
+              />
+            ) : (
+              <p className="text-sm text-muted">{t('cultivation.nModel.noTimeseries')}</p>
+            )}
+          </div>
+        )}
+      </div>
     </Card>
   )
 }

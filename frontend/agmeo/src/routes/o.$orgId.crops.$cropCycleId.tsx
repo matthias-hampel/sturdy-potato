@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { CultivationInfo } from '#/components/cultivation/CultivationInfo'
 import { CultivationOperations } from '#/components/cultivation/CultivationOperations'
+import { GrasslandPrediction } from '#/components/cultivation/GrasslandPrediction'
 import { ZoneOptimization, type ZoneFocus } from '#/components/cultivation/ZoneOptimization'
 import { OPT_CATEGORIES } from '#/components/cultivation/zoneMath'
 import { EditCycleDialog } from '#/components/crops/CycleDialogs'
@@ -142,7 +143,10 @@ function CultivationPage() {
             <Tab id="zones">{t('cultivation.tabs.zones')}</Tab>
           </TabList>
           <TabPanel id="info">
-            <CultivationInfo cycle={cycle} field={f} operations={operations} onEdit={can('crop.write') ? () => setEditOpen(true) : undefined} />
+            <div className="space-y-6">
+              <CultivationInfo cycle={cycle} field={f} operations={operations} onEdit={can('crop.write') ? () => setEditOpen(true) : undefined} />
+              <GrasslandPrediction cycleId={cycle.id} />
+            </div>
           </TabPanel>
           <TabPanel id="operations">
             <CultivationOperations

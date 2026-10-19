@@ -21,6 +21,7 @@ const LEVEL_COLOR: Record<ConditionLevel, string> = {
 const levelLabel = (v: ConditionLevel | null) => (v == null ? t('conditions.level.none') : t(`conditions.level.${v}`))
 
 function reasonText(r: ConditionReason) {
+  if (r.key.startsWith('reason.disease.')) return `${t(`conditions.disease.name.${r.key.slice('reason.disease.'.length)}`)}: ${t(`conditions.disease.level.${r.value ?? 0}`)}`
   const label = t(`conditions.${r.key}`, { defaultValue: r.key.replace('reason.', '') })
   if (r.value == null) return label
   if (r.dimension === 'hours') return `${label}: ${fmt.num(r.value)} h`
@@ -100,6 +101,13 @@ export function ConditionsTab({ fieldId }: { fieldId: string }) {
             missing={c.soil.texture ? t('conditions.water.notEnoughWeather') : t('conditions.noWaterBalance')}
           />
           <ConditionBar label={t('conditions.bars.weatherRisk')} days={c.bars.weatherRisk} />
+          {c.disease.supported && (
+            <ConditionBar
+              label={t('conditions.bars.disease')}
+              days={c.bars.disease?.some((d) => d.value != null) ? c.bars.disease : null}
+              missing={c.disease.configured || c.disease.refreshedAt ? t('conditions.disease.noData') : t('conditions.disease.notConfigured')}
+            />
+          )}
           <div className="flex flex-wrap gap-3 pt-2 text-xs text-muted">
             {([0, 1, 2, 3] as ConditionLevel[]).map((l) => (
               <span key={l} className="inline-flex items-center gap-1.5">
@@ -161,6 +169,7 @@ export function ConditionsTab({ fieldId }: { fieldId: string }) {
         <PhenologyCard c={c} />
         <WaterBalanceCard c={c} />
       </div>
+      {c.disease.supported && <DiseaseCard c={c} />}
       <TrafficabilityCard fieldId={fieldId} hasSoil={!!c.soil.texture} />
     </div>
   )
@@ -284,6 +293,50 @@ function TrafficabilityCard({ fieldId, hasSoil }: { fieldId: string; hasSoil: bo
               </p>
             </>
           ) : null}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/** Risk level per disease on the last days with ISIP data (the reference's disease card). */
+function DiseaseCard({ c }: { c: FieldConditions }) {
+  const { t } = useTranslation()
+  const d = c.disease
+  const dates = d.diseases[0]?.days.map((x) => x.date) ?? []
+  return (
+    <Card
+      title={t('conditions.disease.title')}
+      description={d.refreshedAt ? t('conditions.disease.refreshed', { time: fmt.date(d.refreshedAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }) : t('conditions.disease.source')}
+      padded={dates.length === 0}
+    >
+      {dates.length === 0 ? (
+        <Notice tone="info">{d.configured || d.refreshedAt ? t('conditions.disease.noData') : t('conditions.disease.notConfigured')}</Notice>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs tabular">
+            <tbody>
+              <tr>
+                <th className="sticky left-0 bg-surface px-3 py-1.5" />
+                {dates.map((date) => (
+                  <td key={date} className="px-0.5 py-1.5 text-center text-muted">
+                    {date.slice(8, 10)}.{date.slice(5, 7)}.
+                  </td>
+                ))}
+              </tr>
+              {d.diseases.map((disease) => (
+                <tr key={disease.key}>
+                  <th className="sticky left-0 bg-surface px-3 py-1 text-left font-medium text-fg-2 whitespace-nowrap">{t(`conditions.disease.name.${disease.key}`)}</th>
+                  {disease.days.map((x) => (
+                    <td key={x.date} className="px-0.5 py-1 min-w-6">
+                      <Cell level={x.value} title={`${fmt.date(x.date)}: ${t(`conditions.disease.level.${x.value}`)}`} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="px-3 py-2 text-xs text-muted">{t('conditions.disease.source')}</p>
         </div>
       )}
     </Card>
