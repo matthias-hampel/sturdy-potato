@@ -1,7 +1,7 @@
 import type { Feature, MultiPolygon, Polygon, Position } from 'geojson'
 import { t } from '#/i18n'
 import { CRS_OPTIONS, type CrsId, crsProj, guessCrs } from './crs'
-import { extension, type SourceFile } from './files'
+import { extension, type SourceFile, upload } from './files'
 import { isLonLat, type ShapeLayer } from './shapefile'
 
 type Proj4 = typeof import('proj4')
@@ -200,30 +200,31 @@ export async function readPortalXml(files: SourceFile[], crsOverride: CrsId | nu
   const docs = files
     .filter((f) => ['xml', 'gml'].includes(extension(f)))
     .map((f) => ({ file: f, root: parseXml(decodeXml(f.data), f.name) }))
-  const formats: { name: string; format: Format }[] = []
+  const formats: { name: string; file: SourceFile; format: Format }[] = []
   const nrwXml = docs.filter((d) => d.root.localName === 'nn' && descendants(d.root, 'parzelle').length)
   const nrwGml = docs.filter((d) => d.root.localName === 'FeatureCollection' && descendants(d.root, 'tschlag').length)
   for (const d of docs) {
     const name = d.file.name.replace(/\.(xml|gml)$/i, '')
-    if (d.root.localName === 'Ergebnis' && descendants(d.root, 'Feldstueck').length) formats.push({ name, format: bavaria(d.root) })
-    if (d.root.localName === 'flaechenantrag') formats.push({ name, format: dataExperts(d.root) })
+    if (d.root.localName === 'Ergebnis' && descendants(d.root, 'Feldstueck').length) formats.push({ name, file: d.file, format: bavaria(d.root) })
+    if (d.root.localName === 'flaechenantrag') formats.push({ name, file: d.file, format: dataExperts(d.root) })
   }
   if (nrwXml.length || nrwGml.length) {
     if (!nrwGml.length) throw new Error(t('import.antrag.nwGmlMissing'))
     const geometries = nrwGml.flatMap((d) => nrwGeometries(d.root))
-    const name = (nrwXml[0] ?? nrwGml[0]).file.name.replace(/\.(xml|gml)$/i, '')
-    formats.push({ name, format: nrw(nrwXml.flatMap((d) => nrwParcels(d.root)), geometries) })
+    const file = (nrwXml[0] ?? nrwGml[0]).file
+    const name = file.name.replace(/\.(xml|gml)$/i, '')
+    formats.push({ name, file, format: nrw(nrwXml.flatMap((d) => nrwParcels(d.root)), geometries) })
   }
   if (!formats.length) return []
 
   const { default: proj4 } = await import('proj4')
-  return formats.map(({ name, format }) => toLayer(name, format, crsOverride, proj4))
+  return formats.map(({ name, file, format }) => ({ id: file.path, file: upload(file), ...toLayer(name, format, crsOverride, proj4) }))
 }
 
 /** Column names the Antragsdaten detection picks up; columns a format does not fill are left out. */
 const columns = (p: Parcel) => ({ SCHLAGNAME: p.name, SCHLAG_NR: p.number, TEILSCHLAG: p.part, FLIK: p.flik, NUTZ_CODE: p.code })
 
-function toLayer(name: string, { raws, defaultSrs }: Format, crsOverride: CrsId | null, proj4: Proj4): ShapeLayer {
+function toLayer(name: string, { raws, defaultSrs }: Format, crsOverride: CrsId | null, proj4: Proj4): Omit<ShapeLayer, 'id' | 'file'> {
   const placed = raws.filter((r): r is Raw & { geometry: RawGeometry } => !!r.geometry?.polygons.length)
   const declared = placed.find((r) => r.geometry.srs)?.geometry.srs ?? null
   const guess = guessCrs(placed[0]?.geometry.polygons[0][0][0] ?? [0, 0])
