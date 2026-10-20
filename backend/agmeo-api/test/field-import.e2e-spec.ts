@@ -74,6 +74,61 @@ describe('field import', () => {
     expect(byField['Unbekannt']).toMatchObject({ landUseCode: wheat.landUseCode, landUseCodeIsDefault: true })
   })
 
+  it('plans each feature in its own season, falling back to the top-level one', async () => {
+    const { u, base, farm, season, crops } = await setup()
+    const seasons = (await u.post(`${base}/seasons`, { harvestYear: 2026, startDate: '2025-08-01', endDate: '2026-07-31' }).expect(201)).body as { id: string; harvestYear: number }[]
+    const earlier = seasons.find((s) => s.harvestYear === 2026)!
+    const wheat = crops.find((c) => c.code === 'winter_wheat')!
+    const result = (
+      await u
+        .post(`${base}/fields/import`, {
+          farmId: farm.id,
+          seasonId: season.id,
+          features: [
+            { name: 'Antrag 2026', geometry: rect(9.96, 52.31, 9.97, 52.315), cropId: wheat.id, seasonId: earlier.id },
+            { name: 'Antrag 2027', geometry: rect(9.98, 52.31, 9.99, 52.315), cropId: wheat.id, seasonId: season.id },
+            { name: 'Ohne Saison', geometry: rect(10.0, 52.31, 10.01, 52.315), cropId: wheat.id },
+          ],
+        })
+        .expect(201)
+    ).body
+    expect(result.cropsAssigned).toBe(3)
+    const names = async (id: string) =>
+      ((await u.get(`${base}/crop-cycles?seasonId=${id}`).expect(200)).body as { fieldName: string }[]).map((c) => c.fieldName).sort()
+    expect(await names(earlier.id)).toEqual(['Antrag 2026'])
+    expect(await names(season.id)).toEqual(['Antrag 2027', 'Ohne Saison'])
+  })
+
+  it('takes per-feature seasons without a top-level one', async () => {
+    const { u, base, farm, season, crops } = await setup()
+    const result = (
+      await u
+        .post(`${base}/fields/import`, {
+          farmId: farm.id,
+          features: [
+            { name: 'A', geometry: rect(9.96, 52.31, 9.97, 52.315), cropId: crops[0].id, seasonId: season.id },
+            { name: 'B', geometry: rect(9.98, 52.31, 9.99, 52.315) },
+          ],
+        })
+        .expect(201)
+    ).body
+    expect(result.cropsAssigned).toBe(1)
+  })
+
+  it('needs a season for every feature with a crop', async () => {
+    const { u, base, farm, season, crops } = await setup()
+    const res = await u
+      .post(`${base}/fields/import`, {
+        farmId: farm.id,
+        features: [
+          { name: 'A', geometry: rect(9.96, 52.31, 9.97, 52.315), cropId: crops[0].id, seasonId: season.id },
+          { name: 'B', geometry: rect(9.98, 52.31, 9.99, 52.315), cropId: crops[0].id },
+        ],
+      })
+      .expect(400)
+    expect(res.body.code).toBe('season_required')
+  })
+
   it('needs a season when crops are given', async () => {
     const { u, base, farm, crops } = await setup()
     const res = await u

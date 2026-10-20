@@ -158,6 +158,12 @@ export function isoxmlRows(partfields: IsoxmlPartfield[]): ImportRow[] {
   }))
 }
 
+/** The harvest year a file name states, e.g. 2026 for "Antrag 2026.zip"; digits of longer numbers do not count. */
+export function harvestYearFromName(name: string | null): number | null {
+  const m = name?.match(/(?<!\d)20\d{2}(?!\d)/)
+  return m ? Number(m[0]) : null
+}
+
 export function propertyKeys(features: Feature[]) {
   return [...new Set(features.flatMap((f) => Object.keys(f.properties ?? {})))].sort()
 }
