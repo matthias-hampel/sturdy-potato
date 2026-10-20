@@ -29,7 +29,7 @@ type Layer = 'crops' | 'imagery' | 'themes'
 export const Route = createFileRoute('/o/$orgId/fields/')({
   validateSearch: z.object({
     layer: z.enum(['crops', 'imagery', 'themes']).optional().catch(undefined),
-    index: z.enum(IMAGERY_LAYERS).optional(),
+    index: z.enum(IMAGERY_LAYERS).optional().catch(undefined),
     /** Thematic layer (margin, yield, CO2e, N, soil, trafficability) and its soil parameter. */
     theme: z.enum(MAP_THEMES).optional().catch(undefined),
     soil: z.enum(SOIL_PARAMETERS).optional().catch(undefined),

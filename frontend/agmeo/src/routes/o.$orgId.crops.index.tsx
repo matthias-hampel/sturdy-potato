@@ -58,7 +58,7 @@ const TAB_ICONS: Record<CropsTab, LucideIcon> = {
 }
 
 export const Route = createFileRoute('/o/$orgId/crops/')({
-  validateSearch: z.object({ tab: z.enum(TABS).optional() }),
+  validateSearch: z.object({ tab: z.enum(TABS).optional().catch(undefined) }),
   component: CropPlanning,
 })
 

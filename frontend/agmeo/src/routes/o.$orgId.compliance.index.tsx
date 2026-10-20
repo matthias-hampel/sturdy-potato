@@ -31,7 +31,7 @@ export const Route = createFileRoute('/o/$orgId/compliance/')({
   validateSearch: z.object({
     tab: z.enum(TABS).optional().catch(undefined),
     farmId: z.string().optional(),
-    year: z.number().int().optional(),
+    year: z.number().int().optional().catch(undefined),
     step: z.enum(REPORT_STEPS).optional().catch(undefined),
     format: z.enum(FEDERAL_EXPORT_FORMATS).optional().catch(undefined),
     focus: z.string().max(40).optional(),

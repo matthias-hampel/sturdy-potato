@@ -12,7 +12,7 @@ import { PageHeader, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 
 export const Route = createFileRoute('/o/$orgId/compliance/psm-record')({
   // Year, step and the readiness row the farm-data step was opened from live in the URL.
-  validateSearch: z.object({ year: z.number().int().optional(), step: z.enum(PSM_RECORD_STEPS).optional(), issue: z.string().optional() }),
+  validateSearch: z.object({ year: z.number().int().optional().catch(undefined), step: z.enum(PSM_RECORD_STEPS).optional().catch(undefined), issue: z.string().optional() }),
   component: PsmRecordPage,
 })
 

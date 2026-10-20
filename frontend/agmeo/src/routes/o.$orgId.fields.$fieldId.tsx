@@ -45,11 +45,11 @@ const TABS = ['overview', 'conditions', 'parts', 'crops', 'soil', 'operations', 
 
 export const Route = createFileRoute('/o/$orgId/fields/$fieldId')({
   validateSearch: z.object({
-    tab: z.enum(TABS).optional(),
-    index: z.enum(IMAGERY_LAYERS).optional(),
+    tab: z.enum(TABS).optional().catch(undefined),
+    index: z.enum(IMAGERY_LAYERS).optional().catch(undefined),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     /** Application map opened in the editor on the maps tab. */
-    map: z.uuid().optional(),
+    map: z.uuid().optional().catch(undefined),
   }),
   component: FieldPage,
 })

@@ -27,7 +27,7 @@ const TABS = ['overview', 'analysis', 'imports', 'shares'] as const
 type SoilTabId = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/soil/')({
-  validateSearch: z.object({ tab: z.enum(TABS).optional() }),
+  validateSearch: z.object({ tab: z.enum(TABS).optional().catch(undefined) }),
   component: SoilPage,
 })
 

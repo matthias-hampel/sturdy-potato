@@ -45,7 +45,7 @@ const SOURCES = ['antrag', 'shapefile', 'isoxml'] as const
 const NO_FIELDS: string[] = []
 
 export const Route = createFileRoute('/o/$orgId/import')({
-  validateSearch: z.object({ source: z.enum(SOURCES).optional() }),
+  validateSearch: z.object({ source: z.enum(SOURCES).optional().catch(undefined) }),
   component: DataImportPage,
 })
 

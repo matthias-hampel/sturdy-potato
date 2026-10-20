@@ -20,7 +20,7 @@ import { cx } from '#/ui/utils'
 const TABS = ['balance', 'soil'] as const
 
 export const Route = createFileRoute('/o/$orgId/nutrients')({
-  validateSearch: z.object({ tab: z.enum(TABS).optional() }),
+  validateSearch: z.object({ tab: z.enum(TABS).optional().catch(undefined) }),
   component: NutrientsPage,
 })
 

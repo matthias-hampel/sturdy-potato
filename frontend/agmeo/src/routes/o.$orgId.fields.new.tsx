@@ -24,7 +24,7 @@ import { Card, EmptyState, Notice, PageHeader } from '#/ui/Layout'
 import { cx } from '#/ui/utils'
 
 export const Route = createFileRoute('/o/$orgId/fields/new')({
-  validateSearch: z.object({ onboarding: z.boolean().optional(), mode: z.enum(['draw', 'import', 'parcels']).optional() }),
+  validateSearch: z.object({ onboarding: z.boolean().optional(), mode: z.enum(['draw', 'import', 'parcels']).optional().catch(undefined) }),
   component: NewField,
 })
 

@@ -64,7 +64,7 @@ const TABS = ['margins', 'profitability', 'multiyear', 'benchmarks', 'result', '
 type EconomicsTab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/economics')({
-  validateSearch: z.object({ tab: z.enum(TABS).optional() }),
+  validateSearch: z.object({ tab: z.enum(TABS).optional().catch(undefined) }),
   component: EconomicsPage,
 })
 

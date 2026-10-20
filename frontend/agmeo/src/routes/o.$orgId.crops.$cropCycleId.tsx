@@ -29,10 +29,10 @@ type CultivationTab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/crops/$cropCycleId')({
   validateSearch: z.object({
-    tab: z.enum(TABS).optional(),
+    tab: z.enum(TABS).optional().catch(undefined),
     /** Maßnahmen: the template (Soll) or the recorded operations (Ist). */
-    view: z.enum(['plan', 'actual']).optional(),
-    category: z.enum(OPT_CATEGORIES).optional(),
+    view: z.enum(['plan', 'actual']).optional().catch(undefined),
+    category: z.enum(OPT_CATEGORIES).optional().catch(undefined),
   }),
   component: CultivationPage,
 })

@@ -16,7 +16,7 @@ export const Route = createFileRoute('/o/$orgId/operations/new')({
   validateSearch: z.object({
     fieldId: z.string().optional(),
     fieldIds: z.array(z.string()).optional(),
-    type: z.enum(OPERATION_TYPES).optional(),
+    type: z.enum(OPERATION_TYPES).optional().catch(undefined),
     /** A reviewed voice draft to prefill from; confirmed with the new operation. */
     voiceDraftId: z.string().optional(),
   }),

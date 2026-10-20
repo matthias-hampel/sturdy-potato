@@ -24,9 +24,9 @@ type CarbonTab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/carbon')({
   validateSearch: z.object({
-    tab: z.enum(TABS).optional(),
-    level: z.enum(CARBON_LEVELS).optional(),
-    evaluation: z.enum(CARBON_EVALUATIONS).optional(),
+    tab: z.enum(TABS).optional().catch(undefined),
+    level: z.enum(CARBON_LEVELS).optional().catch(undefined),
+    evaluation: z.enum(CARBON_EVALUATIONS).optional().catch(undefined),
   }),
   component: CarbonPage,
 })

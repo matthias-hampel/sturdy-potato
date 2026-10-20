@@ -23,7 +23,7 @@ import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 const TABS = ['parcels', 'analytics'] as const
 
 export const Route = createFileRoute('/o/$orgId/fields/leases')({
-  validateSearch: z.object({ tab: z.enum(TABS).optional() }),
+  validateSearch: z.object({ tab: z.enum(TABS).optional().catch(undefined) }),
   component: LeasesPage,
 })
 

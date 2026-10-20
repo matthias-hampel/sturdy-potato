@@ -32,7 +32,7 @@ import { EmptyState, ErrorNotice, Loading, PageHeader } from '#/ui/Layout'
 import { cx } from '#/ui/utils'
 
 export const Route = createFileRoute('/o/$orgId/compliance/report')({
-  validateSearch: z.object({ farmId: z.string().optional(), year: z.number().int().optional() }),
+  validateSearch: z.object({ farmId: z.string().optional(), year: z.number().int().optional().catch(undefined) }),
   component: ReportPage,
 })
 
