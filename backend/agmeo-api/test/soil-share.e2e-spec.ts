@@ -50,7 +50,7 @@ describe('soil share links', () => {
 
     await post(`${base}/soil/shares`, { title: 'X', fieldIds: [] }).expect(400)
     await post(`${base}/soil/shares`, { title: 'X', fieldIds: [a.id], password: 'kurz' }).expect(400)
-    const share = (await post(`${base}/soil/shares`, { title: 'Bodenproben 2026', fieldIds: [a.id], password: 'geheim123', labImportId: imported.importId, locale: 'de' }).expect(201)).body
+    const share = (await post(`${base}/soil/shares`, { title: 'Bodenproben 2026', fieldIds: [a.id], password: 'geheim123', labImportId: imported.importId }).expect(201)).body
     expect(share).toMatchObject({ kind: 'results', hasPassword: true, hasFile: true, fieldNames: ['Am Bach'], revokedAt: null })
     expect((await get(`${base}/soil/shares`).expect(200)).body[0].id).toBe(share.id)
 

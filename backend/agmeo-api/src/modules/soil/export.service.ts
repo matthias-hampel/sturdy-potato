@@ -29,22 +29,22 @@ interface ExportField {
 }
 
 /** Plain labels for PDF tables (the PDF fonts have no subscript digits). */
-const PARAM_LABELS: Partial<Record<SoilParameter, { de: string; en: string }>> = {
-  ph: { de: 'pH', en: 'pH' },
-  p2o5: { de: 'P2O5', en: 'P2O5' },
-  k2o: { de: 'K2O', en: 'K2O' },
-  mgo: { de: 'MgO', en: 'MgO' },
-  humus: { de: 'Humus', en: 'Humus' },
-  nmin: { de: 'Nmin', en: 'Nmin' },
-  soc: { de: 'SOC', en: 'SOC' },
-  clay: { de: 'Ton', en: 'Clay' },
-  silt: { de: 'Schluff', en: 'Silt' },
-  sand: { de: 'Sand', en: 'Sand' },
-  b: { de: 'Bor', en: 'Boron' },
-  cu: { de: 'Kupfer', en: 'Copper' },
-  mn: { de: 'Mangan', en: 'Manganese' },
-  zn: { de: 'Zink', en: 'Zinc' },
-  s: { de: 'Schwefel', en: 'Sulfur' },
+const PARAM_LABELS: Partial<Record<SoilParameter, string>> = {
+  ph: 'pH',
+  p2o5: 'P2O5',
+  k2o: 'K2O',
+  mgo: 'MgO',
+  humus: 'Humus',
+  nmin: 'Nmin',
+  soc: 'SOC',
+  clay: 'Ton',
+  silt: 'Schluff',
+  sand: 'Sand',
+  b: 'Bor',
+  cu: 'Kupfer',
+  mn: 'Mangan',
+  zn: 'Zink',
+  s: 'Schwefel',
 };
 
 const safeName = (s: string) =>
@@ -125,7 +125,7 @@ export class SoilExportService {
             zones: byField(f).map((z) => this.sheetZone(z, f.soil_texture as SoilTexture | null)),
           });
           const logo = await trx.selectFrom('organization_logos').select('content').where('organization_id', '=', ctx.orgId).executeTakeFirst();
-          const opts = { locale: input.locale, orgName: org.name, date, logo: logo ? pdfImage(logo.content) : null };
+          const opts = { orgName: org.name, date, logo: logo ? pdfImage(logo.content) : null };
           if (input.format === 'zonationPdf') {
             data = zonationPdf(
               zoned.map(sheet),
@@ -135,7 +135,7 @@ export class SoilExportService {
             name = `${base}_Zonierungskarte_${date}.pdf`;
           } else {
             const params = (input.params?.length ? input.params : DEFAULT_RESULT_COLS) as SoilParameter[];
-            data = resultsPdf(zoned.map(sheet), params, { ...opts, paramLabel: (p) => PARAM_LABELS[p]?.[input.locale] ?? p.toUpperCase() });
+            data = resultsPdf(zoned.map(sheet), params, { ...opts, paramLabel: (p) => PARAM_LABELS[p] ?? p.toUpperCase() });
             name = `${base}_Bodenergebnisse_${date}.pdf`;
           }
           mime = 'application/pdf';

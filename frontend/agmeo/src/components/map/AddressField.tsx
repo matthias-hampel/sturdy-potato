@@ -4,7 +4,6 @@ import { Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ComboBox, Group, Input, ListBox } from 'react-aria-components'
-import { LANGUAGE } from '#/i18n'
 import { api } from '#/lib/api'
 import { inputClass, Label, ListPopover, Option } from '#/ui/Field'
 import { cx } from '#/ui/utils'
@@ -37,7 +36,7 @@ export function AddressField({ orgId, label, placeholder, value, onChange, onSel
   const [chosen, setChosen] = useState<string | null>(value)
   const editing = value !== chosen
 
-  const params = { q: query, country, lat: near?.lat, lng: near?.lng, lang: LANGUAGE }
+  const params = { q: query, country, lat: near?.lat, lng: near?.lng, lang: 'de' }
   const enabled = editing && query.length >= MIN_LENGTH
   const results = useQuery({
     queryKey: ['geocode', orgId, params],
@@ -120,7 +119,7 @@ export function useFarmPlace(orgId: string | undefined, initial: { address: stri
     if (userAddress.current || !orgId) return
     const n = ++lookup.current
     api
-      .get<GeocodeHit | null>(`/orgs/${orgId}/geocode/reverse`, { lat: loc.lat, lng: loc.lng, lang: LANGUAGE })
+      .get<GeocodeHit | null>(`/orgs/${orgId}/geocode/reverse`, { lat: loc.lat, lng: loc.lng, lang: 'de' })
       .then((hit) => {
         if (n === lookup.current && !userAddress.current) setAddressValue(hit?.address ?? '')
       })

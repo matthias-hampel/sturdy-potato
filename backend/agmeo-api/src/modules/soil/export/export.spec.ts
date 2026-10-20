@@ -108,9 +108,9 @@ describe('PDF', () => {
         sampledOn: '2026-03-01',
       })),
     };
-    const zonation = objects(zonationPdf([sheetField], [{ ...sheetField, name: 'Ohne', zones: [] }], { locale: 'de', orgName: 'Hof', date: '2026-03-02' }));
+    const zonation = objects(zonationPdf([sheetField], [{ ...sheetField, name: 'Ohne', zones: [] }], { orgName: 'Hof', date: '2026-03-02' }));
     expect(zonation).toContain('/Count 2');
-    const results = objects(resultsPdf([sheetField], ['ph', 'p2o5'], { locale: 'en', orgName: 'Farm', date: '2026-03-02', paramLabel: (p) => p }));
+    const results = objects(resultsPdf([sheetField], ['ph', 'p2o5'], { orgName: 'Hof', date: '2026-03-02', paramLabel: (p) => p }));
     expect(results).toContain('/Count 2');
   });
 });

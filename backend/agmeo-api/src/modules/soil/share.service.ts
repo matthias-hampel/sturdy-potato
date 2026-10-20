@@ -28,7 +28,6 @@ interface LookupRow {
   kind: 'results' | 'history';
   title: string;
   password_hash: string | null;
-  locale: 'de' | 'en' | null;
   expires_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
@@ -91,13 +90,12 @@ export class SoilShareService {
       field_names: string[] | null;
       password_hash: string | null;
       file_id: string | null;
-      locale: SoilShare['locale'];
       expires_at: Date | null;
       created_at: Date;
       created_by_name: string | null;
       revoked_at: Date | null;
     }>`
-      SELECT s.id, s.token, s.kind, s.title, s.field_ids, s.password_hash, s.file_id, s.locale, s.expires_at, s.created_at, s.revoked_at,
+      SELECT s.id, s.token, s.kind, s.title, s.field_ids, s.password_hash, s.file_id, s.expires_at, s.created_at, s.revoked_at,
              u.display_name AS created_by_name,
              (SELECT array_agg(f.name ORDER BY f.name) FROM fields f WHERE f.id = ANY(s.field_ids)) AS field_names
       FROM soil_shares s LEFT JOIN users u ON u.id = s.created_by
@@ -112,7 +110,6 @@ export class SoilShareService {
       fieldNames: r.field_names ?? [],
       hasPassword: !!r.password_hash,
       hasFile: !!r.file_id,
-      locale: r.locale,
       expiresAt: iso(r.expires_at),
       createdAt: iso(r.created_at),
       createdByName: r.created_by_name,
@@ -145,7 +142,6 @@ export class SoilShareService {
           lab_import_id: input.labImportId ?? null,
           file_id: fileId,
           password_hash: passwordHash,
-          locale: input.locale ?? null,
           expires_at: input.expiresAt ?? null,
           created_by: ctx.userId,
         })
@@ -202,7 +198,6 @@ export class SoilShareService {
       status: this.status(row),
       requiresPassword: !!row.password_hash,
       hasFile: row.has_file,
-      locale: row.locale,
       createdAt: iso(row.created_at),
     };
   }

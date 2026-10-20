@@ -2,7 +2,7 @@ import type { NewsCategory, NewsItem } from '@agmeo/contracts'
 import { CalendarDays, ClipboardList, CloudSun, FileWarning, Newspaper, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { operationTypeLabel } from '#/i18n/labels'
-import { LOCALE, t } from '#/i18n'
+import { t } from '#/i18n'
 import { fmt } from '#/lib/format'
 import { useOrg } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
@@ -13,7 +13,7 @@ import { cx } from '#/ui/utils'
 const ICON: Record<NewsCategory, LucideIcon> = { weather: CloudSun, tasks: ClipboardList, events: CalendarDays, advisory: FileWarning }
 const TONE: Record<NewsCategory, BadgeTone> = { weather: 'info', tasks: 'accent', events: 'neutral', advisory: 'warning' }
 
-/** Parameters in the viewer's units and language (the server sends canonical °C, mm and ha). */
+/** Parameters in the viewer's units (the server sends canonical °C, mm and ha). */
 function display(key: string, p: Record<string, string | number>): Record<string, string | number> {
   const rain = (v: unknown) => fmt.measure(Number(v), 'precipDepth', { digits: 0 })
   const temp = (v: unknown, digits = 1) => fmt.measure(Number(v), 'temperature', { digits })
@@ -28,7 +28,6 @@ function display(key: string, p: Record<string, string | number>): Record<string
   if (key.startsWith('advisory.') && p.date) out.date = fmt.date(String(p.date))
   if (key === 'events.line') {
     out.dates = p.start === p.end ? date(p.start) : `${date(p.start)}–${date(p.end)}`
-    out.location = LOCALE.startsWith('de') ? p.location : p.locationEn
   }
   return out
 }

@@ -4,7 +4,6 @@ import type {
   CreateOrganizationInput,
   CurrentUser,
   InviteMemberInput,
-  Locale,
   MeasurementSetting,
   Member,
   OnboardingStep,
@@ -40,7 +39,7 @@ export class IdentityService {
         id: user.id,
         email: user.email,
         displayName: user.display_name,
-        locale: (user.locale as Locale | null) ?? null,
+        locale: user.locale === 'de' ? 'de' : null,
         organizations: await this.organizations(trx, userId),
       };
     });
@@ -180,7 +179,7 @@ export class IdentityService {
           .executeTakeFirst();
         if (existing) throw conflict('already_member', `${input.email} is already a member of this organization`);
         // Users who have signed in before become active immediately; others on first sign-in.
-        const user = await trx.selectFrom('users').select(['auth_subject', 'locale']).where('id', '=', userId).executeTakeFirst();
+        const user = await trx.selectFrom('users').select('auth_subject').where('id', '=', userId).executeTakeFirst();
         await trx
           .insertInto('memberships')
           .values({
@@ -202,13 +201,11 @@ export class IdentityService {
         });
         const [org, inviter] = await Promise.all([
           trx.selectFrom('organizations').select('name').where('id', '=', ctx.orgId).executeTakeFirstOrThrow(),
-          trx.selectFrom('users').select(['display_name', 'locale']).where('id', '=', ctx.userId).executeTakeFirstOrThrow(),
+          trx.selectFrom('users').select('display_name').where('id', '=', ctx.userId).executeTakeFirstOrThrow(),
         ]);
-        // Someone who has signed in before gets their own language, a newcomer the inviter's.
         await queueEmail(trx, {
           to: input.email,
           template: 'invitation',
-          locale: user?.auth_subject ? user.locale : inviter.locale,
           organizationId: ctx.orgId,
           params: { orgName: org.name, inviterName: inviter.display_name, role: input.role, acceptUrl: `${config.appUrl}/login?invited=1` },
         });

@@ -86,9 +86,9 @@ describe('rain digest', () => {
 
       expect(await sendRainDigest(jobsDb, orgRow, now)).toBe(2)
       const mails = await owner.selectFrom('jobs').select(['payload', 'dedupe_key']).where('organization_id', '=', org.id).where('kind', '=', 'email.send').execute()
-      const byTo = new Map(mails.map((m) => [(m.payload as { to: string }).to, m.payload as { template: string; locale: string; params: { totalFields: number; rainedFields: number; most: { name: string; precipMm: number }[] }; headers: Record<string, string> }]))
+      const byTo = new Map(mails.map((m) => [(m.payload as { to: string }).to, m.payload as { template: string; params: { totalFields: number; rainedFields: number; most: { name: string; precipMm: number }[] }; headers: Record<string, string> }]))
       const full = byTo.get(u.email)!
-      expect(full).toMatchObject({ template: 'rainDigest', locale: 'de', params: { totalFields: 2, rainedFields: 1 } })
+      expect(full).toMatchObject({ template: 'rainDigest', params: { totalFields: 2, rainedFields: 1 } })
       expect(full.params.most[0]).toMatchObject({ name: 'Nass', precipMm: 12 })
       expect(full.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click')
       expect(byTo.get(limitedEmail)!.params).toMatchObject({ totalFields: 1, rainedFields: 0, most: [{ name: 'Trocken' }] })

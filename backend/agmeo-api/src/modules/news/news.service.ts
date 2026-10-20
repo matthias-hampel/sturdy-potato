@@ -127,13 +127,12 @@ export interface SeedEvent {
   startDate: string;
   endDate?: string;
   location: string;
-  locationEn?: string;
   url?: string;
 }
 
 const EVENTS: SeedEvent[] = [
   { slug: 'dlg-feldtage-2026', title: 'DLG-Feldtage 2026', startDate: '2026-06-16', endDate: '2026-06-18', location: 'Bernburg (Sachsen-Anhalt)', url: 'https://www.dlg-feldtage.de' },
-  { slug: 'tag-des-offenen-hofes-2026', title: 'Tag des offenen Hofes', startDate: '2026-06-13', endDate: '2026-06-14', location: 'bundesweit', locationEn: 'nationwide (Germany)' },
+  { slug: 'tag-des-offenen-hofes-2026', title: 'Tag des offenen Hofes', startDate: '2026-06-13', endDate: '2026-06-14', location: 'bundesweit' },
   { slug: 'norla-2026', title: 'Norla Rendsburg', startDate: '2026-09-03', endDate: '2026-09-06', location: 'Rendsburg (SH)', url: 'https://www.norla-messe.de' },
   { slug: 'eurotier-2026', title: 'EuroTier 2026', startDate: '2026-11-10', endDate: '2026-11-13', location: 'Hannover', url: 'https://www.eurotier.com' },
   { slug: 'dlg-unternehmertage-2026', title: 'DLG-Unternehmertage 2026', startDate: '2026-09-01', endDate: '2026-09-02', location: 'Würzburg' },
@@ -326,7 +325,7 @@ export class NewsService {
         id: `events:${now.getUTCFullYear()}-W${String(isoWeek(now)).padStart(2, '0')}`,
         category: 'events',
         headline: upcoming.length === 1 ? { key: 'events.single', params: { title: next.title, days: daysUntilNext } } : { key: 'events.multiple', params: { count: upcoming.length, days: EVENTS_DAYS_AHEAD } },
-        body: upcoming.map((e) => ({ key: 'events.line', params: { start: e.startDate, end: e.endDate ?? e.startDate, title: e.title, location: e.location, locationEn: e.locationEn ?? e.location, url: e.url ?? '' } })),
+        body: upcoming.map((e) => ({ key: 'events.line', params: { start: e.startDate, end: e.endDate ?? e.startDate, title: e.title, location: e.location, url: e.url ?? '' } })),
         priority: daysUntilNext <= 14 ? 6 : 4,
         validFrom: `${today}T00:00:00.000Z`,
         validUntil: `${last.endDate ?? last.startDate}T23:59:59.000Z`,

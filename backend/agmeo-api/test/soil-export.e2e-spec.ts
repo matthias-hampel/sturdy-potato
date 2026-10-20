@@ -70,12 +70,12 @@ describe('soil exports', () => {
     expect(folders.some((f) => f.systemKey === 'soilExports')).toBe(true)
 
     // PDFs.
-    const pdf = (await post(`${base}/soil/exports`, { fieldIds: [a.id, b.id], format: 'zonationPdf', locale: 'de' }).expect(201)).body
+    const pdf = (await post(`${base}/soil/exports`, { fieldIds: [a.id, b.id], format: 'zonationPdf' }).expect(201)).body
     expect(pdf.file.mimeType).toBe('application/pdf')
     const pdfBody = (await get(`${base}/files/${pdf.file.id}/content`).buffer(true).parse(binary).expect(200)).body as Buffer
     expect(pdfBody.subarray(0, 8).toString()).toBe('%PDF-1.4')
     expect(pdfBody.toString('latin1')).toContain('/Count 2')
-    const results = (await post(`${base}/soil/exports`, { fieldIds: [a.id], format: 'resultsPdf', locale: 'en', params: ['ph', 'p2o5'] }).expect(201)).body
+    const results = (await post(`${base}/soil/exports`, { fieldIds: [a.id], format: 'resultsPdf', params: ['ph', 'p2o5'] }).expect(201)).body
     expect(results.file.name).toMatch(/\.pdf$/)
 
     // GeoJSON with the zone values.

@@ -36,7 +36,7 @@ export interface DigestInputRow {
   farmId: string;
   name: string;
   areaHa: number;
-  crop: { en: string; de: string | null } | null;
+  crop: string | null;
   /** Rain in the window; null when the weather does not cover it (left out, not shown as 0 mm). */
   precipMm: number | null;
   refreshedAt: Date | null;
@@ -46,7 +46,7 @@ export interface DigestField {
   fieldId: string;
   name: string;
   areaHa: number;
-  crop: { en: string; de: string | null } | null;
+  crop: string | null;
   precipMm: number;
 }
 
