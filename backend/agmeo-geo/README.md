@@ -71,12 +71,27 @@ role), `NATS_URL`, `SENTINEL_ARCHIVE` (default: the `archive` in
 
 ## Productivity zones
 
-See the module docstring of `agmeo_geo/productivity.py` (algorithm `pz-1`): acquisitions
-with ≥ 90 % clear and field-mean NDVI 0.35–0.92, four per season; normalised by the field
-mean, averaged per season and then over seasons; stability = mean leave-one-season-out
-correlation (≥ 0.6 stable, ≥ 0.4 partly); 1-D k-means into 3/5/7 zones, sieved, vectorised,
-coverage-simplified and clipped. Analyses are queued by the API or automatically once a
-boundary's imagery history is loaded; the worker polls the queue every 10 s.
+See the module docstring of `agmeo_geo/productivity.py` (algorithm `pz-4`, scene selection
+after OneSoil's productivity maps):
+
+- Season windows from the field-median NDVI curve (Savitzky–Golay 91 days, peaks ≥ 0.33,
+  ≥ 90 days apart, between 1 March and 1 October): from the peak down to
+  max(0.25, 0.3 × peak). Years without a peak use 1 March–1 October with field-mean NDVI
+  0.35–0.92.
+- Candidates are acquisitions in a window with ≥ 90 % of the field clear. Seasons whose main
+  crop is vegetables or grassland (crop cycles, if recorded) are skipped (`reason: "crop"`).
+- Cross-season consistency: one acquisition per season such that every pair of smoothed
+  maps (σ = 2 px, border eroded 2 px) correlates above 0.545; most seasons first, then the
+  highest mean correlation; one of the two newest seasons required; the other seasons are
+  listed as `reason: "inconsistent"`. Fewer than two seasons: `not_enough_seasons`.
+- Normalised by the field mean, averaged per season and then over seasons. Stability = mean
+  leave-one-season-out correlation; tercile stability = share of pixels always in the bottom
+  plus always in the top tercile; `suitable` needs > 2 acquisitions, a minimum pairwise
+  correlation ≥ 0.545 and stability ≥ 0.6 (`partially_suitable` from 0.4).
+- 1-D k-means into 3/5/7 zones, sieved, vectorised, coverage-simplified and clipped.
+
+Analyses are queued by the API or automatically once a boundary's imagery history is loaded;
+the worker polls the queue every 10 s.
 
 ## Soil sampling zones
 
@@ -91,10 +106,10 @@ soil-zonations` computes the queue once.
 
 ## Database access
 
-The worker connects as `agmeo_geo_worker` (member of `agmeo_geo`, migrations 000006–8). It
-can read field ids, organization ids and boundaries across organizations and write scenes,
-observations, field rasters, imagery jobs and productivity results; it cannot read any
-other tenant data.
+The worker connects as `agmeo_geo_worker` (member of `agmeo_geo`, migrations 000006–8 and
+000024). It can read field ids, organization ids and boundaries across organizations, which
+crop category a field had in which harvest year, and write scenes, observations, field
+rasters, imagery jobs and productivity results; it cannot read any other tenant data.
 
 ## Tiles
 
