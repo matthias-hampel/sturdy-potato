@@ -43,6 +43,7 @@ import { DEFAULT_NMIN, DUEV_CROPS, DUEV_RULESET, nitrogenNeed, organicFollowUpSh
 type Overrides = Out<typeof FertilizerNeedOverrides>;
 type SampleRow = {
   id: string;
+  lab_import_id: string | null;
   field_id: string;
   field_name: string;
   field_part_id: string | null;
@@ -229,6 +230,7 @@ export class NutrientsService {
         mg: r.mgo_mg_100g != null ? mgClass(r.mgo_mg_100g, soil) : null,
       },
       notes: r.notes,
+      labImportId: r.lab_import_id,
     };
   }
 
@@ -304,7 +306,7 @@ export class NutrientsService {
     });
   }
 
-  private async computeNeed(trx: Trx, cropCycleId: string, o: Overrides): Promise<FertilizerNeed> {
+  async computeNeed(trx: Trx, cropCycleId: string, o: Overrides): Promise<FertilizerNeed> {
     const c = await trx
       .selectFrom('crop_cycles as cc')
       .innerJoin('fields as f', 'f.id', 'cc.field_id')
@@ -535,7 +537,7 @@ export class NutrientsService {
   // ---------------------------------------------------------------------------
 
   /** Fertilizer lines treated on fields, with kg/ha nutrients per line (per treated hectare). */
-  private async fertilizationLines(trx: Trx, q: { fieldId?: string; cropCycleIds?: string[]; operationIds?: string[]; from?: string; to?: string; statuses: string[] }) {
+  async fertilizationLines(trx: Trx, q: { fieldId?: string; cropCycleIds?: string[]; operationIds?: string[]; from?: string; to?: string; statuses: string[] }) {
     const day = sql<string>`coalesce((o.performed_at AT TIME ZONE 'Europe/Berlin')::date, o.planned_on)`;
     let query = trx
       .selectFrom('operations as o')

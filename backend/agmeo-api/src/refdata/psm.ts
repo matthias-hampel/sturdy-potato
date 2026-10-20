@@ -164,3 +164,89 @@ export function mapUses(awg: Row[], kultur: Row[], schadorg: Row[], aufwand: Row
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Approval conditions (Auflagen), ported from the reference's seedData/psmProducts.ts
+// importRestrictions.
+// ---------------------------------------------------------------------------
+
+export interface PsmRestrictionRow {
+  auflagenr: string;
+  awg_id: string | null;
+  kennr: string | null;
+  code: string;
+  text: string | null;
+  code_group: string | null;
+  water_buffer_m: number | null;
+  drift_reduction_pct: number | null;
+}
+
+export interface PsmRestrictionReductionRow {
+  auflagenr: string;
+  reduction_pct: number;
+  distance_m: number | null;
+}
+
+/** BVL ships auflagenr as a float (58981503.0); the integer form is the key. */
+export const auflageKey = (auflagenr: unknown): string => String(Math.trunc(Number(auflagenr)));
+
+/** BVL uses "*" for "this reduction class does not permit application". */
+export function parseAbstand(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const trimmed = String(value).trim();
+  if (trimmed === '*') return null;
+  const n = Number(trimmed.replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Auflagen of known uses and products. `ebene` holds an AWG id ("024701-00/01-001") or a
+ * registration number; the water buffer is the unreduced distance when the BVL states one, else
+ * the widest permitted drift-reduction tier, whose class is then recorded. Code texts come from
+ * the German code lists.
+ */
+export function mapRestrictions(
+  auflagen: Row[],
+  redu: Row[],
+  codeText: (code: string) => string | null,
+  awgIds: Set<string>,
+  kennrs: Set<string>,
+): { restrictions: PsmRestrictionRow[]; reductions: PsmRestrictionReductionRow[] } {
+  const tiersFor = new Map<string, { reduction_pct: number; distance_m: number | null }[]>();
+  for (const r of redu) {
+    const pct = Number(String(r.kategorie ?? '').replace('%', '').trim());
+    if (r.kategorie == null || !Number.isFinite(pct)) continue;
+    const key = auflageKey(r.auflagenr);
+    const list = tiersFor.get(key) ?? [];
+    if (!list.some((t) => t.reduction_pct === pct)) list.push({ reduction_pct: pct, distance_m: parseAbstand(r.redu_abstand) });
+    tiersFor.set(key, list);
+  }
+  const restrictions: PsmRestrictionRow[] = [];
+  const reductions: PsmRestrictionReductionRow[] = [];
+  const seen = new Set<string>();
+  for (const r of auflagen) {
+    const ebene = String(r.ebene ?? '');
+    const code = r.auflage == null ? '' : String(r.auflage);
+    const awgScoped = ebene.includes('/') && ebene.includes('-');
+    if (!code || (awgScoped ? !awgIds.has(ebene) : !kennrs.has(ebene))) continue;
+    const auflagenr = auflageKey(r.auflagenr);
+    if (seen.has(auflagenr)) continue;
+    seen.add(auflagenr);
+    const tiers = tiersFor.get(auflagenr) ?? [];
+    const widest = tiers.filter((t) => t.distance_m !== null).sort((a, b) => b.distance_m! - a.distance_m! || a.reduction_pct - b.reduction_pct)[0];
+    const abstand = parseAbstand(r.abstand);
+    restrictions.push({
+      auflagenr,
+      awg_id: awgScoped ? ebene : null,
+      kennr: awgScoped ? null : ebene,
+      code,
+      text: codeText(code),
+      code_group: code.match(/^[A-Z]+/)?.[0] ?? null,
+      water_buffer_m: abstand ?? widest?.distance_m ?? null,
+      drift_reduction_pct: abstand != null ? null : (widest?.reduction_pct ?? null),
+    });
+    for (const t of tiers) reductions.push({ auflagenr, ...t });
+  }
+  return { restrictions, reductions };
+}

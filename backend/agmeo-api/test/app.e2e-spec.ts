@@ -231,7 +231,7 @@ describe('satellite monitoring', () => {
     expect(['none', 'queued', 'running', 'finished', 'failed']).toContain(status.state)
     expect(Array.isArray((await o.get(`/orgs/${org.id}/monitoring/imagery/dates?fieldId=${field.id}`).expect(200)).body)).toBe(true)
     await o.get(`/orgs/${org.id}/monitoring/imagery/2025-1-01/ndvi/1/1/1.png`).expect(400)
-    await o.get(`/orgs/${org.id}/monitoring/imagery/2025-01-01/savi/1/1/1.png`).expect(400)
+    await o.get(`/orgs/${org.id}/monitoring/imagery/2025-01-01/foo/1/1/1.png`).expect(400)
 
     const v = as(viewer.token)
     await v.post(`/orgs/${org.id}/fields/${field.id}/productivity`, {}).expect(403)

@@ -16,11 +16,11 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agmeo_refdata') THEN
     CREATE ROLE agmeo_refdata NOLOGIN;
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agmeo_recommender') THEN
-    CREATE ROLE agmeo_recommender NOLOGIN;
-  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agmeo_jobs') THEN
     CREATE ROLE agmeo_jobs NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agmeo_recommender') THEN
+    CREATE ROLE agmeo_recommender NOLOGIN;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agmeo_api') THEN
     CREATE ROLE agmeo_api LOGIN PASSWORD 'agmeo_api' IN ROLE agmeo_app;

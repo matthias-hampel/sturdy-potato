@@ -18,8 +18,8 @@
  *   the target organism and waiting period stay open rather than guessed.
  * - The applicator is the operation's responsible employee, else its workers, else the
  *   contractor. The time of day is the time entered with the performed date.
- * - BVL Auflagen are not part of the rewrite's register copy, so no application is marked as
- *   needing the time of day (NT127); `timeOfDayRequired` stays false until they are synced.
+ * - An application needs the time of day when an Auflage NT127* applies to one of its products
+ *   or to the approved use it was made under (BVL Auflagen, synced into psm_restrictions).
  */
 import { type PsmAttestations, PSM_USAGE_TYPES, type PsmUsageType } from '@agmeo/contracts';
 import { sql } from 'kysely';
@@ -109,6 +109,19 @@ export async function loadProtection(trx: Trx, services: { operations: Operation
     productIds.length ? (await trx.selectFrom('products').select(['id', 'registration_number']).where('id', 'in', productIds).execute()).map((p) => [p.id, p.registration_number]) : [],
   );
   const { findings, uses } = await services.protection.check(trx, documentedIds);
+  // Auflagen that make the time of day a required record field.
+  const kennrs = [...new Set([...registration.values()].filter((k): k is string => !!k))];
+  const awgIds = [...new Set(uses.map((u) => u.awgId))];
+  const nt127 = kennrs.length || awgIds.length
+    ? await trx
+        .selectFrom('psm_restrictions')
+        .select(['kennr', 'awg_id'])
+        .where('code', 'like', 'NT127%')
+        .where((eb) => eb.or([eb('kennr', 'in', kennrs.length ? kennrs : ['']), eb('awg_id', 'in', awgIds.length ? awgIds : [''])]))
+        .execute()
+    : [];
+  const timeKennr = new Set(nt127.flatMap((r) => (r.kennr ? [r.kennr] : [])));
+  const timeAwg = new Set(nt127.flatMap((r) => (r.awg_id ? [r.awg_id] : [])));
   const targetCodes = [...new Set(uses.flatMap((u) => u.targetCodes))];
   const targetText = new Map(
     targetCodes.length ? (await trx.selectFrom('psm_codes').select(['code', 'text']).where('code', 'in', targetCodes).execute()).map((c) => [c.code, c.text]) : [],
@@ -133,7 +146,8 @@ export async function loadProtection(trx: Trx, services: { operations: Operation
       applicatorName: op.responsibleEmployee?.name ?? (op.labor.map((l) => l.employeeName).join(', ') || null) ?? op.contractorName,
       usageType: typeof usage === 'string' && (PSM_USAGE_TYPES as readonly string[]).includes(usage) ? USAGE_TYPE_CODES[usage as PsmUsageType] : null,
       bbch: parseBbch(op.bbchStage),
-      timeOfDayRequired: false,
+      timeOfDayRequired:
+        inputs.some((i) => timeKennr.has(registration.get(i.productId) ?? '')) || uses.some((u) => u.operationId === op.id && timeAwg.has(u.awgId)),
     };
 
     for (const p of lines) {

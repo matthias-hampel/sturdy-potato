@@ -1,21 +1,51 @@
-import type { CropCycle, Field, Operation, OperationType } from '@agmeo/contracts'
+import {
+  DEFAULT_GERMINATION_RATE,
+  EQUIPMENT_GONE_STATUSES,
+  SEED_PACKAGE_SIZES,
+  distributeTotalSeedKg,
+  grainsPerM2FromKgHa,
+  kgHaFromGrainsPerM2,
+  plantsPerM2FromGrains,
+  seedPackagesForGrains,
+  type Crop,
+  type CropCycle,
+  type Employee,
+  type Equipment,
+  type Field,
+  type Operation,
+  type OperationInputLine,
+  type OperationType,
+  type CropTableConditionsRow,
+  type CycleWaterBalance,
+  type CycleNitrogen,
+  type CycleBaseFertilization,
+  type PsmFinding,
+} from '@agmeo/contracts'
 import { useNavigate } from '@tanstack/react-router'
-import { Ban, CheckCircle2, Pencil, Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Ban, ChartLine, Split, CheckCircle2, Map as MapIcon, Pencil, Plus, Scale } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Form, type Selection } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
+import { useCropTableMetrics } from '#/components/crops/cropTableMetrics'
 import { FieldNameLink } from '#/components/crops/FieldNameLink'
+import { BalanceCell, DeliveredCell, LimeCell, P2o5BalancePill, SoilValueCell, StrawCell } from '#/components/crops/BaseFertilization'
+import { ApplyStrategyDialog, DuevCell, NLossCell, NSupplyCell } from '#/components/crops/Nitrogen'
+import { FertilizerNeedDialog } from '#/components/nutrients/FertilizerNeedDialog'
+import { IrrigationInfoButton, IrrigationMapCard, RootDepthCell, SoilTypeCell, SoilWaterBadge, WaterBalanceDialog, WaterBalanceSparkline } from '#/components/crops/Irrigation'
+import { PhenologyDialog } from '#/components/crops/PhenologyDialog'
+import { ComplianceInfoButton, FindingsFlag, MixBadge, ProductInfo } from '#/components/crops/ProtectionExtras'
+import { MiniConditionBar } from '#/components/fields/ConditionsTab'
 import { CropTag, OperationStatusBadge } from '#/components/labels'
 import { FieldShape } from '#/components/map/FieldShape'
 import { initialState, toPayload } from '#/components/operations/OperationForm'
-import { NoMatches, SelectionBar, selectedIds, useBulkMutation, useTableView, type ColumnDef, type FilterKind } from '#/components/table/tableTools'
+import { ColumnConfigButton, NoMatches, SelectionBar, selectedIds, useBulkMutation, useColumnConfig, useTableView, type ColumnDef, type FilterKind } from '#/components/table/tableTools'
 import { t as tt } from '#/i18n'
 import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg, useSeason } from '#/lib/org'
 import { useOrgQuery } from '#/lib/queries'
 import { Button, Link } from '#/ui/Button'
-import { Checkbox, DatePicker, NumberField, TextField } from '#/ui/Field'
+import { Checkbox, DatePicker, NumberField, Option, Select, TextField } from '#/ui/Field'
 import { Card, ErrorNotice, Loading, Notice } from '#/ui/Layout'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
@@ -33,6 +63,8 @@ interface Entry {
   cycle: CropCycle | null
   /** Running total of the tab's key figure (kg N/ha, mm) on this field up to and including this entry. */
   cumulative: number | null
+  /** 1-based position among the field's entries of the tab, by date. */
+  index: number
 }
 
 /** A number kept in `details` that can be set on several operations at once. */
@@ -43,16 +75,58 @@ interface DetailEdit {
   max: number
 }
 
+/** What column factories need besides the entry: crop codes and the season's field conditions. */
+export interface ColumnCtx {
+  orgId: string
+  cropCode: (cycle: CropCycle | null) => string | null
+  /** Crop-table conditions (bars, daily BBCH) of a crop cycle. */
+  conditions: (cycle: CropCycle | null) => CropTableConditionsRow | undefined
+  conditionsLoading: boolean
+  /** Approval findings of an operation (plant protection). */
+  findings: (opId: string) => PsmFinding[]
+  openPhenology: (cycle: CropCycle, fieldName: string, date: string | null) => void
+  /** Root-zone water balance of a crop cycle (irrigation). */
+  water: (cycle: CropCycle | null) => CycleWaterBalance | undefined
+  waterLoading: boolean
+  openWaterBalance: (wb: CycleWaterBalance, fieldName: string) => void
+  writable: boolean
+  /** agmeo N balance of a crop cycle (nitrogen). */
+  nitrogen: (cycle: CropCycle | null) => CycleNitrogen | undefined
+  nitrogenLoading: boolean
+  openNeed: (cropCycleId: string) => void
+  /** Base fertilization of a crop cycle (P2O5, K2O, MgO, lime). */
+  base: (cycle: CropCycle | null) => CycleBaseFertilization | undefined
+  baseLoading: boolean
+}
+
 interface TabConfig {
   type: OperationType
   /** Which operations of the type belong in the tab (fertilization is split into base and N). */
   include?: (op: Operation) => boolean
   /** Key figure per entry that is summed up per field. */
   cumulative?: (op: Operation) => number | null
-  columns: () => ColumnDef<Entry>[]
+  columns: (ctx: ColumnCtx) => ColumnDef<Entry>[]
+  /** Columns about the field rather than one operation (shown on the field's first row). */
+  fieldColumns?: (ctx: ColumnCtx) => ColumnDef<GroupRow>[]
+  /** Field-level actions after the status. */
+  trailingColumns?: (ctx: ColumnCtx) => ColumnDef<GroupRow>[]
+  /** The tab shows crop-table conditions (bars, BBCH). */
+  conditions?: boolean
+  /** The tab shows the water balances (irrigation). */
+  water?: boolean
+  /** The tab shows the agmeo N balance and applies strategies (nitrogen). */
+  nitrogen?: boolean
+  /** The tab shows soil, need and balance of P2O5, K2O and MgO (base fertilization). */
+  base?: boolean
+  /** Columns shown before the viewer picks their own; all when not set. */
+  defaults?: string[]
   edits?: () => DetailEdit[]
   /** BBCH stage and target organism can be edited. */
   protection?: boolean
+  /** Machine, implement, operator, diesel, electricity and working time can be edited. */
+  work?: boolean
+  /** Seed can be distributed over the selected fields. */
+  seed?: boolean
 }
 
 const dash = <span className="text-muted">—</span>
@@ -120,10 +194,252 @@ const textColumn = (id: string, label: string, get: (e: Entry) => string | null 
   value: get,
   render: (e) => get(e) ?? dash,
 })
-const equipmentNames = (e: Entry) => {
+
+// ---- Machine, implement, operator and consumption (reference seeding/tillage columns) ----
+
+const namesOf = (op: Operation, cls: 'machine' | 'implement') => op.equipment.filter((q) => q.equipmentClass === cls).map((q) => q.equipmentName)
+const implementNames = (e: Entry) => {
   const tool = typeof e.op.details.tool === 'string' ? e.op.details.tool : null
-  return [...e.op.equipment.map((q) => q.equipmentName), ...(tool ? [tool] : [])]
+  return [...namesOf(e.op, 'implement'), ...(tool ? [tool] : [])]
 }
+/** Working time of the operation: machine and implement run together, so the longest line counts. */
+const workHours = (op: Operation): number | null => {
+  const hours = op.equipment.length ? op.equipment.map((q) => q.hours) : op.labor.map((l) => l.hours)
+  return hours.length ? Math.max(...hours) : null
+}
+export const hoursPerHa = (op: Operation): number | null => {
+  const h = workHours(op)
+  return h != null && op.totalAreaHa > 0 ? h / op.totalAreaHa : null
+}
+const operatorName = (op: Operation) => op.responsibleEmployee?.name ?? (op.labor.map((l) => l.employeeName).join(', ') || null)
+const workColumns = (): ColumnDef<Entry>[] => [
+  textColumn('machine', tt('fieldOps.machine'), (e) => namesOf(e.op, 'machine').join(', ') || null, 'select', (e) => namesOf(e.op, 'machine')),
+  textColumn('implement', tt('fieldOps.implement'), (e) => implementNames(e).join(', ') || null, 'select', implementNames),
+  textColumn('operator', tt('fieldOps.operator'), (e) => operatorName(e.op), 'select'),
+  numberColumn('diesel', tt('fieldOps.diesel'), (e) => e.op.dieselLPerHa, { unit: 'l/ha' }),
+  numberColumn('electricity', tt('fieldOps.electricity'), (e) => e.op.electricityKWhPerHa, { unit: 'kWh/ha' }),
+  numberColumn('hoursPerHa', tt('fieldOps.hoursPerHa'), (e) => hoursPerHa(e.op), { unit: 'h/ha', digits: 2 }),
+]
+
+// ---- Seed figures (reference seeding columns; conversions from contracts/seeding) ----
+
+const seedLine = (op: Operation): OperationInputLine | undefined => op.inputs.find((i) => i.category === 'seed')
+const KG_PER: Partial<Record<OperationInputLine['baseUnit'], number>> = { kg: 1, t: 1000 }
+/** kg seed per hectare: the seed line's rate when it is weighed, else the drill setting × TKG. */
+export const seedRateKgHa = (op: Operation): number | null => {
+  const line = seedLine(op)
+  const factor = line ? KG_PER[line.baseUnit] : undefined
+  if (line?.ratePerHa != null && factor) return line.ratePerHa * factor
+  return kgHaFromGrainsPerM2(detail(op, 'seedsPerM2'), detail(op, 'thousandGrainWeightG'))
+}
+const germination = (op: Operation) => detail(op, 'germinationPct') ?? DEFAULT_GERMINATION_RATE
+const grainsPerM2 = (op: Operation) => detail(op, 'seedsPerM2') ?? grainsPerM2FromKgHa(seedRateKgHa(op), detail(op, 'thousandGrainWeightG'))
+/** Seed units (packages) for the entry's area: counted seed directly, else grains over the crop's package size. */
+const seedUnits = (e: Entry, ctx: ColumnCtx): number | null => {
+  const line = seedLine(e.op)
+  if (line?.baseUnit === 'unit' && line.ratePerHa != null) return line.ratePerHa * e.areaHa
+  const size = SEED_PACKAGE_SIZES[ctx.cropCode(e.cycle) ?? '']
+  return size ? seedPackagesForGrains(grainsPerM2(e.op), e.areaHa, size) : null
+}
+
+/** Field-level column: the button that opens the field's application maps to draw a seeding map. */
+const seedMapColumn = ({ orgId }: ColumnCtx): ColumnDef<GroupRow> => ({
+  id: 'seedMap',
+  label: tt('fieldOps.seedMap'),
+  value: () => null,
+  render: (r) =>
+    r.first ? (
+      <Link to="/o/$orgId/fields/$fieldId" params={{ orgId, fieldId: r.field.id }} search={{ tab: 'maps' }} variant="quiet" size="sm" aria-label={tt('fieldOps.seedMapFor', { field: r.field.name })}>
+        <MapIcon /> {tt('fieldOps.seedMapShort')}
+      </Link>
+    ) : null,
+})
+
+/** A field's traffic-light bar of its main crop (reference sowing, spraying and disease columns), filtered by today's level. */
+const barColumn = (id: string, label: string, key: keyof CropTableConditionsRow['bars'], ctx: ColumnCtx): ColumnDef<GroupRow> => {
+  const level = (r: GroupRow) => {
+    const days = r.first ? ctx.conditions(r.cycle)?.bars[key] : null
+    if (!days?.length) return null
+    // The disease bar ends at its last simulated day; the others start today.
+    return key === 'disease' ? days[days.length - 1].value : (days.find((d) => d.date >= today()) ?? days[0]).value
+  }
+  return {
+    id,
+    label,
+    filter: 'select',
+    value: level,
+    text: (r) => {
+      const v = level(r)
+      return v == null ? null : tt(key === 'disease' ? `conditions.disease.level.${v}` : `conditions.level.${v}`)
+    },
+    render: (r) => {
+      if (!r.first) return null
+      if (ctx.conditionsLoading) return <span className="text-muted">…</span>
+      return <MiniConditionBar days={ctx.conditions(r.cycle)?.bars[key]} label={label} />
+    },
+  }
+}
+
+// ---- Irrigation: soil, rooting depth and the FAO-56 water balance per field (reference irrigation page) ----
+
+const waterColumn = (id: string, label: string, ctx: ColumnCtx, render: (wb: CycleWaterBalance | undefined, r: GroupRow) => ReactNode, value?: (wb: CycleWaterBalance | undefined) => number | null | undefined, align?: 'end'): ColumnDef<GroupRow> => ({
+  id,
+  label,
+  align,
+  filter: value ? 'number' : undefined,
+  value: (r) => (r.first && value ? value(ctx.water(r.cycle)) : null),
+  render: (r) => (!r.first ? null : ctx.waterLoading ? <span className="text-muted">…</span> : render(ctx.water(r.cycle), r)),
+})
+const waterColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
+  waterColumn('soilType', tt('irrigation.soilTexture'), ctx, (wb, r) => <SoilTypeCell wb={wb} fieldId={r.field.id} />),
+  waterColumn('awc', tt('irrigation.awc'), ctx, (wb) => (wb?.awcMm == null ? dash : <span className="tabular">{fmt.num(wb.awcMm)} mm</span>), (wb) => wb?.awcMm, 'end'),
+  waterColumn('rootDepth', tt('irrigation.maxRootDepth'), ctx, (wb) => <RootDepthCell wb={wb} writable={ctx.writable} />, (wb) => wb?.rootDepthM),
+  {
+    ...waterColumn('soilWater', tt('irrigation.soilWater'), ctx, (wb) => <SoilWaterBadge wb={wb} />, (wb) => wb?.fillPct),
+    filter: 'select',
+    options: (r) => {
+      const level = r.first ? ctx.water(r.cycle)?.deficitLevel : null
+      return level ? [tt(`irrigation.deficit.${level}`)] : []
+    },
+    text: (r) => {
+      const level = r.first ? ctx.water(r.cycle)?.deficitLevel : null
+      return level ? tt(`irrigation.deficit.${level}`) : null
+    },
+  },
+  waterColumn('waterBalance', tt('irrigation.waterBalance'), ctx, (wb, r) => <WaterBalanceSparkline wb={wb} onOpen={() => wb && ctx.openWaterBalance(wb, r.field.name)} />),
+]
+
+// ---- Nitrogen: the agmeo N balance per field (reference nitrogen page) ----
+
+const nColumn = (id: string, label: string, ctx: ColumnCtx, get: (n: CycleNitrogen) => number | null, render?: (n: CycleNitrogen) => ReactNode): ColumnDef<GroupRow> => ({
+  id,
+  label,
+  align: 'end',
+  filter: 'number',
+  value: (r) => {
+    const n = r.first ? ctx.nitrogen(r.cycle) : undefined
+    return n ? get(n) : null
+  },
+  render: (r) => {
+    if (!r.first) return null
+    if (ctx.nitrogenLoading) return <span className="text-muted">…</span>
+    const n = ctx.nitrogen(r.cycle)
+    if (!n) return dash
+    if (render) return render(n)
+    const v = get(n)
+    return v == null ? dash : <span className="tabular">{fmt.num(v)}</span>
+  },
+})
+const nitrogenColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
+  nColumn('nDemand', tt('nitrogen.col.demand'), ctx, (n) => n.nDemand),
+  nColumn('nSupply', tt('nitrogen.col.supply'), ctx, (n) => n.nSupply, (n) => <NSupplyCell row={n} writable={ctx.writable} />),
+  nColumn('nLoss', tt('nitrogen.col.loss'), ctx, (n) => n.nLoss, (n) => <NLossCell row={n} writable={ctx.writable} />),
+  nColumn('nDifference', tt('nitrogen.col.difference'), ctx, (n) => n.nDifference, (n) => (n.nDifference == null ? dash : <span className="tabular font-semibold">{fmt.num(n.nDifference)}</span>)),
+  nColumn('fieldTotalN', tt('nitrogen.col.totalN'), ctx, (n) => n.totalN),
+  nColumn('duev', tt('nitrogen.col.duev'), ctx, (n) => n.duevNeed, (n) => <DuevCell row={n} onOpen={() => ctx.openNeed(n.cropCycleId)} />),
+]
+
+// ---- Base fertilization: soil, need, delivery and balance per field (reference base-fertilization page) ----
+
+const baseColumn = (id: string, label: string, ctx: ColumnCtx, render: (b: CycleBaseFertilization, r: GroupRow) => ReactNode, value?: (b: CycleBaseFertilization) => number | null, align?: 'end'): ColumnDef<GroupRow> => ({
+  id,
+  label,
+  align,
+  filter: 'number',
+  value: (r) => {
+    const b = r.first ? ctx.base(r.cycle) : undefined
+    return b && value ? value(b) : null
+  },
+  render: (r) => {
+    if (!r.first) return null
+    if (ctx.baseLoading) return <span className="text-muted">…</span>
+    const b = ctx.base(r.cycle)
+    return b ? render(b, r) : dash
+  },
+})
+const nutrientOf = (b: CycleBaseFertilization, k: 'p2o5' | 'k2o' | 'mgo') => b.nutrients.find((n) => n.nutrient === k)
+const baseColumns = (ctx: ColumnCtx): ColumnDef<GroupRow>[] => [
+  baseColumn('ph', 'pH', ctx, (b) => (b.soil.ph == null ? dash : <span className="tabular" title={b.soil.phMethod ?? undefined}>{fmt.num(b.soil.ph, 1)}</span>), (b) => b.soil.ph, 'end'),
+  baseColumn('humus', tt('baseFertilization.humus'), ctx, (b) => (b.soil.humusPct == null ? dash : <span className="tabular">{fmt.num(b.soil.humusPct, 1)} %</span>), (b) => b.soil.humusPct, 'end'),
+  baseColumn('yield', tt('baseFertilization.yield'), ctx, (b) => (b.yieldTHa == null ? dash : <span className={cx('tabular', b.yieldSource === 'expected' && 'text-muted')}>{fmt.num(b.yieldTHa, 1)} t/ha</span>), (b) => b.yieldTHa, 'end'),
+  baseColumn('straw', tt('baseFertilization.straw'), ctx, (b) => <StrawCell row={b} writable={ctx.writable} />),
+  baseColumn('lime', tt('baseFertilization.lime'), ctx, (b) => <LimeCell row={b} writable={ctx.writable} />, (b) => b.limeOverrideDtCaO ?? b.limeComputedDtCaO, 'end'),
+  ...(['p2o5', 'k2o', 'mgo'] as const).flatMap((k) => {
+    const name = k === 'p2o5' ? 'P₂O₅' : k === 'k2o' ? 'K₂O' : 'MgO'
+    return [
+      baseColumn(`${k}Soil`, `${name} ${tt('baseFertilization.soil.label')}`, ctx, (b) => <SoilValueCell n={nutrientOf(b, k)} />, (b) => nutrientOf(b, k)?.soilMg100g ?? null, 'end'),
+      baseColumn(`${k}Delivered`, `${name} ${tt('baseFertilization.delivered.label')}`, ctx, (b) => <DeliveredCell n={nutrientOf(b, k)} />, (b) => nutrientOf(b, k)?.delivered ?? null, 'end'),
+      baseColumn(`${k}Balance`, `${name} ${tt('baseFertilization.balance.label')}`, ctx, (b) => <BalanceCell n={nutrientOf(b, k)} />, (b) => nutrientOf(b, k)?.balance ?? null, 'end'),
+    ]
+  }),
+  baseColumn('p2o5Duev', tt('baseFertilization.p2o5Balance'), ctx, (b, r) => <P2o5BalancePill row={b} fieldName={r.field.name} />, (b) => b.p2o5Balance.ratioPct),
+]
+
+// ---- Plant protection: BBCH at the application date, products with mix and register info, findings ----
+
+/** The stage recorded on the operation, else the (calibrated) model's on its date. */
+const bbchAt = (e: Entry, ctx: ColumnCtx): { value: number | string; source: 'recorded' | 'observed' | 'model' } | null => {
+  if (e.op.bbchStage) return { value: e.op.bbchStage, source: 'recorded' }
+  const c = ctx.conditions(e.cycle)
+  const v = e.date ? c?.bbchByDate?.[e.date] : undefined
+  if (v == null) return null
+  return { value: v, source: c!.bbchObservedDates.includes(e.date!) ? 'observed' : 'model' }
+}
+const bbchColumn = (ctx: ColumnCtx): ColumnDef<Entry> => ({
+  id: 'bbch',
+  label: 'BBCH',
+  filter: 'number',
+  value: (e) => {
+    const b = bbchAt(e, ctx)
+    return b == null ? null : typeof b.value === 'number' ? b.value : Number.parseInt(b.value, 10) || null
+  },
+  text: (e) => bbchAt(e, ctx)?.value.toString(),
+  render: (e) => {
+    const b = bbchAt(e, ctx)
+    const cycle = e.cycle
+    return (
+      <span className="inline-flex items-center gap-1">
+        {b == null ? (
+          dash
+        ) : (
+          <span className={b.source === 'model' ? 'tabular italic text-success' : 'tabular font-semibold text-fg'} title={tt(`protection.bbch.source.${b.source}`)}>
+            {b.value}
+          </span>
+        )}
+        {cycle && (
+          <Button size="icon-xs" variant="ghost" aria-label={tt('protection.bbch.openChart')} onPress={() => ctx.openPhenology(cycle, e.op.fields.find((f) => f.cropCycleId === cycle.id)?.fieldName ?? cycle.fieldName, e.date)}>
+            <ChartLine />
+          </Button>
+        )}
+      </span>
+    )
+  },
+})
+const psmProductsColumn = (): ColumnDef<Entry> => ({
+  ...productsColumn(),
+  render: (e) => (
+    <div className="space-y-0.5">
+      {e.op.inputs.length === 0
+        ? dash
+        : e.op.inputs.map((i) => (
+            <div key={i.id} className="min-w-40 max-w-72 flex items-center gap-1">
+              <span>
+                {i.productName} <span className="text-muted tabular whitespace-nowrap">· {fmt.qty(i.ratePerHa, i.baseUnit)}/ha</span>
+              </span>
+              {i.category === 'crop_protection' && <ProductInfo productId={i.productId} productName={i.productName} awgId={typeof e.op.details.psmUseId === 'string' ? e.op.details.psmUseId : null} />}
+            </div>
+          ))}
+      <MixBadge op={e.op} />
+    </div>
+  ),
+})
+const findingsColumn = (ctx: ColumnCtx): ColumnDef<Entry> => ({
+  id: 'checks',
+  label: tt('protection.checks.column'),
+  filter: 'number',
+  value: (e) => ctx.findings(e.op.id).length,
+  render: (e) => (e.op.inputs.some((i) => i.category === 'crop_protection') ? <FindingsFlag findings={ctx.findings(e.op.id)} /> : dash),
+})
 
 const hasBaseNutrients = (op: Operation) => {
   const n = op.nutrientTotals
@@ -134,17 +450,15 @@ const hasNitrogen = (op: Operation) => !op.nutrientTotals || (op.nutrientTotals.
 const TABS: Record<OperationTab, TabConfig> = {
   tillage: {
     type: 'tillage',
-    columns: () => [
-      dateColumn(),
-      titleColumn(),
-      detailColumn('depth', tt('fieldOps.depth'), 'depthCm', 'cm'),
-      textColumn('equipment', tt('fieldOps.equipment'), (e) => equipmentNames(e).join(', ') || null, 'select', equipmentNames),
-      numberColumn('hours', tt('fieldOps.hours'), (e) => (e.op.equipment.length ? e.op.equipment.reduce((s, q) => s + q.hours, 0) : null), { unit: 'h' }),
-    ],
+    work: true,
+    columns: () => [dateColumn(), titleColumn(), detailColumn('depth', tt('fieldOps.depth'), 'depthCm', 'cm'), ...workColumns()],
     edits: () => [{ key: 'depthCm', label: tt('fieldOps.depth'), unit: 'cm', max: 100 }],
   },
   base_fertilization: {
     type: 'fertilization',
+    base: true,
+    fieldColumns: baseColumns,
+    defaults: ['ph', 'yield', 'lime', 'p2o5Soil', 'p2o5Delivered', 'p2o5Balance', 'k2oBalance', 'mgoBalance', 'p2o5Duev', 'date', 'products', 'p2o5', 'k2o', 'mgo', 'cao'],
     include: hasBaseNutrients,
     columns: () => [
       dateColumn(),
@@ -158,13 +472,27 @@ const TABS: Record<OperationTab, TabConfig> = {
   },
   sowing: {
     type: 'sowing',
-    columns: () => [
+    work: true,
+    seed: true,
+    conditions: true,
+    fieldColumns: (ctx) => [barColumn('sowingWindow', tt('fieldOps.sowingWindow'), 'sowing', ctx)],
+    trailingColumns: (ctx) => [seedMapColumn(ctx)],
+    defaults: ['sowingWindow', 'date', 'variety', 'products', 'seeds', 'tgw', 'germination', 'seedRate', 'totalSeed', 'seedUnits', 'machine', 'operator', 'seedMap'],
+    columns: (ctx) => [
       dateColumn(),
       textColumn('variety', tt('crops.form.variety'), (e) => e.cycle?.varietyName, 'select'),
       productsColumn(),
       detailColumn('seeds', tt('fieldOps.seedsPerM2'), 'seedsPerM2', undefined, 0),
+      numberColumn('density', tt('fieldOps.targetDensity'), (e) => plantsPerM2FromGrains(detail(e.op, 'seedsPerM2'), germination(e.op)), { digits: 0 }),
       detailColumn('tgw', tt('fieldOps.tgw'), 'thousandGrainWeightG', 'g'),
       detailColumn('germination', tt('fieldOps.germination'), 'germinationPct', '%', 0),
+      numberColumn('seedRate', tt('fieldOps.seedRate'), (e) => seedRateKgHa(e.op), { unit: 'kg/ha' }),
+      numberColumn('totalSeed', tt('fieldOps.totalSeed'), (e) => {
+        const rate = seedRateKgHa(e.op)
+        return rate == null ? null : rate * e.areaHa
+      }, { unit: 'kg', digits: 0 }),
+      numberColumn('seedUnits', tt('fieldOps.seedUnits'), (e) => seedUnits(e, ctx), { digits: 1 }),
+      ...workColumns(),
     ],
     edits: () => [
       { key: 'seedsPerM2', label: tt('fieldOps.seedsPerM2'), max: 5000 },
@@ -174,6 +502,8 @@ const TABS: Record<OperationTab, TabConfig> = {
   },
   nitrogen: {
     type: 'fertilization',
+    nitrogen: true,
+    fieldColumns: nitrogenColumns,
     include: hasNitrogen,
     cumulative: (op) => op.nutrientTotals?.n ?? null,
     columns: () => [
@@ -187,22 +517,32 @@ const TABS: Record<OperationTab, TabConfig> = {
   crop_protection: {
     type: 'crop_protection',
     protection: true,
-    columns: () => [
+    conditions: true,
+    fieldColumns: (ctx) => [barColumn('sprayingWindow', tt('fieldOps.sprayingWindow'), 'spraying', ctx), barColumn('diseaseRisk', tt('fieldOps.diseaseRisk'), 'disease', ctx)],
+    columns: (ctx) => [
       dateColumn(),
-      textColumn('bbch', 'BBCH', (e) => e.op.bbchStage),
-      productsColumn(),
+      bbchColumn(ctx),
+      psmProductsColumn(),
       detailColumn('water', tt('fieldOps.water'), 'waterLHa', 'l/ha', 0),
       textColumn('target', tt('fieldOps.target'), (e) => e.op.targetOrganism, 'select'),
+      textColumn('operator', tt('fieldOps.operator'), (e) => operatorName(e.op), 'select'),
+      textColumn('usageType', tt('fieldOps.usageType'), (e) => (typeof e.op.details.usageType === 'string' ? tt(`enum.psmUsageType.${e.op.details.usageType}`, { defaultValue: e.op.details.usageType }) : null), 'select'),
+      textColumn('time', tt('fieldOps.time'), (e) => (e.op.performedAt ? new Date(e.op.performedAt).toTimeString().slice(0, 5) : null)),
+      findingsColumn(ctx),
     ],
     edits: () => [{ key: 'waterLHa', label: tt('fieldOps.water'), unit: 'l/ha', max: 5000 }],
   },
   irrigation: {
     type: 'irrigation',
+    water: true,
     cumulative: (op) => detail(op, 'waterMm'),
+    fieldColumns: waterColumns,
     columns: () => [
       dateColumn(),
+      numberColumn('index', '#', (e) => e.index, { digits: 0 }),
       titleColumn(),
       detailColumn('water', tt('fieldOps.waterMm'), 'waterMm', 'mm'),
+      textColumn('method', tt('irrigation.method'), (e) => (typeof e.op.details.method === 'string' ? tt(`irrigation.method.${e.op.details.method}`) : null), 'select'),
       numberColumn('total', tt('fieldOps.totalMm'), (e) => e.cumulative, { unit: 'mm', strong: true }),
     ],
     edits: () => [{ key: 'waterMm', label: tt('fieldOps.waterMm'), unit: 'mm', max: 500 }],
@@ -227,6 +567,9 @@ const opDate = (op: Operation) => op.performedAt?.slice(0, 10) ?? op.plannedOn
 const isOpen = (op: Operation) => op.status === 'planned' || op.status === 'in_progress'
 const STATUS_ORDER = { planned: 0, in_progress: 1, completed: 2, canceled: 3 } as const
 
+/** Field, crop, area and status always show. */
+const FIXED_COLUMNS = ['field', 'crop', 'area', 'status']
+
 interface GroupRow {
   id: string
   field: Field
@@ -241,17 +584,52 @@ interface GroupRow {
 export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: string }) {
   const { t } = useTranslation()
   const { orgId, can } = useOrg()
-  const { seasonId } = useSeason()
+  const { seasonId, season } = useSeason()
   const navigate = useNavigate()
   const cfg = TABS[tab]
   const fields = useOrgQuery<Field[]>('/fields', { seasonId })
   const cycles = useOrgQuery<CropCycle[]>('/crop-cycles', { seasonId }, { enabled: !!seasonId })
   const ops = useOrgQuery<Operation[]>('/operations', { seasonId, type: cfg.type })
+  const crops = useOrgQuery<Crop[]>('/crops')
   const [selection, setSelection] = useState<Selection>(new Set())
-  const [dialog, setDialog] = useState<'edit' | 'complete' | null>(null)
+  const [dialog, setDialog] = useState<'edit' | 'complete' | 'distribute' | null>(null)
   const writable = can('operation.write')
+  const metrics = useCropTableMetrics(cfg.conditions ? (seasonId ?? null) : null, (id) => id === 'bbch')
+  const checks = useOrgQuery<PsmFinding[]>('/protection/checks', { seasonId }, { enabled: !!cfg.protection && !!seasonId })
+  const [phenology, setPhenology] = useState<{ cycle: CropCycle; fieldName: string; date: string | null } | null>(null)
+  const water = useOrgQuery<CycleWaterBalance[]>('/water-balances', { seasonId }, { enabled: !!cfg.water && !!seasonId, staleTime: 5 * 60_000 })
+  const [waterDialog, setWaterDialog] = useState<{ wb: CycleWaterBalance; fieldName: string } | null>(null)
+  const nitrogen = useOrgQuery<CycleNitrogen[]>('/nitrogen', { seasonId }, { enabled: !!cfg.nitrogen && !!seasonId, staleTime: 5 * 60_000 })
+  const [needDialog, setNeedDialog] = useState<string | null>(null)
+  const [strategyFor, setStrategyFor] = useState<string[] | null>(null)
+  const base = useOrgQuery<CycleBaseFertilization[]>('/base-fertilization', { seasonId }, { enabled: !!cfg.base && !!seasonId, staleTime: 5 * 60_000 })
+  const ctx = useMemo<ColumnCtx>(() => {
+    const codes = new Map((crops.data ?? []).map((c) => [c.id, c.code]))
+    const waterBy = new Map((water.data ?? []).map((w) => [w.cropCycleId, w]))
+    const nitrogenBy = new Map((nitrogen.data ?? []).map((n) => [n.cropCycleId, n]))
+    const baseBy = new Map((base.data ?? []).map((b) => [b.cropCycleId, b]))
+    const findings = new Map<string, PsmFinding[]>()
+    for (const f of checks.data ?? []) findings.set(f.operationId, [...(findings.get(f.operationId) ?? []), f])
+    return {
+      orgId,
+      cropCode: (c) => (c ? (codes.get(c.cropId) ?? null) : null),
+      conditions: (c) => (c ? metrics.conditions.get(c.id) : undefined),
+      conditionsLoading: metrics.conditionsLoading,
+      findings: (id) => findings.get(id) ?? [],
+      openPhenology: (cycle, fieldName, date) => setPhenology({ cycle, fieldName, date }),
+      water: (c) => (c ? waterBy.get(c.id) : undefined),
+      waterLoading: water.isLoading,
+      openWaterBalance: (wb, fieldName) => setWaterDialog({ wb, fieldName }),
+      writable: can('crop.write'),
+      nitrogen: (c) => (c ? nitrogenBy.get(c.id) : undefined),
+      nitrogenLoading: nitrogen.isLoading,
+      openNeed: (id) => setNeedDialog(id),
+      base: (c) => (c ? baseBy.get(c.id) : undefined),
+      baseLoading: base.isLoading,
+    }
+  }, [crops.data, checks.data, metrics.conditions, metrics.conditionsLoading, orgId, water.data, water.isLoading, can, nitrogen.data, nitrogen.isLoading, base.data, base.isLoading])
 
-  const columns = useMemo<ColumnDef<GroupRow>[]>(
+  const allColumns = useMemo<ColumnDef<GroupRow>[]>(
     () => [
       { id: 'field', label: t('crops.plan.field'), value: (r) => r.field.name, text: (r) => `${r.field.name} ${r.field.farmName}`, render: () => null },
       { id: 'crop', label: t('crops.plan.crop'), filter: 'select', value: (r) => r.cycle?.cropName, render: (r) => (r.sameCycle ? null : r.cycle ? <CropTag name={r.cycle.cropName} color={r.cycle.cropColor} /> : r.first ? dash : null) },
@@ -264,8 +642,9 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         text: (r) => fmt.ha(r.entry?.areaHa ?? r.field.croppedAreaHa),
         render: (r) => fmt.ha(r.entry?.areaHa ?? r.field.croppedAreaHa),
       },
+      ...(cfg.fieldColumns?.(ctx) ?? []),
       // The tab's own columns are about the operation; a field without one has nothing to show or match.
-      ...cfg.columns().map<ColumnDef<GroupRow>>((c) => ({
+      ...cfg.columns(ctx).map<ColumnDef<GroupRow>>((c) => ({
         ...c,
         value: (r) => (r.entry ? c.value(r.entry) : null),
         text: (r) => (r.entry ? (c.text ?? c.value)(r.entry)?.toString() : null),
@@ -280,9 +659,14 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         text: (r) => (r.entry ? t(`enum.operationStatus.${r.entry.op.status}`) : null),
         render: (r) => r.entry && <OperationStatusBadge status={r.entry.op.status} />,
       },
+      ...(cfg.trailingColumns?.(ctx) ?? []),
     ],
-    [cfg, t],
+    [cfg, t, ctx, orgId],
   )
+  const fixed = FIXED_COLUMNS
+  const config = useColumnConfig(`agmeo.fieldOps.${tab}.columns`, { all: allColumns.map((c) => c.id), fixed, defaults: cfg.defaults ?? allColumns.map((c) => c.id) })
+  const visibleIds = allColumns.flatMap((c) => (config.isVisible(c.id) ? [c.id] : [])).join(',')
+  const columns = useMemo(() => allColumns.filter((c) => visibleIds.split(',').includes(c.id)), [allColumns, visibleIds])
   const rows = useMemo(() => {
     const visible = (ops.data ?? []).filter((o) => o.status !== 'canceled' && (!cfg.include || cfg.include(o)))
     const cyclesById = new Map((cycles.data ?? []).map((c) => [c.id, c]))
@@ -297,13 +681,14 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         perField.set(f.fieldId, cur)
       }
       for (const [fieldId, v] of perField) {
-        const entry: Entry = { op, areaHa: v.areaHa, date: opDate(op), cycle: (v.cycleId && cyclesById.get(v.cycleId)) || mainCycle.get(fieldId) || null, cumulative: null }
+        const entry: Entry = { op, areaHa: v.areaHa, date: opDate(op), cycle: (v.cycleId && cyclesById.get(v.cycleId)) || mainCycle.get(fieldId) || null, cumulative: null, index: 0 }
         byField.set(fieldId, [...(byField.get(fieldId) ?? []), entry])
       }
     }
     const out: GroupRow[] = []
     for (const field of fields.data ?? []) {
       const entries = (byField.get(field.id) ?? []).sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999'))
+      entries.forEach((e, i) => (e.index = i + 1))
       if (cfg.cumulative) {
         let sum: number | null = null
         for (const e of entries) {
@@ -341,6 +726,8 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
     return { count: fieldIds.size, ops: [...opsById.values()], fieldIds: [...fieldIds] }
   }, [selection, shown])
   const openOps = selected.ops.filter(isOpen)
+  // Main crops of the selected fields, for strategies.
+  const selectedCycles = useMemo(() => [...new Set(shown.filter((r) => r.first && selected.fieldIds.includes(r.field.id) && r.cycle).map((r) => r.cycle!.id))], [shown, selected.fieldIds])
   const clear = () => setSelection(new Set())
 
   const cancel = useBulkMutation((base, op: Operation) => api.post(`${base}/operations/${op.id}/cancel`, { version: op.version }), {
@@ -352,9 +739,30 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
   if (fields.isLoading || ops.isLoading) return <Loading />
   if (ops.error) return <ErrorNotice error={ops.error} />
 
-  const firstColumn = columns[3]?.id
+  // The plan link sits in the first column about the operation.
+  const fieldColumnIds = [...(cfg.fieldColumns?.(ctx) ?? []), ...(cfg.trailingColumns?.(ctx) ?? [])].map((f) => f.id)
+  const firstColumn = columns.find((c) => !fixed.includes(c.id) && !fieldColumnIds.includes(c.id))?.id
   return (
     <>
+      <div className="flex justify-end gap-2 mb-2">
+        {cfg.protection && <ComplianceInfoButton />}
+        {cfg.water && <IrrigationInfoButton />}
+        <ColumnConfigButton
+          columns={allColumns}
+          fixed={fixed}
+          presets={[
+            ...(cfg.defaults ? [{ id: 'default', label: t('fieldOps.views.default'), columns: cfg.defaults }] : []),
+            { id: 'all', label: t('fieldOps.views.all'), columns: allColumns.map((c) => c.id) },
+          ]}
+          config={config}
+        />
+      </div>
+      {cfg.water && !!water.data?.length && water.data.every((w) => !w.days.length) && (
+        <Notice tone="warning" className="mb-4">
+          {t('irrigation.noWeatherForYear', { year: season?.harvestYear ?? '' })}
+        </Notice>
+      )}
+      {cfg.water && <IrrigationMapCard fields={fields.data ?? []} balances={water.data ?? []} />}
       <Card padded={false}>
         <Table
           aria-label={label}
@@ -424,6 +832,16 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
         <Button size="sm" isDisabled={!openOps.length} onPress={() => setDialog('complete')}>
           <CheckCircle2 /> {t('fieldOps.bulk.complete')}
         </Button>
+        {cfg.nitrogen && (
+          <Button size="sm" isDisabled={!selectedCycles.length} onPress={() => setStrategyFor(selectedCycles)}>
+            <Split /> {t('nitrogen.strategy.applyButton', { count: selectedCycles.length })}
+          </Button>
+        )}
+        {cfg.seed && (
+          <Button size="sm" isDisabled={!openOps.length} onPress={() => setDialog('distribute')}>
+            <Scale /> {t('fieldOps.distribute.open')}
+          </Button>
+        )}
         <ConfirmButton
           title={t('fieldOps.bulk.cancelTitle', { count: openOps.length })}
           message={t('fieldOps.bulk.cancelMessage')}
@@ -442,6 +860,11 @@ export function OperationTabPanel({ tab, label }: { tab: OperationTab; label: st
 
       {dialog === 'edit' && <BulkEditDialog ops={openOps} skipped={selected.ops.length - openOps.length} cfg={cfg} onClose={() => { setDialog(null); clear() }} />}
       {dialog === 'complete' && <CompleteDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
+      {dialog === 'distribute' && <DistributeSeedDialog ops={openOps} onClose={() => { setDialog(null); clear() }} />}
+      {needDialog && <FertilizerNeedDialog cropCycleId={needDialog} onClose={() => setNeedDialog(null)} />}
+      {strategyFor && <ApplyStrategyDialog cropCycleIds={strategyFor} onClose={() => { setStrategyFor(null); clear() }} />}
+      {waterDialog && <WaterBalanceDialog wb={waterDialog.wb} fieldName={waterDialog.fieldName} onClose={() => setWaterDialog(null)} />}
+      {phenology && <PhenologyDialog cropCycleId={phenology.cycle.id} fieldName={phenology.fieldName} initialDate={phenology.date} onClose={() => setPhenology(null)} />}
     </>
   )
 }
@@ -461,9 +884,16 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
   const [bbch, setBbch] = useState('')
   const [target, setTarget] = useState('')
   const [rates, setRates] = useState<Record<string, number>>({})
+  const [work, setWork] = useState<WorkEdit>({ machineId: null, implementId: null, operatorId: null, diesel: NaN, electricity: NaN, hoursPerHa: NaN })
+  const equipment = useOrgQuery<Equipment[]>('/equipment', undefined, { enabled: !!cfg.work })
+  const employees = useOrgQuery<Employee[]>('/employees', undefined, { enabled: !!cfg.work })
   const filled = (v: number | undefined) => v != null && !Number.isNaN(v)
-  const changed = !!plannedOn || !!bbch.trim() || !!target.trim() || Object.values(details).some(filled) || Object.values(rates).some(filled)
+  const workChanged = !!work.machineId || !!work.implementId || !!work.operatorId || filled(work.diesel) || filled(work.electricity) || filled(work.hoursPerHa)
+  const changed = !!plannedOn || !!bbch.trim() || !!target.trim() || Object.values(details).some(filled) || Object.values(rates).some(filled) || workChanged
   const multiField = ops.some((op) => new Set(op.fields.map((f) => f.fieldId)).size > 1)
+  // A machine or implement is recorded with its hours; operations without any need the time per hectare.
+  const needsHours = (!!work.machineId || !!work.implementId) && !filled(work.hoursPerHa) && ops.some((op) => workHours(op) == null)
+  const classOf = useMemo(() => new Map((equipment.data ?? []).map((e) => [e.id, e.class])), [equipment.data])
 
   const save = useBulkMutation(
     (base, op: Operation) => {
@@ -474,6 +904,7 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
       if (bbch.trim()) s.bbchStage = bbch.trim()
       if (target.trim()) s.targetOrganism = target.trim()
       s.inputs = s.inputs.map((i) => (i.productId && filled(rates[i.productId]) ? { ...i, ratePerHa: rates[i.productId] } : i))
+      if (cfg.work) applyWork(s, op, work, classOf)
       return api.put(`${base}/operations/${op.id}`, { ...toPayload(s, fields, op.version), status: op.status === 'in_progress' ? 'in_progress' : 'planned' })
     },
     { label: (op) => op.title, success: (count) => t('fieldOps.bulk.updated', { count }), onDone: onClose },
@@ -496,6 +927,8 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
             <NumberField key={d.key} label={d.label} unit={d.unit} minValue={0} maxValue={d.max} value={details[d.key] ?? NaN} onChange={(v) => setDetails((x) => ({ ...x, [d.key]: v }))} placeholder={t('fieldOps.bulk.unchanged')} />
           ))}
         </div>
+        {cfg.work && <WorkFields value={work} onChange={setWork} equipment={equipment.data ?? []} employees={employees.data ?? []} />}
+        {needsHours && <Notice tone="warning">{t('fieldOps.bulk.needsHours')}</Notice>}
         {products.length > 0 && (
           <section className="space-y-2">
             <h3 className="text-sm font-semibold text-fg">{t('fieldOps.bulk.rates')}</h3>
@@ -508,7 +941,136 @@ function BulkEditDialog({ ops, skipped, cfg, onClose }: { ops: Operation[]; skip
         )}
         <div className="flex justify-end gap-2">
           <Button onPress={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" variant="primary" isDisabled={!changed || !allFields.data} isPending={save.isPending}>
+          <Button type="submit" variant="primary" isDisabled={!changed || needsHours || !allFields.data} isPending={save.isPending}>
+            {t('fieldOps.bulk.apply', { count: ops.length })}
+          </Button>
+        </div>
+      </Form>
+    </ModalDialog>
+  )
+}
+
+interface WorkEdit {
+  machineId: string | null
+  implementId: string | null
+  operatorId: string | null
+  diesel: number
+  electricity: number
+  hoursPerHa: number
+}
+
+type FormState = ReturnType<typeof initialState>
+
+/**
+ * Puts the chosen machine, implement and operator on the operation (replacing the line of the same
+ * class), and sets diesel, electricity and the working time per hectare. The time goes on every
+ * machine and implement line; without one it stays as recorded.
+ */
+function applyWork(s: FormState, op: Operation, w: WorkEdit, classOf: Map<string, string>) {
+  const ok = (v: number) => !Number.isNaN(v)
+  const hours = ok(w.hoursPerHa) ? Math.round(w.hoursPerHa * op.totalAreaHa * 100) / 100 : (workHours(op) ?? 0)
+  const line = (id: string) => ({ key: Math.random(), id, hours })
+  for (const [id, cls] of [[w.machineId, 'machine'], [w.implementId, 'implement']] as const) {
+    if (!id) continue
+    s.equipment = [...s.equipment.filter((l) => l.id && (classOf.get(l.id) ?? 'machine') !== cls), line(id)]
+  }
+  if (ok(w.hoursPerHa)) s.equipment = s.equipment.map((l) => ({ ...l, hours }))
+  if (w.operatorId) {
+    s.responsibleEmployeeId = w.operatorId
+    if (!s.labor.some((l) => l.id === w.operatorId) && hours > 0) s.labor = [...s.labor, line(w.operatorId)]
+  }
+  if (ok(w.diesel)) s.dieselLPerHa = w.diesel
+  if (ok(w.electricity)) s.electricityKWhPerHa = w.electricity
+}
+
+function WorkFields({ value: w, onChange, equipment, employees }: { value: WorkEdit; onChange: (w: WorkEdit) => void; equipment: Equipment[]; employees: Employee[] }) {
+  const { t } = useTranslation()
+  const active = equipment.filter((e) => !EQUIPMENT_GONE_STATUSES.includes(e.status) && !e.archivedAt)
+  const keep = { id: '__keep', name: t('fieldOps.bulk.unchanged') }
+  const pick = (v: unknown) => (v && v !== '__keep' ? String(v) : null)
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold text-fg">{t('fieldOps.bulk.work')}</h3>
+      <div className="grid sm:grid-cols-3 gap-4">
+        <Select label={t('fieldOps.machine')} items={[keep, ...active.filter((e) => e.class === 'machine')]} value={w.machineId ?? '__keep'} onChange={(v) => onChange({ ...w, machineId: pick(v) })}>
+          {(e) => <Option id={e.id}>{e.name}</Option>}
+        </Select>
+        <Select label={t('fieldOps.implement')} items={[keep, ...active.filter((e) => e.class === 'implement')]} value={w.implementId ?? '__keep'} onChange={(v) => onChange({ ...w, implementId: pick(v) })}>
+          {(e) => <Option id={e.id}>{e.name}</Option>}
+        </Select>
+        <Select label={t('fieldOps.operator')} items={[keep, ...employees.filter((e) => e.active)]} value={w.operatorId ?? '__keep'} onChange={(v) => onChange({ ...w, operatorId: pick(v) })}>
+          {(e) => <Option id={e.id}>{e.name}</Option>}
+        </Select>
+        <NumberField label={t('fieldOps.diesel')} unit="l/ha" minValue={0} maxValue={1000} formatOptions={{ maximumFractionDigits: 2 }} value={w.diesel} onChange={(diesel) => onChange({ ...w, diesel })} placeholder={t('fieldOps.bulk.unchanged')} />
+        <NumberField label={t('fieldOps.electricity')} unit="kWh/ha" minValue={0} maxValue={10000} formatOptions={{ maximumFractionDigits: 2 }} value={w.electricity} onChange={(electricity) => onChange({ ...w, electricity })} placeholder={t('fieldOps.bulk.unchanged')} />
+        <NumberField label={t('fieldOps.hoursPerHa')} unit="h/ha" minValue={0} maxValue={100} formatOptions={{ maximumFractionDigits: 3 }} value={w.hoursPerHa} onChange={(hoursPerHa) => onChange({ ...w, hoursPerHa })} placeholder={t('fieldOps.bulk.unchanged')} />
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Spreads a total seed weight over the selected sowings as one kg/ha rate (reference "Gesamtmenge auf
+ * die Schläge verteilen"): every operation gets the same rate on its seed line; operations without the
+ * seed get it as a new line.
+ */
+function DistributeSeedDialog({ ops, onClose }: { ops: Operation[]; onClose: () => void }) {
+  const { t } = useTranslation()
+  const allFields = useOrgQuery<Field[]>('/fields')
+  const weighed = useMemo(() => {
+    const m = new Map<string, { name: string; unit: 'kg' | 't'; stock: number }>()
+    for (const op of ops) for (const i of op.inputs) if (i.category === 'seed' && (i.baseUnit === 'kg' || i.baseUnit === 't') && !m.has(i.productId)) m.set(i.productId, { name: i.productName, unit: i.baseUnit, stock: i.availableStock })
+    return [...m.entries()].map(([id, p]) => ({ id, ...p }))
+  }, [ops])
+  const [productId, setProductId] = useState<string | null>(weighed[0]?.id ?? null)
+  const [totalKg, setTotalKg] = useState(NaN)
+  const product = weighed.find((p) => p.id === productId)
+  const areas = ops.map((op) => op.totalAreaHa)
+  const rateKg = distributeTotalSeedKg(Number.isNaN(totalKg) ? null : totalKg, areas)
+  const stockKg = product ? product.stock * (product.unit === 't' ? 1000 : 1) : null
+
+  const save = useBulkMutation(
+    (base, op: Operation) => {
+      const fields = allFields.data ?? []
+      const s = initialState({ farmId: op.farmId, fields, operation: op })
+      const rate = product!.unit === 't' ? rateKg! / 1000 : rateKg!
+      s.inputs = s.inputs.some((i) => i.productId === product!.id)
+        ? s.inputs.map((i) => (i.productId === product!.id ? { ...i, ratePerHa: rate } : i))
+        : [...s.inputs, { key: Math.random(), productId: product!.id, ratePerHa: rate, storageLocationId: null, unitCost: NaN }]
+      return api.put(`${base}/operations/${op.id}`, { ...toPayload(s, fields, op.version), status: op.status === 'in_progress' ? 'in_progress' : 'planned' })
+    },
+    { label: (op) => op.title, success: (count) => t('fieldOps.bulk.updated', { count }), onDone: onClose },
+  )
+
+  return (
+    <ModalDialog isOpen onOpenChange={(o) => !o && onClose()} title={t('fieldOps.distribute.title')} description={t('fieldOps.distribute.tooltip')} size="sm">
+      <Form onSubmit={(e) => { e.preventDefault(); save.mutate(ops) }} className="space-y-4">
+        {weighed.length === 0 ? (
+          <Notice tone="info">{t('fieldOps.distribute.noSeed')}</Notice>
+        ) : (
+          <>
+            <Select label={t('fieldOps.distribute.product')} items={weighed} value={productId} onChange={(v) => setProductId(v ? String(v) : null)}>
+              {(p) => <Option id={p.id}>{p.name}</Option>}
+            </Select>
+            <NumberField
+              label={t('fieldOps.distribute.total')}
+              unit="kg"
+              minValue={0}
+              value={totalKg}
+              onChange={setTotalKg}
+              placeholder={t('fieldOps.distribute.placeholder')}
+              description={stockKg != null ? t('fieldOps.distribute.stock', { kg: fmt.num(stockKg) }) : undefined}
+            />
+            {rateKg != null && (
+              <p className="text-sm text-fg-2">
+                {t('fieldOps.distribute.applied', { total: `${fmt.num(totalKg)} kg`, count: ops.length, rate: `${fmt.num(rateKg, 1)} kg/ha` })}
+              </p>
+            )}
+          </>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button onPress={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" variant="primary" isDisabled={rateKg == null || !product || !allFields.data} isPending={save.isPending}>
             {t('fieldOps.bulk.apply', { count: ops.length })}
           </Button>
         </div>

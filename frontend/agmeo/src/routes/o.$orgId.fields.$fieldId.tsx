@@ -2,9 +2,11 @@ import { IMAGERY_LAYERS, type CostEntry, type CropCycle, type Farm, type Field, 
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Archive, ArchiveRestore, CalendarClock, MoreHorizontal, Pencil, Plus, RotateCcw, Shapes, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { Button as AriaButton, Form } from 'react-aria-components'
+import { CarbonFieldTab } from '#/components/carbon/CarbonFieldTab'
 import { FieldPartsTab } from '#/components/fields/FieldParts'
 import { SoilTab } from '#/components/fields/SoilTab'
 import { FieldDetailsForm, detailsPayload, type FieldDetails } from '#/components/fields/FieldDetailsForm'
@@ -16,7 +18,10 @@ import { FieldMap } from '#/components/map/FieldMap'
 import { AcquisitionTimeline, ImageryProgress, IndexLegend, LayerPicker, OpacityPicker, StretchPicker } from '#/components/monitoring/MapControls'
 import { INDEX_INFO, type ShownIndex } from '#/components/monitoring/indices'
 import { ObservationsChart } from '#/components/monitoring/ObservationsChart'
+import { SceneStats } from '#/components/monitoring/SceneStats'
+import { useSceneAnnotations } from '#/components/monitoring/SceneAnnotations'
 import { ProductivityZones } from '#/components/monitoring/ProductivityZones'
+import { ApplicationMaps } from '#/components/vra/ApplicationMaps'
 import { useSatelliteLayer } from '#/components/monitoring/useSatelliteLayer'
 import { OperationsTable } from '#/components/operations/OperationsTable'
 import { RecommendationsCard } from '#/components/recommendations/RecommendationsCard'
@@ -24,21 +29,27 @@ import { SprayWindowCard } from '#/components/insights/SprayWindowCard'
 import { api } from '#/lib/api'
 import { fmt, today } from '#/lib/format'
 import { useOrg } from '#/lib/org'
+import { ConditionsTab } from '#/components/fields/ConditionsTab'
+import { FieldDocuments } from '#/components/fields/FieldDocuments'
+import { FieldOverviewPrintButton } from '#/components/fields/FieldOverviewPrint'
 import { useOrgMutation, useOrgQuery } from '#/lib/queries'
 import { costCategoryLabel } from '#/i18n/labels'
+import { FieldYieldHistory } from '#/components/yield/FieldYieldHistory'
 import { Button, Link, buttonClass } from '#/ui/Button'
 import { DatePicker, TextField } from '#/ui/Field'
 import { Badge, Card, DescriptionList, ErrorNotice, Loading, Notice, PageHeader, Stat, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 import { ConfirmButton, Menu, MenuItem, MenuTrigger, ModalDialog } from '#/ui/Overlay'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
-const TABS = ['overview', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'boundary', 'costs', 'activity'] as const
+const TABS = ['overview', 'conditions', 'parts', 'crops', 'soil', 'operations', 'satellite', 'zones', 'maps', 'yield', 'boundary', 'costs', 'carbon', 'activity'] as const
 
 export const Route = createFileRoute('/o/$orgId/fields/$fieldId')({
   validateSearch: z.object({
-    tab: z.enum(TABS).optional(),
-    index: z.enum(IMAGERY_LAYERS).optional(),
+    tab: z.enum(TABS).optional().catch(undefined),
+    index: z.enum(IMAGERY_LAYERS).optional().catch(undefined),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    /** Application map opened in the editor on the maps tab. */
+    map: z.uuid().optional().catch(undefined),
   }),
   component: FieldPage,
 })
@@ -81,7 +92,9 @@ function FieldPage() {
         }
         subtitle={`${f.farmName} · ${fmt.ha(f.areaHa)}${f.identifier ? ` · ${f.identifier}` : ''}`}
         actions={
-          can('field.write') && (
+          <>
+            <FieldOverviewPrintButton field={f} cycles={cycles.data ?? []} operations={operations.data ?? []} />
+            {can('field.write') && (
             <>
               <Button onPress={() => setBoundaryOpen(true)}>
                 <Shapes /> {t('fieldPage.editBoundary')}
@@ -98,7 +111,8 @@ function FieldPage() {
                 </Menu>
               </MenuTrigger>
             </>
-          )
+            )}
+          </>
         }
       />
 
@@ -128,14 +142,18 @@ function FieldPage() {
       >
         <TabList aria-label={t('fieldPage.tabs.label')}>
           <Tab id="overview">{t('fieldPage.tabs.overview')}</Tab>
+          <Tab id="conditions">{t('fieldPage.tabs.conditions')}</Tab>
           <Tab id="parts">{t('fieldParts.tab')}</Tab>
           <Tab id="crops">{t('fieldPage.tabs.crops')}</Tab>
           <Tab id="soil">{t('fieldPage.tabs.soil')}</Tab>
           <Tab id="operations">{t('fieldPage.tabs.operations')}</Tab>
           <Tab id="satellite">{t('fieldPage.tabs.satellite')}</Tab>
           <Tab id="zones">{t('fieldPage.tabs.zones')}</Tab>
+          <Tab id="maps">{t('fieldPage.tabs.maps')}</Tab>
+          <Tab id="yield">{t('fieldPage.tabs.yield')}</Tab>
           <Tab id="boundary">{t('fieldPage.tabs.boundary')}</Tab>
           {can('finance.read') && <Tab id="costs">{t('fieldPage.tabs.costs')}</Tab>}
+          <Tab id="carbon">{t('fieldPage.tabs.carbon')}</Tab>
           <Tab id="activity">{t('fieldPage.tabs.activity')}</Tab>
         </TabList>
         <TabPanel id="overview">
@@ -157,6 +175,12 @@ function FieldPage() {
           </div>
           <SprayWindowCard fieldId={f.id} className="mt-6" />
           <RecommendationsCard fieldId={f.id} className="mt-6" />
+          <div className="mt-6">
+            <FieldDocuments fieldId={f.id} />
+          </div>
+        </TabPanel>
+        <TabPanel id="conditions">
+          <ConditionsTab fieldId={fieldId} />
         </TabPanel>
         <TabPanel id="parts">
           <FieldPartsTab field={f} />
@@ -197,6 +221,9 @@ function FieldPage() {
         <TabPanel id="soil">
           <SoilTab field={f} />
         </TabPanel>
+        <TabPanel id="carbon">
+          <CarbonFieldTab fieldId={f.id} fieldName={f.name} />
+        </TabPanel>
         <TabPanel id="operations">
           <Card
             padded={false}
@@ -218,6 +245,12 @@ function FieldPage() {
         </TabPanel>
         <TabPanel id="zones">
           <ProductivityZones field={f} />
+        </TabPanel>
+        <TabPanel id="maps">
+          <ApplicationMaps field={f} openMapId={search.map} onOpened={() => navigateTab({ search: (prev) => ({ ...prev, map: undefined }), replace: true })} />
+        </TabPanel>
+        <TabPanel id="yield">
+          <FieldYieldHistory field={f} />
         </TabPanel>
         <TabPanel id="boundary">
           <BoundaryHistory fieldId={fieldId} canEdit={can('field.write')} onAdd={() => setBoundaryOpen(true)} />
@@ -342,12 +375,12 @@ function BoundaryHistory({ fieldId, canEdit, onAdd }: { fieldId: string; canEdit
   const { can } = useOrg()
   const history = useOrgQuery<FieldGeometryVersion[]>(`/fields/${fieldId}/geometry-history`)
   const [selected, setSelected] = useState<string | null>(null)
-  const cancel = useOrgMutation((base, versionId: string) => api.delete<Field>(`${base}/fields/${fieldId}/geometry/${versionId}`), {
-    success: t('fieldPage.boundary.cancelled'),
-    onSuccess: () => setSelected(null),
-  })
   const restore = useOrgMutation((base, v: FieldGeometryVersion) => api.post<Field>(`${base}/fields/${fieldId}/geometry/restore`, { versionId: v.id, reason: t('fieldPage.boundary.restoreReason', { date: fmt.date(v.validFrom) }) }), {
     success: (f) => t('fieldPage.boundary.restored', { area: fmt.ha(f.areaHa) }),
+    onSuccess: () => setSelected(null),
+  })
+  const cancel = useOrgMutation((base, versionId: string) => api.delete<Field>(`${base}/fields/${fieldId}/geometry/${versionId}`), {
+    success: t('fieldPage.boundary.cancelled'),
     onSuccess: () => setSelected(null),
   })
   if (history.isLoading) return <Loading />
@@ -461,6 +494,9 @@ function SatelliteTab({
   const shown = satellite.date
   const index: ShownIndex = layer === 'rgb' ? 'ndvi' : layer
   const select = satellite.setDate
+  const [map, setMap] = useState<MapLibreMap | null>(null)
+  const { can } = useOrg()
+  const notes = useSceneAnnotations({ fieldId: field.id, date: shown?.date ?? null, layer, map, canEdit: can('field.write') })
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -474,15 +510,32 @@ function SatelliteTab({
       )}
       <div className="grid xl:grid-cols-[1fr_1.2fr] gap-6 items-start">
         <div className="space-y-2">
-          <FieldMap fields={[field]} fillOpacity={0} raster={satellite.raster} labels={false} className="h-96 xl:h-[28rem]">
+          <FieldMap fields={[field]} fillOpacity={0} raster={satellite.raster} labels={false} className="h-96 xl:h-[28rem]" onMap={setMap} annotations={notes.collection} onAnnotationClick={notes.onClick}>
             <IndexLegend index={layer} stretch={stretch} />
+            {notes.toolbar}
           </FieldMap>
           {satellite.dates.length > 0 && <AcquisitionTimeline dates={satellite.dates} date={shown} onDate={select} single />}
           {shown && layer === 'rgb' && !shown.hasRgb && <p className="text-xs text-muted">{t('fieldPage.satellite.noRgb')}</p>}
+          {notes.notes.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label={t('annotations.listLabel')}>
+              {notes.notes.map((n) => (
+                <li key={n.id}>
+                  <AriaButton onPress={() => notes.edit(n.id)} className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-fg-2 hover:bg-surface-2">
+                    <span className="size-2.5 rounded-full border border-line" style={{ backgroundColor: n.color }} />
+                    {n.note || t(`annotations.tool.${n.kind}`)}
+                  </AriaButton>
+                </li>
+              ))}
+            </ul>
+          )}
+          {notes.dialogs}
         </div>
-        <Card title={t('fieldPage.satellite.overTime', { index: INDEX_INFO[index].label })} description={INDEX_INFO[index].description}>
-          <ObservationsChart fieldId={field.id} fieldName={field.name} index={index} selectedDate={shown?.date} onSelect={select} />
-        </Card>
+        <div className="space-y-6">
+          <Card title={t('fieldPage.satellite.overTime', { index: INDEX_INFO[index].label })} description={INDEX_INFO[index].description}>
+            <ObservationsChart fieldId={field.id} fieldName={field.name} index={index} selectedDate={shown?.date} onSelect={select} />
+          </Card>
+          <SceneStats fieldId={field.id} fieldName={field.name} index={index} layerLabel={layer === 'rgb' ? 'rgb' : layer} date={shown ?? null} map={map} />
+        </div>
       </div>
       <p className="text-xs text-muted">{t('fieldPage.satellite.method', { year: satellite.status?.historyFrom?.slice(0, 4) ?? '2018' })}</p>
     </div>

@@ -48,12 +48,14 @@ describe('auth configuration', () => {
 })
 
 describe('account language', () => {
-  it('starts unset and keeps the chosen language', async () => {
+  it('accepts only German (the app is German-only)', async () => {
     const u = await signIn('lang')
     expect((await u.get('/me').expect(200)).body.locale).toBeNull()
-    const me = (await u.patch('/me', { locale: 'en' }).expect(200)).body
-    expect(me.locale).toBe('en')
-    await u.patch('/me', { locale: 'fr' }).expect(400)
+    expect((await u.patch('/me', { locale: 'de' }).expect(200)).body.locale).toBe('de')
+    await u.patch('/me', { locale: 'en' }).expect(400)
+    await u.patch('/me', { locale: 'pl' }).expect(400)
+    await u.patch('/me', { locale: 'it' }).expect(400)
+    expect((await u.get('/me').expect(200)).body.locale).toBe('de')
   })
 })
 
@@ -68,9 +70,8 @@ describe('organization units', () => {
 })
 
 describe('invitations', () => {
-  it('queues an invitation e-mail in the inviter’s language with the commit', async () => {
+  it('queues a German invitation e-mail with the commit', async () => {
     const inviter = await signIn('inviter')
-    await inviter.patch('/me', { locale: 'en' }).expect(200)
     const org = (await inviter.post('/orgs', { name: `Invite ${run}` }).expect(201)).body
     const invitee = `invitee-${run}@example.test`
     await inviter.post(`/orgs/${org.id}/members`, { email: invitee, displayName: 'Invitee', role: 'agronomist' }).expect(201)
@@ -78,7 +79,7 @@ describe('invitations', () => {
     const jobs = await owner.selectFrom('jobs').select(['kind', 'payload']).where('organization_id', '=', org.id).execute()
     expect(jobs).toHaveLength(1)
     expect(jobs[0].kind).toBe('email.send')
-    expect(jobs[0].payload).toMatchObject({ to: invitee, template: 'invitation', locale: 'en', params: { orgName: `Invite ${run}`, role: 'agronomist' } })
+    expect(jobs[0].payload).toMatchObject({ to: invitee, template: 'invitation', params: { orgName: `Invite ${run}`, role: 'agronomist' } })
 
     // A rejected invitation (already a member) queues nothing.
     await inviter.post(`/orgs/${org.id}/members`, { email: invitee, displayName: 'Invitee', role: 'agronomist' }).expect(409)

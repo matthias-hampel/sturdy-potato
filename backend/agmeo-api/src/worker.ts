@@ -28,25 +28,25 @@ async function main() {
   await relay.start();
   const runner = new JobRunner(jobsDb, jobHandlers(jobsDb));
   runner.start();
-  const jobScheduler = new Scheduler(jobsDb, schedules);
-  jobScheduler.start();
+  const scheduler = new Scheduler(jobsDb, schedules);
+  scheduler.start();
 
   const schedule = config.recommendationSchedule;
   const recommender = schedule.enabled ? await NestFactory.createApplicationContext(RecommenderModule, { logger: ['log', 'warn', 'error'] }) : null;
-  const recommendationScheduler = recommender
+  const recommendations = recommender
     ? new RecommendationScheduler(recommender.get(Database), recommender.get(RecommendationsService), {
         ...DEFAULT_SCHEDULER_OPTIONS,
         daily: { at: schedule.dailyAt, timeZone: schedule.timeZone },
       })
     : null;
-  await recommendationScheduler?.start(config.natsUrl);
+  await recommendations?.start(config.natsUrl);
 
   const shutdown = async (signal: string) => {
     logger.log(`${signal} received, shutting down`);
-    await recommendationScheduler?.stop();
-    await recommender?.close();
-    jobScheduler.stop();
+    scheduler.stop();
     await runner.stop();
+    await recommendations?.stop();
+    await recommender?.close();
     await relay.stop();
     await Promise.all([relayDb.destroy(), jobsDb.destroy()]);
     process.exit(0);

@@ -1,7 +1,8 @@
-import { LOCALES, type CurrentUser, type Locale } from '@agmeo/contracts'
+import type { CurrentUser } from '@agmeo/contracts'
 import { Link as RouterLink, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   BarChart3,
+  BookOpen,
   Boxes,
   Coins,
   Building2,
@@ -14,9 +15,12 @@ import {
   FileUp,
   FlaskConical,
   FolderOpen,
+  HelpCircle,
   Grid2x2,
-  Languages,
   LayoutDashboard,
+  Leaf,
+  Mic,
+  Newspaper,
   ListChecks,
   LogOut,
   Map,
@@ -24,19 +28,20 @@ import {
   Plus,
   Repeat,
   Settings,
+  Shovel,
   ShieldCheck,
   Sprout,
   Tractor,
   Users,
+  Wheat,
   X,
+  Layers,
   type LucideIcon,
 } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button as AriaButton, Dialog as AriaDialog, Modal, ModalOverlay } from 'react-aria-components'
-import { LANGUAGE, setLanguage } from '#/i18n'
 import { roleLabel } from '#/i18n/labels'
-import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { useOrg, useSeason } from '#/lib/org'
 import { Button } from '#/ui/Button'
@@ -45,6 +50,7 @@ import { Menu, MenuItem, MenuSeparator, MenuTrigger } from '#/ui/Overlay'
 import { cx, focusRing } from '#/ui/utils'
 import { GlobalSearch } from './GlobalSearch'
 import { Logo } from './Logo'
+import { useOrgLogo } from './OrgLogo'
 
 interface NavItem {
   to: string
@@ -59,13 +65,17 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'nav.section.workspace',
     items: [
       { to: '/o/$orgId', label: 'nav.overview', icon: LayoutDashboard, exact: true },
+      { to: '/o/$orgId/news', label: 'nav.news', icon: Newspaper },
       { to: '/o/$orgId/fields', label: 'nav.fields', icon: Map },
       { to: '/o/$orgId/crops', label: 'nav.crops', icon: Sprout },
       { to: '/o/$orgId/nutrients', label: 'nav.nutrients', icon: FlaskConical },
+      { to: '/o/$orgId/soil', label: 'nav.soil', icon: Shovel },
+      { to: '/o/$orgId/vra-maps', label: 'nav.vraMaps', icon: Layers },
       { to: '/o/$orgId/calendar', label: 'nav.calendar', icon: CalendarRange },
       { to: '/o/$orgId/templates', label: 'nav.templates', icon: ListChecks },
       { to: '/o/$orgId/rotations', label: 'nav.rotations', icon: Repeat },
       { to: '/o/$orgId/operations', label: 'nav.operations', icon: ClipboardList },
+      { to: '/o/$orgId/voice', label: 'nav.voice', icon: Mic },
       { to: '/o/$orgId/tasks', label: 'nav.tasks', icon: CalendarCheck2 },
     ],
   },
@@ -75,6 +85,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { to: '/o/$orgId/inventory', label: 'nav.inventory', icon: Boxes },
       { to: '/o/$orgId/prices', label: 'nav.prices', icon: Coins },
       { to: '/o/$orgId/machinery', label: 'nav.machinery', icon: Tractor },
+      { to: '/o/$orgId/varieties', label: 'nav.varieties', icon: BookOpen },
       { to: '/o/$orgId/team', label: 'nav.team', icon: Users },
       { to: '/o/$orgId/files', label: 'nav.files', icon: FolderOpen },
     ],
@@ -83,7 +94,9 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: 'nav.section.insights',
     items: [
       { to: '/o/$orgId/weather', label: 'nav.weather', icon: CloudSun },
+      { to: '/o/$orgId/maize-dmc', label: 'nav.maizeDmc', icon: Wheat },
       { to: '/o/$orgId/economics', label: 'nav.economics', icon: BarChart3, permission: 'finance.read' },
+      { to: '/o/$orgId/carbon', label: 'nav.carbon', icon: Leaf },
       { to: '/o/$orgId/compliance', label: 'nav.compliance', icon: ShieldCheck },
     ],
   },
@@ -179,6 +192,19 @@ function Sidebar({ user, onNavigate }: { user: CurrentUser; onNavigate?: () => v
           <Settings className="size-4.5 text-sidebar-muted" aria-hidden />
           {t('nav.settings')}
         </RouterLink>
+        <RouterLink
+          to="/o/$orgId/help"
+          params={{ orgId }}
+          onClick={onNavigate}
+          className={cx(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-fg/85 hover:bg-sidebar-active/60 hover:text-white',
+            pathname.startsWith(`/o/${orgId}/help`) && 'bg-sidebar-active text-white',
+            focusRing,
+          )}
+        >
+          <HelpCircle className="size-4.5 text-sidebar-muted" aria-hidden />
+          {t('nav.help')}
+        </RouterLink>
       </div>
     </>
   )
@@ -187,14 +213,21 @@ function Sidebar({ user, onNavigate }: { user: CurrentUser; onNavigate?: () => v
 function OrgSwitcher({ user }: { user: CurrentUser }) {
   const { t } = useTranslation()
   const { org } = useOrg()
+  const logo = useOrgLogo(org)
   const navigate = useNavigate()
   return (
     <div className="px-3">
       <MenuTrigger>
         <AriaButton className={cx('w-full flex items-center gap-3 rounded-lg bg-white/6 hover:bg-white/10 px-3 py-2.5 text-left', focusRing)}>
-          <span className="size-8 rounded-md bg-[#a8d08d]/20 text-[#cfe6bf] flex items-center justify-center shrink-0">
-            <Building2 className="size-4" aria-hidden />
-          </span>
+          {logo ? (
+            <span className="size-8 rounded-md bg-white flex items-center justify-center shrink-0 overflow-hidden">
+              <img src={logo} alt="" className="max-h-7 max-w-7 object-contain" />
+            </span>
+          ) : (
+            <span className="size-8 rounded-md bg-[#a8d08d]/20 text-[#cfe6bf] flex items-center justify-center shrink-0">
+              <Building2 className="size-4" aria-hidden />
+            </span>
+          )}
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium text-white truncate">{org.name}</span>
             <span className="block text-xs text-sidebar-muted">{roleLabel(org.role)}</span>
@@ -221,19 +254,6 @@ function OrgSwitcher({ user }: { user: CurrentUser }) {
       </MenuTrigger>
     </div>
   )
-}
-
-/** Each language in its own name, so it can be found whatever language is active. */
-const LANGUAGE_NAMES: Record<Locale, string> = { de: 'Deutsch', en: 'English' }
-
-/** Saves the language on the account (it follows the user to other devices), then reloads in it. */
-async function switchLanguage(locale: Locale) {
-  try {
-    await api.patch('/me', { locale })
-  } catch {
-    // The choice still applies on this browser.
-  }
-  setLanguage(locale)
 }
 
 function TopBar({ user, onOpenNav }: { user: CurrentUser; onOpenNav: () => void }) {
@@ -282,7 +302,6 @@ function TopBar({ user, onOpenNav }: { user: CurrentUser; onOpenNav: () => void 
         <Menu
           onAction={(key) => {
             if (key === 'signout') void signOut()
-            else if (typeof key === 'string' && key.startsWith('lang:')) void switchLanguage(key.slice(5) as Locale)
           }}
         >
           <MenuItem id="me" isDisabled textValue={user.displayName}>
@@ -291,12 +310,6 @@ function TopBar({ user, onOpenNav }: { user: CurrentUser; onOpenNav: () => void 
               <span className="text-xs text-muted">{user.email}</span>
             </span>
           </MenuItem>
-          <MenuSeparator />
-          {LOCALES.map((l) => (
-            <MenuItem key={l} id={`lang:${l}`} textValue={LANGUAGE_NAMES[l]}>
-              {l === LANGUAGE ? <Check /> : <Languages className="opacity-0" />} {LANGUAGE_NAMES[l]}
-            </MenuItem>
-          ))}
           <MenuSeparator />
           <MenuItem id="signout">
             <LogOut /> {t('nav.signOut')}

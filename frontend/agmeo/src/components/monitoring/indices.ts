@@ -22,6 +22,8 @@ export const INDEX_INFO: Record<ShownIndex, { readonly label: string; readonly d
   evi: info('evi', [0, 1]),
   bsi: info('bsi', [-0.5, 0.3]),
   ndti: info('ndti', [-0.1, 0.5]),
+  savi: info('savi', [0, 0.9]),
+  lai: info('lai', [0, 7]),
 }
 
 /** Translated `INDEX_INFO` entry. */

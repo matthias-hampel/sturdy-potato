@@ -41,7 +41,7 @@ BANDS = {
     "swir16": "B11",
     "swir22": "B12",
 }
-INDICES = ("ndvi", "ndre", "ndmi", "evi", "bsi", "ndti")
+INDICES = ("ndvi", "ndre", "ndmi", "evi", "bsi", "ndti", "savi", "lai")
 
 # Remote COG access: no directory listings, merged range requests, HTTP/2, anonymous S3.
 GDAL_ENV = {
@@ -68,6 +68,16 @@ def index_layers(r: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     with np.errstate(divide="ignore", invalid="ignore"):
         evi_denominator = r["nir"] + 6 * r["red"] - 7.5 * r["blue"] + 1
         evi = np.where(np.abs(evi_denominator) > 1e-8, 2.5 * (r["nir"] - r["red"]) / evi_denominator, np.nan)
+        # Soil-adjusted vegetation index (Huete 1988), L = 0.5.
+        savi_denominator = r["nir"] + r["red"] + 0.5
+        savi = np.where(savi_denominator > 1e-8, 1.5 * (r["nir"] - r["red"]) / savi_denominator, np.nan)
+        # Leaf area index from SAVI (L = 0.1) after METRIC/SEBAL (Allen et al. 2007), capped at 6.
+        savi01 = np.where(r["nir"] + r["red"] + 0.1 > 1e-8, 1.1 * (r["nir"] - r["red"]) / (r["nir"] + r["red"] + 0.1), np.nan)
+        lai = np.where(
+            np.isfinite(savi01),
+            np.clip(-np.log(np.clip((0.69 - savi01) / 0.59, 1e-6, None)) / 0.91, 0.0, 6.0),
+            np.nan,
+        )
     return {
         "ndvi": _nd(r["nir"], r["red"]),
         "ndre": _nd(r["nir08"], r["rededge1"]),
@@ -75,6 +85,8 @@ def index_layers(r: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         "evi": evi,
         "bsi": _nd(r["swir16"] + r["red"], r["nir"] + r["blue"]),
         "ndti": _nd(r["swir16"], r["swir22"]),
+        "savi": savi,
+        "lai": lai,
     }
 
 

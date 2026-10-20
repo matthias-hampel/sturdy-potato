@@ -22,7 +22,8 @@ import { record } from '../../core/events.js';
 import { round } from '../../core/mappers.js';
 import type { Out } from '../../core/validation.js';
 import { Database, type Trx } from '../../db/database.js';
-import { CO2E_FACTOR_SET } from '../carbon/co2e.js';
+import { CarbonService } from '../carbon/carbon.service.js';
+import { CO2E_FACTOR_SET, emissionCategory } from '../carbon/co2e.js';
 import { cropName } from '../crops/crop-name.js';
 import { resolveSeason } from '../crops/seasons.js';
 
@@ -36,7 +37,10 @@ const HARVEST_UNITS_PER_T: Record<string, number> = { t: 1, kg: 1000 };
 
 @Injectable()
 export class EconomicsService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly carbon: CarbonService,
+  ) {}
 
   harvests(ctx: Ctx, q: { seasonId?: string; cropCycleId?: string }): Promise<Harvest[]> {
     return this.db.run(ctx, (trx) => this.queryHarvests(trx, q));
@@ -329,11 +333,18 @@ export class EconomicsService {
         .where('season_id', '=', season.id)
         .groupBy(['crop_cycle_id', 'source'])
         .execute();
+      // Emissions by category: the operations' ledger plus what is booked on the crop cycles
+      // themselves (humus effect, residues, last year's organic N; see CarbonService.cycleCarbon).
       const co2Of = new Map<string, number>();
       const bySource: Record<string, number> = {};
-      for (const e of emissionRows) {
-        if (e.crop_cycle_id) co2Of.set(e.crop_cycle_id, (co2Of.get(e.crop_cycle_id) ?? 0) + Number(e.kg));
-        bySource[e.source] = round((bySource[e.source] ?? 0) + Number(e.kg), 1);
+      const book = (cycleId: string | null, source: string, kg: number) => {
+        const category = emissionCategory(source) ?? source;
+        if (cycleId) co2Of.set(cycleId, (co2Of.get(cycleId) ?? 0) + kg);
+        bySource[category] = round((bySource[category] ?? 0) + kg, 1);
+      };
+      for (const e of emissionRows) book(e.crop_cycle_id, e.source, Number(e.kg));
+      for (const [cycleId, terms] of await this.carbon.cycleCarbon(trx, [season.id])) {
+        for (const [source, kg] of Object.entries(terms.byId)) book(cycleId, source, kg ?? 0);
       }
       const overheads = await trx.selectFrom('farm_overheads').selectAll().where('season_id', '=', season.id).executeTakeFirst();
 

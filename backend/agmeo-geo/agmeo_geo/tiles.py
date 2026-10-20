@@ -9,14 +9,19 @@ so tiles show the requesting organization's fields and nothing around them.
   ``rgb`` (true colour).
 * ``/productivity/{analysis}/...``: the relative productivity map of an analysis, around the
   field mean (diverging, symmetric).
+* ``/rasters/{id}/values``: one index layer of a field raster as numbers on its field grid, for
+  computations in the API (the satellite yield estimate distributes a mean yield by NDVI).
 """
 
+import base64
 import json
 import logging
 from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
+import rasterio
+import rasterio.errors
 from fastapi import FastAPI, HTTPException, Query, Response
 from morecantile import tms
 from rasterio.features import geometry_mask
@@ -61,6 +66,11 @@ SELECT a.raster_path, ST_AsGeoJSON(ST_Transform(g.geometry, 3857)) AS geometry
 FROM productivity_analyses a
 JOIN field_geometry_versions g ON g.id = a.geometry_version_id
 WHERE a.id = %(id)s AND a.organization_id = %(org)s AND a.raster_path IS NOT NULL
+"""
+
+
+FIELD_RASTER = """
+SELECT path, bands FROM field_rasters WHERE id = %(id)s AND organization_id = %(org)s
 """
 
 
@@ -206,5 +216,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         out = np.where(valid, scaled, 0)[None].astype("uint8")
         png = render(out, mask=valid.astype("uint8") * 255, img_format="PNG", colormap=relative_map)
         return Response(png, media_type="image/png", headers=CACHE)
+
+    @app.get("/rasters/{raster}/values")
+    def values(raster: str, organization: str = Query(...), layer: str = Query("ndvi")):
+        """Grid and float32 values (little-endian, NaN = no value) of one layer of a field raster."""
+        if layer not in SCALES:
+            raise HTTPException(404, "Unknown layer")
+        with connect(settings) as conn:
+            row = conn.execute(FIELD_RASTER, {"id": raster, "org": organization}).fetchone()
+        if not row or layer not in row["bands"]:
+            raise HTTPException(404, "Raster not found")
+        path = settings.data_dir / row["path"]
+        try:
+            with rasterio.open(path) as src:
+                crs, transform, width, height = src.crs, src.transform, src.width, src.height
+        except (FileNotFoundError, OSError, rasterio.errors.RasterioIOError):
+            raise HTTPException(404, "Raster file missing") from None
+        data = read_layer(path, layer).astype("<f4")
+        return {
+            "crs": crs.to_string(),
+            "epsg": crs.to_epsg(),
+            "originX": transform.c,
+            "originY": transform.f,
+            "resolution": transform.a,
+            "width": width,
+            "height": height,
+            "values": base64.b64encode(data.tobytes()).decode("ascii"),
+        }
 
     return app

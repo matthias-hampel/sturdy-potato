@@ -15,8 +15,8 @@ from .zonal import FieldStats
 
 log = logging.getLogger("agmeo_geo.observe")
 
-# Statistics on the aligned field grid (zonal-1 sampled the source raster directly).
-OBS_VERSION = "zonal-2"
+# Statistics on the aligned field grid (zonal-1 sampled the source raster directly); zonal-3 adds p20/p80.
+OBS_VERSION = "zonal-3"
 
 
 @dataclass
@@ -106,13 +106,13 @@ def store(
         conn.execute(
             """
             INSERT INTO field_observations (organization_id, field_id, geometry_version_id, scene_id,
-                observed_on, index_type, mean, median, p10, p90, stddev, valid_pixel_pct, status,
+                observed_on, index_type, mean, median, p10, p20, p80, p90, stddev, valid_pixel_pct, status,
                 source, processing_version)
             VALUES (%(org)s, %(field)s, %(gv)s, %(scene)s, %(day)s, %(index)s, %(mean)s, %(median)s,
-                %(p10)s, %(p90)s, %(std)s, %(pct)s, %(status)s, 'sentinel-2', %(version)s)
+                %(p10)s, %(p20)s, %(p80)s, %(p90)s, %(std)s, %(pct)s, %(status)s, 'sentinel-2', %(version)s)
             ON CONFLICT (field_id, scene_id, index_type, processing_version) DO UPDATE SET
               geometry_version_id = EXCLUDED.geometry_version_id, observed_on = EXCLUDED.observed_on,
-              mean = EXCLUDED.mean, median = EXCLUDED.median, p10 = EXCLUDED.p10, p90 = EXCLUDED.p90,
+              mean = EXCLUDED.mean, median = EXCLUDED.median, p10 = EXCLUDED.p10, p20 = EXCLUDED.p20, p80 = EXCLUDED.p80, p90 = EXCLUDED.p90,
               stddev = EXCLUDED.stddev, valid_pixel_pct = EXCLUDED.valid_pixel_pct, status = EXCLUDED.status
             """,
             {
@@ -126,6 +126,8 @@ def store(
                 "median": _round(stats.median),
                 "p10": _round(stats.p10),
                 "p90": _round(stats.p90),
+                "p20": _round(stats.p20),
+                "p80": _round(stats.p80),
                 "std": _round(stats.stddev),
                 "pct": round(100 * stats.valid_fraction, 2),
                 "status": "valid" if ok else "insufficient_coverage",

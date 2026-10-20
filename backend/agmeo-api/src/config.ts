@@ -43,6 +43,11 @@ export const config = {
     // Local development delivers to Mailpit (docker compose), web UI on http://localhost:8025.
     smtpUrl: env('SMTP_URL', 'smtp://localhost:1025'),
     from: env('MAIL_FROM', 'agmeo <no-reply@agmeo.local>'),
+    /** Signs the unsubscribe links of notification e-mails; falls back to the dev auth secret outside production. */
+    unsubscribeSecret: env('EMAIL_UNSUBSCRIBE_SECRET', process.env.NODE_ENV === 'production' ? '' : 'agmeo-dev-unsubscribe-secret'),
+    /** Weekly storage overview for operations (comma-separated addresses); empty sends none. */
+    storageOverviewTo: env('STORAGE_DIGEST_RECIPIENTS', ''),
+    /** Language of the operations overview. */
   },
   storage: {
     // 'local' keeps objects in a directory (development, tests); 's3' uses an S3-compatible bucket.
@@ -69,10 +74,85 @@ export const config = {
     /** Open-Meteo subscription key: customer endpoints and the ERA5 archive for season backfills. Without it the free API is used (development only). */
     apiKey: env('OPEN_METEO_API_KEY', ''),
   },
+  /** Thünen AgriGHG tool (RothC humus model) for the soil-carbon simulation; without a key the simulation is unavailable. */
+  thuenen: {
+    baseUrl: env('THUENEN_BASE_URL', 'https://agrighg-tool.thuenen.de/api/v1'),
+    apiKey: env('THUENEN_API_KEY', ''),
+  },
+  // AGVOLUTION's maize dry-matter service (maize-dmc-api). Without a URL the DMC routes answer
+  // "not configured" and the harvest detection job skips itself.
+  maizeDmc: {
+    apiUrl: env('MAIZE_DMC_API_URL', '').trim().replace(/\/+$/, ''),
+    /** Bearer token; empty sends no Authorization header (the service enforces auth only when its own DMC_API_TOKEN is set). */
+    apiToken: env('MAIZE_DMC_API_TOKEN', ''),
+    /** Per attempt; a predict takes 5–30 s depending on resolution. */
+    timeoutMs: Number(env('MAIZE_DMC_API_TIMEOUT_MS', '120000')),
+    /** Send our stored daily weather so the service fetches only the gaps. */
+    supplyWeather: env('DMC_SUPPLY_CACHED_WEATHER', 'on') !== 'off',
+  },
+  /**
+   * AGVOLUTION's model services. Each is off while its URL (and, where needed, its credentials)
+   * is empty: reads answer `configured: false`, requests that would call it answer 503
+   * `service_not_configured`, and its jobs skip themselves.
+   */
+  models: {
+    esm: {
+      /** Ecosystem model server (lvl0-models esm/endpoints), e.g. https://esm.agvolution.com. */
+      url: env('ESM_SERVER_URL', '').replace(/\/+$/, ''),
+      /** Bearer token the ESM accepts (it verifies tokens with the reference app's Clerk instance). */
+      token: env('ESM_API_TOKEN', ''),
+      /** Host the ESM worker posts its writeback to; "localhost" makes the ESM host skip it (results come in the sync response). */
+      writebackDomain: env('ESM_WRITEBACK_DOMAIN', 'localhost'),
+      /** A model run in sync mode; the ESM itself gives up after 300 s. */
+      runTimeoutMs: Number(env('ESM_RUN_TIMEOUT_MS', '330000')),
+      /** Result downloads (timeseries.json). */
+      timeoutMs: Number(env('ESM_TIMEOUT_MS', '30000')),
+    },
+    grassland: {
+      /** grassland-api, e.g. https://grassland.agmeo.com. */
+      url: env('GRASSLAND_API_URL', '').replace(/\/+$/, ''),
+      /** Optional; without it no Authorization header is sent. */
+      token: env('GRASSLAND_API_TOKEN', ''),
+      timeoutMs: Number(env('GRASSLAND_API_TIMEOUT_MS', '120000')),
+    },
+    isip: {
+      /** ISIP chart API and its Keycloak token endpoint (password grant), as agmeo-crawlers uses them. */
+      apiUrl: env('ISIP_API_URL', 'https://www.isip.de/charts/api').replace(/\/+$/, ''),
+      tokenUrl: env('ISIP_TOKEN_URL', 'https://login.isip.de/auth/realms/ams/protocol/openid-connect/token'),
+      username: env('ISIP_USERNAME', ''),
+      password: env('ISIP_PASSWORD', ''),
+      clientId: env('ISIP_CLIENT_ID', 'sso-api-client-extern'),
+      clientSecret: env('ISIP_CLIENT_SECRET', ''),
+      timeoutMs: Number(env('ISIP_TIMEOUT_MS', '60000')),
+    },
+  },
+  /**
+   * Who hosts this deployment, for Settings → Data processing: "Legal name|location|URL" each
+   * (location and URL optional). Empty rows are shown as "not stated by the operator".
+   */
+  dataProcessing: {
+    hosting: env('DATA_PROCESSING_HOSTING', ''),
+    database: env('DATA_PROCESSING_DATABASE', ''),
+    email: env('DATA_PROCESSING_EMAIL', ''),
+  },
   // Address search for farms. The public Photon instance allows fair use only; self-host it for more load.
   geocoding: {
     photonUrl: env('PHOTON_URL', 'https://photon.komoot.io'),
     userAgent: env('GEOCODING_USER_AGENT', 'agmeo (https://agvolution.com)'),
+  },
+  /**
+   * Speech-to-text for voice drafts: any OpenAI-compatible transcription endpoint
+   * (`POST {url}/audio/transcriptions`, e.g. https://api.openai.com/v1 with whisper-1, or
+   * https://api.mistral.ai/v1 with voxtral-mini-latest). Off while the URL is empty: recordings are
+   * refused and typed dictations still become drafts.
+   */
+  voice: {
+    sttUrl: env('VOICE_STT_URL', '').trim().replace(/\/+$/, ''),
+    sttApiKey: env('VOICE_STT_API_KEY', ''),
+    sttModel: env('VOICE_STT_MODEL', 'whisper-1'),
+    language: env('VOICE_STT_LANGUAGE', 'de'),
+    timeoutMs: Number(env('VOICE_STT_TIMEOUT_MS', '120000')),
+    maxAudioBytes: Number(env('VOICE_MAX_AUDIO_MB', '25')) * 1024 * 1024,
   },
   // Language model that phrases the reasons of field recommendations. Without a key the
   // recommendations still work; the UI then shows the reasons from the evidence codes.

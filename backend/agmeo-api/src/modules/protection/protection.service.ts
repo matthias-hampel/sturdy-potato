@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { OperationChecks, PsmFinding } from '@agmeo/contracts';
+import type { OperationChecks, PsmFinding, PsmProductInfo, PsmRestriction } from '@agmeo/contracts';
 import { sql } from 'kysely';
 import type { Ctx } from '../../auth/context.js';
 import { notFound } from '../../core/errors.js';
@@ -52,6 +52,78 @@ export class ProtectionService {
       if (!op) throw notFound('Operation');
       const { findings, earliest } = await this.check(trx, [operationId]);
       return { operationId, psm: findings, earliestHarvest: earliest };
+    });
+  }
+
+  /**
+   * Register facts of a product: approval, the approved use (`awgId`, else the only professional
+   * use) and the Auflagen of the product and of that use (all uses' when none is determined).
+   */
+  productInfo(ctx: Ctx, productId: string, awgId?: string): Promise<PsmProductInfo> {
+    return this.db.run(ctx, async (trx) => {
+      const product = await trx.selectFrom('products').select(['id', 'registration_number']).where('id', '=', productId).executeTakeFirst();
+      if (!product) throw notFound('Product');
+      const kennr = product.registration_number;
+      const empty: PsmProductInfo = { productId, kennr, bvlName: null, approvalEndsOn: null, use: null, restrictions: [] };
+      if (!kennr) return empty;
+      const [reg, uses] = await Promise.all([
+        trx.selectFrom('psm_products').select(['name', 'approval_ends_on']).where('kennr', '=', kennr).executeTakeFirst(),
+        trx.selectFrom('psm_uses').selectAll().where('kennr', '=', kennr).orderBy('awg_id').execute(),
+      ]);
+      const professional = uses.filter((u) => u.professional);
+      const use = (awgId ? uses.find((u) => u.awg_id === awgId) : undefined) ?? (professional.length === 1 ? professional[0] : undefined);
+      let q = trx.selectFrom('psm_restrictions').selectAll().orderBy('code');
+      q = use ? q.where((eb) => eb.or([eb('kennr', '=', kennr), eb('awg_id', '=', use.awg_id)])) : q.where((eb) => eb.or([eb('kennr', '=', kennr), eb('awg_id', 'in', uses.length ? uses.map((u) => u.awg_id) : [''])]));
+      const rows = await q.execute();
+      const tiers = rows.length
+        ? await trx.selectFrom('psm_restriction_reductions').selectAll().where('auflagenr', 'in', rows.map((r) => r.auflagenr)).orderBy('reduction_pct').execute()
+        : [];
+      const targets = use?.target_codes.length
+        ? await trx.selectFrom('psm_codes').select(['code', 'text']).where('code', 'in', use.target_codes).execute()
+        : [];
+      const restrictions: PsmRestriction[] = rows.map((r) => ({
+        auflagenr: r.auflagenr,
+        awgId: r.awg_id,
+        code: r.code,
+        text: r.text,
+        codeGroup: r.code_group,
+        waterBufferM: r.water_buffer_m,
+        driftReductionPct: r.drift_reduction_pct,
+        tiers: tiers.filter((t) => t.auflagenr === r.auflagenr).map((t) => ({ reductionPct: t.reduction_pct, distanceM: t.distance_m })),
+      }));
+      return {
+        ...empty,
+        bvlName: reg?.name ?? null,
+        approvalEndsOn: reg?.approval_ends_on ?? null,
+        use: use
+          ? {
+              awgId: use.awg_id,
+              doseMax: use.dose_max,
+              doseUnit: use.dose_unit,
+              maxApplications: use.max_applications,
+              waterMinLHa: use.water_min_l_ha,
+              waterMaxLHa: use.water_max_l_ha,
+              targets: use.target_codes.map((c) => targets.find((x) => x.code === c)?.text ?? c),
+              waitingDays: use.waiting_days as Record<string, number | null>,
+            }
+          : null,
+        restrictions,
+      };
+    });
+  }
+
+  /** Findings of every plant-protection operation of a season (the protection tab's inline flags). */
+  seasonChecks(ctx: Ctx, seasonId: string): Promise<PsmFinding[]> {
+    return this.db.run(ctx, async (trx) => {
+      const season = await trx.selectFrom('growing_seasons').select(['start_date', 'end_date']).where('id', '=', seasonId).executeTakeFirst();
+      if (!season) throw notFound('Season');
+      const { rows } = await sql<{ id: string }>`
+        SELECT DISTINCT o.id FROM operations o JOIN operation_fields ofl ON ofl.operation_id = o.id
+        LEFT JOIN crop_cycles cc ON cc.id = ofl.crop_cycle_id
+        WHERE o.type = 'crop_protection' AND o.status <> 'canceled'
+          AND (cc.season_id = ${seasonId}
+               OR coalesce((o.performed_at AT TIME ZONE 'Europe/Berlin')::date, o.planned_on) BETWEEN ${season.start_date}::date AND ${season.end_date}::date)`.execute(trx);
+      return (await this.check(trx, rows.map((r) => r.id))).findings;
     });
   }
 

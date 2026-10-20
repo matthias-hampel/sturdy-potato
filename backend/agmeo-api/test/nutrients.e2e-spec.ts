@@ -68,7 +68,8 @@ describe('agronomy', () => {
     await u.post(`${base}/crop-cycles`, { seasonId: s2027.id, fieldIds: [field.id], cropId: crop('cc_mustard'), role: 'catch_crop' }).expect(201)
     await u.patch(`${base}/fields/${field.id}/site`, { soilTexture: 'sL', nitrateSensitiveZone: true }).expect(200)
     const basic = (await u.post(`${base}/soil-samples`, { fieldId: field.id, kind: 'basic', sampledOn: '2025-09-10', ph: 6.0, p2o5Mg100g: 6, k2oMg100g: 9, mgoMg100g: 6, humusPct: 2.4 }).expect(201)).body
-    expect(basic.classes).toEqual({ ph: 'B', p: 'B', k: 'B', mg: 'C' })
+    // 6 mg MgO = 3.6 mg Mg: class B on medium soils (VDLUFA bounds are in mg Mg).
+    expect(basic.classes).toEqual({ ph: 'B', p: 'B', k: 'B', mg: 'B' })
 
     // Without an Nmin sample the need uses an estimate and says so.
     let need = (await u.get(`${base}/crop-cycles/${wheat.id}/fertilizer-need`).expect(200)).body

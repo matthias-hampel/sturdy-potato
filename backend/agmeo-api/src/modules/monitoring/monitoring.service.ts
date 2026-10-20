@@ -22,10 +22,10 @@ export class MonitoringService {
     return this.db.run(ctx, async (trx) => {
       const { rows } = await sql<{
         id: string; field_id: string; observed_on: string; index_type: string; mean: number | null; median: number | null;
-        p10: number | null; p90: number | null; stddev: number | null; valid_pixel_pct: number; status: string;
+        p10: number | null; p20: number | null; p80: number | null; p90: number | null; stddev: number | null; valid_pixel_pct: number; status: string;
         source: string; processing_version: string;
       }>`
-        SELECT DISTINCT ON (observed_on) id, field_id, observed_on, index_type, mean, median, p10, p90, stddev,
+        SELECT DISTINCT ON (observed_on) id, field_id, observed_on, index_type, mean, median, p10, p20, p80, p90, stddev,
                valid_pixel_pct, status, source, processing_version
         FROM field_observations
         WHERE field_id = ${fieldId}::uuid AND index_type = ${index}
@@ -39,6 +39,8 @@ export class MonitoringService {
         mean: r.mean,
         median: r.median,
         p10: r.p10,
+        p20: r.p20,
+        p80: r.p80,
         p90: r.p90,
         stddev: r.stddev,
         validPixelPct: r.valid_pixel_pct,

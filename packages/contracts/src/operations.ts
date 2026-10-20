@@ -80,7 +80,7 @@ export const OPERATION_DETAILS = {
     applicationTechnique: z.enum(['broadcast', 'trailing_hose', 'trailing_shoe', 'injection', 'other']).nullish(),
   }),
   crop_protection: z.looseObject({ waterLHa: optNum(5000), psmUseId: z.string().max(40).nullish(), usageType: z.enum(PSM_USAGE_TYPES).nullish() }),
-  irrigation: z.looseObject({ waterMm: optNum(500) }),
+  irrigation: z.looseObject({ waterMm: optNum(500), method: z.enum(['sprinkler', 'drip', 'pivot']).nullish() }),
   harvest: z.looseObject({ strawRemoved: z.boolean().nullish() }),
   inspection: z.looseObject({}),
   other: z.looseObject({}),
@@ -103,6 +103,8 @@ export const OperationInput = z.object({
   actionId: id.nullish(),
   /** Diesel per treated hectare; without it, diesel is estimated from machine hours. */
   dieselLPerHa: z.number().min(0).max(1000).nullish(),
+  /** Electricity per treated hectare (electric machines, irrigation pumps). */
+  electricityKWhPerHa: z.number().min(0).max(10000).nullish(),
   bbchStage: shortText,
   targetOrganism: shortText,
   weatherConditions: shortText,
@@ -177,6 +179,8 @@ export interface OperationLabor {
 export interface OperationEquipment {
   equipmentId: string;
   equipmentName: string;
+  /** Machine (tractor, self-propelled) or implement. */
+  equipmentClass: 'machine' | 'implement';
   hours: number;
   hourlyCost: number | null;
 }
@@ -202,6 +206,7 @@ export interface Operation {
   contractorCost: number | null;
   actionId: string | null;
   dieselLPerHa: number | null;
+  electricityKWhPerHa: number | null;
   bbchStage: string | null;
   targetOrganism: string | null;
   weatherConditions: string | null;
@@ -354,4 +359,40 @@ export interface OperationChecks {
   psm: PsmFinding[];
   /** Earliest harvest date after the waiting periods of this application, per crop cycle. */
   earliestHarvest: { cropCycleId: string; date: string }[];
+}
+
+/** A BVL approval condition (Auflage) of a product or of one of its approved uses. */
+export interface PsmRestriction {
+  auflagenr: string;
+  /** null: applies to the product as a whole. */
+  awgId: string | null;
+  code: string;
+  text: string | null;
+  codeGroup: string | null;
+  /** Buffer to surface water in m (unreduced, else the widest permitted drift-reduction tier). */
+  waterBufferM: number | null;
+  /** Drift-reduction class the buffer assumes, when it comes from a tier. */
+  driftReductionPct: number | null;
+  /** Buffer per drift-reduction class; distance null = not permitted in that class. */
+  tiers: { reductionPct: number; distanceM: number | null }[];
+}
+
+/** Register facts of a plant-protection product for the product info popover. */
+export interface PsmProductInfo {
+  productId: string;
+  kennr: string | null;
+  bvlName: string | null;
+  approvalEndsOn: string | null;
+  /** The approved use asked for (or the product's only professional one). */
+  use: {
+    awgId: string;
+    doseMax: number | null;
+    doseUnit: string | null;
+    maxApplications: number | null;
+    waterMinLHa: number | null;
+    waterMaxLHa: number | null;
+    targets: string[];
+    waitingDays: Record<string, number | null>;
+  } | null;
+  restrictions: PsmRestriction[];
 }

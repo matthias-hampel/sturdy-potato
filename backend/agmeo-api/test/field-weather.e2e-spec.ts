@@ -11,8 +11,9 @@ import { createKysely } from '../src/db/database.js'
 
 const run = Math.random().toString(36).slice(2, 8)
 // A cell far from the other tests' fields, unique per run.
-const lat = 47 + Math.floor(Math.random() * 300) / 100
-const lng = 6 + Math.floor(Math.random() * 300) / 100
+// Built from whole hundredths so they equal the cell centre exactly (6 + 2.87 is 8.870000000000001).
+const lat = (4700 + Math.floor(Math.random() * 300)) / 100
+const lng = (600 + Math.floor(Math.random() * 300)) / 100
 const rect = (x0: number, y0: number, x1: number, y1: number) => ({
   type: 'Polygon',
   coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]],

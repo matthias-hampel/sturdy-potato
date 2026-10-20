@@ -62,6 +62,64 @@ export interface BsaVarieties {
   synced_at: Generated<Timestamp>;
 }
 
+export interface CadastralParcels {
+  area_m2: Numeric;
+  created_at: Generated<Timestamp>;
+  denominator: string | null;
+  district: string | null;
+  field_id: string;
+  geometry: string;
+  id: Generated<string>;
+  label: string | null;
+  numerator: string | null;
+  official_id: string | null;
+  organization_id: string;
+  sector: string | null;
+  source: Generated<string>;
+  source_state: string | null;
+  synced_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface BslVarieties {
+  breeder: string | null;
+  breeder_number: string | null;
+  bsa_variety_id: string | null;
+  bsl_id: number;
+  bsl_species: string;
+  bsl_subspecies: string;
+  hybrid: Generated<boolean>;
+  id: Generated<string>;
+  is_new: Generated<boolean>;
+  kenn_nummer: string | null;
+  name: string;
+  note: string | null;
+  properties: Generated<Json>;
+  quality: Generated<Json>;
+  registered_since: number | null;
+  registration_number: number | null;
+  species_code: string | null;
+  status: string | null;
+  synced_at: Generated<Timestamp>;
+  usage: string | null;
+}
+
+export interface CarbonReportNotes {
+  harvest_year: number;
+  notes: Generated<string>;
+  organization_id: string;
+  summary: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface CarbonSettings {
+  nuts2_code: string | null;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface Comments {
   author_name: string;
   author_user_id: string | null;
@@ -110,6 +168,29 @@ export interface CropBenchmarks {
   yield_t_ha: Numeric | null;
 }
 
+export interface CropCycleBbchCalibrations {
+  bd_offset: number;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  crop_cycle_id: string;
+  model_bbch: number | null;
+  observed_bbch: number;
+  observed_on: string;
+  organization_id: string;
+}
+
+export interface CropCycleNPlanning {
+  crop_cycle_id: string;
+  n_leaching: Numeric | null;
+  n_min: Numeric | null;
+  n_mineralization: Numeric | null;
+  n_residual: Numeric | null;
+  organization_id: string;
+  strategy_id: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface CropCycles {
   area_ha: Numeric | null;
   created_at: Generated<Timestamp>;
@@ -122,11 +203,13 @@ export interface CropCycles {
   film_or_fleece: Generated<boolean>;
   id: Generated<string>;
   land_use_code: string | null;
+  lime_requirement_dt_cao: Numeric | null;
   multiplication_generation: string | null;
   notes: string | null;
   organization_id: string;
   protein_pct: Numeric | null;
   role: Generated<string>;
+  root_depth_m: Numeric | null;
   season_id: string;
   seed_lot: string | null;
   sowing_date: string | null;
@@ -209,6 +292,54 @@ export interface CultivationTemplates {
   notes: string | null;
   organization_id: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface DiseaseRiskDays {
+  crop_cycle_id: string;
+  date: string;
+  disease: string;
+  level: number;
+  organization_id: string;
+}
+
+export interface DiseaseRiskState {
+  crop_cycle_id: string;
+  last_error: string | null;
+  last_error_at: Timestamp | null;
+  organization_id: string;
+  refreshed_at: Timestamp | null;
+  simulation_date: string | null;
+}
+
+export interface EsmRunZones {
+  area_fraction: Numeric;
+  area_ha: Numeric;
+  geometry: string;
+  n_crop_kg_ha: number | null;
+  n_loss_kg_ha: number;
+  n_min_kg_ha: number;
+  n_min_spring_kg_ha: number;
+  organization_id: string;
+  run_id: string;
+  soil_organic_carbon_pct: number | null;
+  soil_type_lufa: string | null;
+  yield_t_ha: number;
+  zone_no: number;
+}
+
+export interface EsmRuns {
+  crop_cycle_id: string;
+  error: string | null;
+  execution_id: string | null;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  organization_id: string;
+  request: Json;
+  requested_at: Generated<Timestamp>;
+  requested_by: string | null;
+  started_at: Timestamp | null;
+  status: Generated<string>;
+  zone_count: number;
 }
 
 export interface EmissionEntries {
@@ -467,6 +598,8 @@ export interface FieldObservations {
   observed_on: string;
   organization_id: string;
   p10: Numeric | null;
+  p20: number | null;
+  p80: number | null;
   p90: Numeric | null;
   processing_version: string;
   scene_id: string | null;
@@ -506,6 +639,55 @@ export interface FieldRasters {
   processing_version: string;
   scene_id: string;
   valid_pixel_pct: Numeric;
+}
+
+export interface FieldAnnotations {
+  color: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  field_id: string;
+  geometry: string;
+  id: Generated<string>;
+  kind: string;
+  layer: string | null;
+  note: string | null;
+  observed_on: string;
+  organization_id: string;
+  source: Generated<string>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface FertilizationStrategies {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  name: string;
+  organization_id: string | null;
+  product_ids: Generated<string[]>;
+  split_percentages: number[];
+}
+
+export interface FieldDocuments {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  field_id: string;
+  file_id: string;
+  harvest_year: number | null;
+  organization_id: string;
+}
+
+export interface FieldCarbonSoil {
+  bulk_density: Numeric;
+  clay_pct: Numeric;
+  depth_cm: Generated<number>;
+  field_id: string;
+  file_id: string | null;
+  organization_id: string;
+  sampled_on: string | null;
+  sand_pct: Numeric;
+  soc_pct: Numeric;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface Fields {
@@ -583,6 +765,7 @@ export interface Harvests {
   quality: string | null;
   quantity_t: Numeric;
   updated_at: Generated<Timestamp>;
+  yield_raster_id: string | null;
 }
 
 export interface Jobs {
@@ -622,6 +805,109 @@ export interface MaintenanceRecords {
   performed_on: string;
 }
 
+export interface MaizeDmcCalibrations {
+  created_at: Generated<Timestamp>;
+  crop_cycle_id: string;
+  dm_offset: number | null;
+  field_id: string;
+  harvest_year: number;
+  id: Generated<string>;
+  measured_dm: number;
+  measurement_date: string;
+  model_dm_at_measurement: number | null;
+  notes: string | null;
+  observed_by: string | null;
+  organization_id: string;
+  samples: Json | null;
+  source: Generated<string>;
+  superseded_at: Timestamp | null;
+  variety_id: string | null;
+}
+
+export interface MaizeDmcCycleSettings {
+  crop_cycle_id: string;
+  fao_maturity: number | null;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface MaizeDmcHarvestDetections {
+  confirm_date: string | null;
+  confirmed_at: Timestamp | null;
+  crop_cycle_id: string;
+  evidence: Generated<Json>;
+  field_id: string;
+  harvest_year: number;
+  organization_id: string;
+  rejected_reason: string | null;
+  status: string;
+  trust: string;
+  updated_at: Generated<Timestamp>;
+  window_end: string;
+  window_start: string;
+}
+
+export interface MaizeDmcRuns {
+  accumulated_gdd: number | null;
+  calibration_hash: string | null;
+  calibration_source: string | null;
+  created_at: Generated<Timestamp>;
+  crop_cycle_id: string;
+  execution_id: string;
+  fao_maturity: number | null;
+  field_id: string;
+  harvest_year: number;
+  id: Generated<string>;
+  mode: string;
+  model_version: string | null;
+  organization_id: string;
+  pred_from_date: string | null;
+  pred_medians: number[] | null;
+  pred_p10: number[] | null;
+  pred_p90: number[] | null;
+  resolution: string;
+  response: Json;
+  run_date: string;
+  sowing_date: string | null;
+  variety_id: string | null;
+}
+
+export interface MaizeDmcSatelliteStatus {
+  crop_cycle_id: string;
+  field_id: string;
+  harvest_year: number;
+  latest_clear_date: string;
+  latest_clear_ndvi: number;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface MaizeDmcVarietyMaturities {
+  fao_maturity: number;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  variety_id: string;
+}
+
+export interface MaizeDmcVarietyOffsets {
+  applied_at: Generated<Timestamp>;
+  applied_by: string | null;
+  basis_calibration_ids: Generated<string[]>;
+  basis_count: Generated<number>;
+  basis_from: string | null;
+  basis_to: string | null;
+  comment: string | null;
+  dm_offset: number;
+  harvest_year: number;
+  id: Generated<string>;
+  organization_id: string;
+  superseded_at: Timestamp | null;
+  suggested_offset: number | null;
+  variety_id: string;
+}
+
 export interface MarketQuotes {
   commodity: string;
   country: string;
@@ -631,10 +917,18 @@ export interface MarketQuotes {
   source: Generated<string>;
 }
 
+export interface MembershipFarms {
+  created_at: Generated<Timestamp>;
+  farm_id: string;
+  organization_id: string;
+  user_id: string;
+}
+
 export interface Memberships {
   created_at: Generated<Timestamp>;
   invited_by: string | null;
   organization_id: string;
+  restricted_to_farms: Generated<boolean>;
   role: string;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
@@ -737,6 +1031,7 @@ export interface Operations {
   details: Generated<Json>;
   diesel_l_per_ha: Numeric | null;
   due_on: string | null;
+  electricity_kwh_per_ha: Numeric | null;
   farm_id: string;
   id: Generated<string>;
   notes: string | null;
@@ -761,14 +1056,28 @@ export interface OrgCropColors {
   organization_id: string;
 }
 
+export interface OrganizationLogos {
+  content: Buffer;
+  height: number;
+  mime_type: string;
+  organization_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  width: number;
+}
+
 export interface Organizations {
   country: Generated<string>;
   created_at: Generated<Timestamp>;
   crop_year_start_month: Generated<number>;
   currency: Generated<string>;
   id: Generated<string>;
+  lock_zoned_fields: Generated<boolean>;
+  logo_updated_at: Timestamp | null;
   measurement_setting: Generated<string>;
   name: string;
+  onboarding_step: string | null;
+  rain_digest_enabled: Generated<boolean>;
   status: Generated<string>;
   storage_limit_bytes: Int8 | null;
   updated_at: Generated<Timestamp>;
@@ -786,6 +1095,25 @@ export interface OutboxEvents {
   organization_id: string | null;
   payload: Json;
   published_at: Timestamp | null;
+}
+
+export interface ParcelLeases {
+  created_at: Generated<Timestamp>;
+  ends_on: string | null;
+  land_register_number: string | null;
+  land_register_sheet: string | null;
+  land_register_volume: string | null;
+  lease_type: Generated<string>;
+  leaseholder_name: string | null;
+  notes: string | null;
+  organization_id: string;
+  owner_address: string | null;
+  owner_name: string | null;
+  parcel_id: string;
+  rent_amount: Numeric | null;
+  rent_basis: Generated<string>;
+  starts_on: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface ProductPrices {
@@ -886,6 +1214,23 @@ export interface PsmProducts {
   use_up_until: string | null;
 }
 
+export interface PsmRestrictionReductions {
+  auflagenr: string;
+  distance_m: Numeric | null;
+  reduction_pct: number;
+}
+
+export interface PsmRestrictions {
+  auflagenr: string;
+  awg_id: string | null;
+  code: string;
+  code_group: string | null;
+  drift_reduction_pct: number | null;
+  kennr: string | null;
+  text: string | null;
+  water_buffer_m: Numeric | null;
+}
+
 export interface PsmUses {
   area: string | null;
   awg_id: string;
@@ -905,6 +1250,25 @@ export interface PsmUses {
   waiting_days: Generated<Json>;
   water_max_l_ha: Numeric | null;
   water_min_l_ha: Numeric | null;
+}
+
+export interface RadarFrames {
+  created_at: Generated<Timestamp>;
+  key: string;
+  kind: string;
+  lead_minutes: Generated<number>;
+  run_at: Timestamp;
+  storage_key: string;
+  valid_at: Timestamp;
+}
+
+export interface RadarState {
+  id: Generated<boolean>;
+  last_error: string | null;
+  last_error_at: Timestamp | null;
+  last_viewed_at: Timestamp | null;
+  nowcast_run_at: Timestamp | null;
+  refreshed_at: Timestamp | null;
 }
 
 export interface RecommendationRuns {
@@ -969,6 +1333,35 @@ export interface SatelliteScenes {
   tile: string | null;
 }
 
+export interface Scope2Entries {
+  factor: Numeric;
+  harvest_year: number;
+  kg_co2e: Numeric;
+  kind: string;
+  kwh: Numeric;
+  organization_id: string;
+  parameter_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface SoilLabImportZones {
+  import_id: string;
+  organization_id: string;
+  sampled_on: string;
+  values: Json;
+  zone_id: string;
+}
+
+export interface SoilLabImports {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  file_ids: Generated<string[]>;
+  file_names: string[];
+  id: Generated<string>;
+  organization_id: string;
+}
+
 export interface SoilSamples {
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -980,6 +1373,7 @@ export interface SoilSamples {
   k2o_mg_100g: Numeric | null;
   kind: string;
   lab: string | null;
+  lab_import_id: string | null;
   mgo_mg_100g: Numeric | null;
   nmin_0_30: Numeric | null;
   nmin_30_60: Numeric | null;
@@ -993,6 +1387,62 @@ export interface SoilSamples {
   sample_number: string | null;
   sampled_on: string;
   soil_texture: string | null;
+  soil_zonation_id: string | null;
+}
+
+export interface SoilShares {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  expires_at: Timestamp | null;
+  field_ids: string[];
+  file_id: string | null;
+  id: Generated<string>;
+  kind: Generated<string>;
+  lab_import_id: string | null;
+  locale: string | null;
+  organization_id: string;
+  password_hash: string | null;
+  revoked_at: Timestamp | null;
+  title: string;
+  token: string;
+}
+
+export interface SoilZonations {
+  batch_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  error: string | null;
+  field_id: string;
+  finished_at: Timestamp | null;
+  geometry_version_id: string | null;
+  id: Generated<string>;
+  method: string;
+  organization_id: string;
+  params: Generated<Json>;
+  scene_date: string | null;
+  source: string;
+  status: Generated<string>;
+  status_code: string | null;
+  superseded_at: Timestamp | null;
+  zone_count: number | null;
+}
+
+export interface SoilZones {
+  area_ha: Numeric;
+  color: string;
+  geometry: string;
+  id: Generated<string>;
+  lab_extras: Json | null;
+  label: string;
+  mean_value: number | null;
+  organization_id: string;
+  probe_nr: number | null;
+  properties: Generated<Json>;
+  property_dates: Generated<Json>;
+  property_methods: Generated<Json>;
+  sample_point: string | null;
+  zonation_id: string;
+  zone_no: number;
 }
 
 export interface StockBalances {
@@ -1075,6 +1525,13 @@ export interface TemplateSteps {
   type: string;
 }
 
+export interface UserNotificationSettings {
+  enabled: boolean;
+  key: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface Users {
   auth_subject: string | null;
   created_at: Generated<Timestamp>;
@@ -1086,9 +1543,33 @@ export interface Users {
   updated_at: Generated<Timestamp>;
 }
 
+export interface VoiceDrafts {
+  audio_bytes: number | null;
+  audio_key: string | null;
+  audio_mime: string | null;
+  confidence: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  draft: Json | null;
+  duration_sec: number | null;
+  error: string | null;
+  id: Generated<string>;
+  missing: Generated<Json>;
+  operation_id: string | null;
+  organization_id: string;
+  resolved: Json | null;
+  resolved_at: Timestamp | null;
+  resolved_by: string | null;
+  source: string;
+  status: Generated<string>;
+  transcript: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface VraMapInputs {
   column_name: string;
   crop_id: string | null;
+  germination_pct: Numeric | null;
   id: Generated<string>;
   input_type: string;
   name: Generated<string>;
@@ -1097,11 +1578,13 @@ export interface VraMapInputs {
   product_id: string | null;
   rates: Json;
   standard_rate: Numeric | null;
+  strategy: string | null;
   unit: string;
   vra_map_id: string;
 }
 
 export interface VraMaps {
+  batch_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
   field_id: string;
@@ -1170,21 +1653,149 @@ export interface WeatherHourly {
   wind_speed: number | null;
 }
 
+export interface YieldMapSources {
+  attempts: Generated<number>;
+  attribute: string | null;
+  basis: string | null;
+  bbox: number[] | null;
+  covered_ha: number | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  crop_cycle_id: string;
+  crs: string | null;
+  error: string | null;
+  excluded_reason: string | null;
+  field_id: string;
+  file_id: string | null;
+  file_name: string | null;
+  fingerprint: string | null;
+  format: string | null;
+  harvested_from: Timestamp | null;
+  harvested_to: Timestamp | null;
+  id: Generated<string>;
+  included_in_merge: Generated<boolean>;
+  kind: Generated<string>;
+  machine_label: string | null;
+  mean_rate_t_ha: number | null;
+  organization_id: string;
+  parsed_at: Timestamp | null;
+  pixel_mean_t_ha: number | null;
+  point_count: number | null;
+  provider: Generated<string>;
+  provider_operation_id: string | null;
+  quality: Json | null;
+  status: Generated<string>;
+  storage_key: string | null;
+  total_features: number | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface YieldRasters {
+  area_ha: number | null;
+  attribute: string | null;
+  basis: string | null;
+  boundary_hash: string;
+  build_ms: number | null;
+  built_at: Generated<Timestamp>;
+  cleaning: Json | null;
+  contributions: Json | null;
+  covered_pixels: number | null;
+  crop_cycle_id: string;
+  data: Buffer;
+  event_from: Timestamp | null;
+  event_to: Timestamp | null;
+  field_coverage: number | null;
+  field_id: string;
+  filled_pixels: number | null;
+  format: string | null;
+  grid_epsg: number;
+  grid_height: number;
+  grid_origin_x: number;
+  grid_origin_y: number;
+  grid_resolution: number;
+  grid_width: number;
+  harvest_event_key: string;
+  harvested_ha: number | null;
+  histogram: Json | null;
+  id: Generated<string>;
+  max_t_ha: number | null;
+  mean_t_ha: number | null;
+  median_t_ha: number | null;
+  min_t_ha: number | null;
+  organization_id: string;
+  p05_t_ha: number | null;
+  p95_t_ha: number | null;
+  q20_t_ha: number | null;
+  q80_t_ha: number | null;
+  quality: Json | null;
+  recipe_hash: string;
+  status: Generated<string>;
+  stddev_t_ha: number | null;
+  superseded_at: Timestamp | null;
+  target_moisture: number | null;
+  total_calibration_factor: number | null;
+  total_t: number | null;
+  unit: Generated<string>;
+  valid_pixels: number | null;
+  writeback_at: Timestamp | null;
+  writeback_harvest_id: string | null;
+  writeback_reason: string | null;
+  writeback_status: string | null;
+}
+
+export interface YieldZoneYields {
+  mean_t_ha: number | null;
+  organization_id: string;
+  pixels: number;
+  relative_yield: number | null;
+  yield_raster_id: string;
+  zone_no: number;
+  zoning_id: string;
+}
+
 export interface Zonings {
   analysis_id: string | null;
   created_at: Generated<Timestamp>;
+  created_by: string | null;
+  crop_cycle_id: string | null;
   field_id: string;
   geometry_version_id: string;
   id: Generated<string>;
   is_custom: Generated<boolean>;
+  is_default: Generated<boolean>;
+  listed: Generated<boolean>;
+  name: string | null;
   organization_id: string;
+  params: Json | null;
   source: string;
+  yield_raster_id: string | null;
   zone_count: number;
+}
+
+export interface ZoningJobs {
+  batch_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  error: string | null;
+  field_id: string;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  index_type: string;
+  name: string | null;
+  organization_id: string;
+  params: Generated<Json>;
+  scene_dates: string[];
+  source: Generated<string>;
+  status: Generated<string>;
+  status_code: string | null;
+  zone_count: number;
+  zoning_id: string | null;
 }
 
 export interface ZoningZones {
   area_ha: Numeric;
   geometry: string;
+  mean_yield_t_ha: Numeric | null;
   organization_id: string;
   relative_productivity: Numeric | null;
   zone_no: number;
@@ -1195,9 +1806,15 @@ export interface DB {
   audit_events: AuditEvents;
   bsa_species: BsaSpecies;
   bsa_varieties: BsaVarieties;
+  cadastral_parcels: CadastralParcels;
+  bsl_varieties: BslVarieties;
+  carbon_report_notes: CarbonReportNotes;
+  carbon_settings: CarbonSettings;
   comments: Comments;
   cost_entries: CostEntries;
   crop_benchmarks: CropBenchmarks;
+  crop_cycle_bbch_calibrations: CropCycleBbchCalibrations;
+  crop_cycle_n_planning: CropCycleNPlanning;
   crop_cycles: CropCycles;
   crop_prices: CropPrices;
   crop_rotation_entries: CropRotationEntries;
@@ -1205,9 +1822,13 @@ export interface DB {
   crop_varieties: CropVarieties;
   crops: Crops;
   cultivation_templates: CultivationTemplates;
+  disease_risk_days: DiseaseRiskDays;
+  disease_risk_state: DiseaseRiskState;
   emission_entries: EmissionEntries;
   employees: Employees;
   equipment: Equipment;
+  esm_run_zones: EsmRunZones;
+  esm_runs: EsmRuns;
   eu_species: EuSpecies;
   eu_varieties: EuVarieties;
   farm_overheads: FarmOverheads;
@@ -1223,6 +1844,10 @@ export interface DB {
   field_observations: FieldObservations;
   field_parts: FieldParts;
   field_rasters: FieldRasters;
+  field_annotations: FieldAnnotations;
+  field_carbon_soil: FieldCarbonSoil;
+  fertilization_strategies: FertilizationStrategies;
+  field_documents: FieldDocuments;
   fields: Fields;
   file_folders: FileFolders;
   files: Files;
@@ -1231,7 +1856,15 @@ export interface DB {
   jobs: Jobs;
   land_use_codes: LandUseCodes;
   maintenance_records: MaintenanceRecords;
+  maize_dmc_calibrations: MaizeDmcCalibrations;
+  maize_dmc_cycle_settings: MaizeDmcCycleSettings;
+  maize_dmc_harvest_detections: MaizeDmcHarvestDetections;
+  maize_dmc_runs: MaizeDmcRuns;
+  maize_dmc_satellite_status: MaizeDmcSatelliteStatus;
+  maize_dmc_variety_maturities: MaizeDmcVarietyMaturities;
+  maize_dmc_variety_offsets: MaizeDmcVarietyOffsets;
   market_quotes: MarketQuotes;
+  membership_farms: MembershipFarms;
   memberships: Memberships;
   n170_inputs: N170Inputs;
   nmin_reference_values: NminReferenceValues;
@@ -1242,8 +1875,10 @@ export interface DB {
   operation_labor: OperationLabor;
   operations: Operations;
   org_crop_colors: OrgCropColors;
+  organization_logos: OrganizationLogos;
   organizations: Organizations;
   outbox_events: OutboxEvents;
+  parcel_leases: ParcelLeases;
   product_prices: ProductPrices;
   productivity_analyses: ProductivityAnalyses;
   products: Products;
@@ -1251,23 +1886,39 @@ export interface DB {
   psm_codes: PsmCodes;
   psm_crop_groups: PsmCropGroups;
   psm_products: PsmProducts;
+  psm_restriction_reductions: PsmRestrictionReductions;
+  psm_restrictions: PsmRestrictions;
   psm_uses: PsmUses;
+  radar_frames: RadarFrames;
+  radar_state: RadarState;
   recommendation_runs: RecommendationRuns;
   recommendations: Recommendations;
   satellite_scenes: SatelliteScenes;
+  scope2_entries: Scope2Entries;
+  soil_lab_import_zones: SoilLabImportZones;
+  soil_lab_imports: SoilLabImports;
   soil_samples: SoilSamples;
+  soil_shares: SoilShares;
+  soil_zonations: SoilZonations;
+  soil_zones: SoilZones;
   stock_balances: StockBalances;
   stock_movements: StockMovements;
   storage_locations: StorageLocations;
   tasks: Tasks;
   template_step_inputs: TemplateStepInputs;
   template_steps: TemplateSteps;
+  user_notification_settings: UserNotificationSettings;
   users: Users;
+  voice_drafts: VoiceDrafts;
   vra_map_inputs: VraMapInputs;
   vra_maps: VraMaps;
   weather_cells: WeatherCells;
   weather_daily: WeatherDaily;
   weather_hourly: WeatherHourly;
+  yield_map_sources: YieldMapSources;
+  yield_rasters: YieldRasters;
+  yield_zone_yields: YieldZoneYields;
+  zoning_jobs: ZoningJobs;
   zoning_zones: ZoningZones;
   zonings: Zonings;
 }

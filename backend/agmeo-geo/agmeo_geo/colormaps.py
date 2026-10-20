@@ -8,6 +8,8 @@ SCALES = {
     "evi": (0.1, 0.8, ["#eef4e0", "#c3dfa5", "#86bd67", "#458f3c", "#1a5a1f"]),
     "bsi": (-0.3, 0.3, ["#f5efe6", "#e2c9a6", "#c49a64", "#94683a", "#5c3d1e"]),
     "ndti": (0.0, 0.3, ["#f6f3e1", "#e6dba3", "#c8b25f", "#958033", "#5e5119"]),
+    "savi": (0.1, 0.7, ["#eef4e0", "#c3dfa5", "#86bd67", "#458f3c", "#1a5a1f"]),
+    "lai": (0.0, 6.0, ["#f3f6e4", "#cfe3a6", "#93c464", "#4f9a3a", "#1f6324"]),
 }
 
 # Within-field contrast and productivity: below the field's typical value (brown), around it

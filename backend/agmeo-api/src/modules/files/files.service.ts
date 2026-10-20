@@ -41,13 +41,15 @@ export interface IncomingFile {
   name: string;
 }
 
-const SYSTEM_FOLDER_NAMES: Record<SystemFolder, { de: string; en: string; parent?: SystemFolder }> = {
-  imports: { de: 'Importe', en: 'Imports' },
-  exports: { de: 'Exporte', en: 'Exports' },
-  applicationMaps: { de: 'Applikationskarten', en: 'Application maps' },
-  reports: { de: 'Berichte', en: 'Reports' },
-  soilImports: { de: 'Bodenproben-Importe', en: 'Soil imports' },
-  soilExports: { de: 'Bodenproben-Exporte', en: 'Soil exports' },
+const SYSTEM_FOLDER_NAMES: Record<SystemFolder, string> = {
+  imports: 'Importe',
+  exports: 'Exporte',
+  applicationMaps: 'Applikationskarten',
+  reports: 'Berichte',
+  soilImports: 'Bodenproben-Importe',
+  soilExports: 'Bodenproben-Exporte',
+  yieldMaps: 'Ertragskarten',
+  fieldDocuments: 'Schlagdokumente',
 };
 
 const tooLarge = (used: number, limit: number) =>
@@ -231,7 +233,7 @@ export class FilesService {
   }
 
   /** The folder for app-written files of a kind, created (or recreated after deletion) on demand. */
-  async systemFolder(trx: Trx, ctx: Ctx, key: SystemFolder, locale: 'de' | 'en' = 'de'): Promise<string> {
+  async systemFolder(trx: Trx, ctx: Ctx, key: SystemFolder): Promise<string> {
     const existing = await trx
       .selectFrom('file_folders')
       .select(['id', 'deleted_at'])
@@ -241,7 +243,7 @@ export class FilesService {
     if (existing && !existing.deleted_at) return existing.id;
     // A deleted system folder stays in the trash as an ordinary folder; a new one takes the key.
     if (existing) await trx.updateTable('file_folders').set({ system_key: null }).where('id', '=', existing.id).execute();
-    const name = nextAvailableName(SYSTEM_FOLDER_NAMES[key][locale], await this.siblingNames(trx, null), false);
+    const name = nextAvailableName(SYSTEM_FOLDER_NAMES[key], await this.siblingNames(trx, null), false);
     const row = await trx
       .insertInto('file_folders')
       .values({ organization_id: ctx.orgId, parent_id: null, name, system_key: key })
@@ -584,6 +586,12 @@ export class FilesService {
 
   private newKey(orgId: string) {
     return `orgs/${orgId}/files/${randomUUID()}`;
+  }
+
+  /** Live files by id, for modules that link files to their own records. */
+  async items(trx: Trx, ids: string[]): Promise<FileItem[]> {
+    if (!ids.length) return [];
+    return (await this.fileQuery(trx).where('f.id', 'in', ids).execute()).map(toFileItem);
   }
 
   private fileQuery(trx: Trx) {

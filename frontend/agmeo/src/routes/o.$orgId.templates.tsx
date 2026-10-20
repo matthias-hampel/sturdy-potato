@@ -1,10 +1,13 @@
-import { OPERATION_TYPES, TEMPLATE_ANCHORS, type Crop, type CultivationTemplate, type OperationType, type Product, type TemplateAnchor, type TemplateInput } from '@agmeo/contracts'
+import { OPERATION_TYPES, TEMPLATE_ANCHORS, type CopyTemplateResult, type Crop, type CultivationTemplate, type SharedTemplates, type OperationType, type Product, type TemplateAnchor, type TemplateInput } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
-import { ChevronDown, ChevronUp, ListChecks, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, ClipboardList, Copy, ListChecks, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Form } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { CropTag, templateStepTiming } from '#/components/labels'
+import { TemplateBuilder } from '#/components/templates/TemplateBuilder'
+import { DataTable } from '#/components/table/DataTable'
+import { useTableView, type ColumnDef } from '#/components/table/tableTools'
 import { baseUnitLabel, operationTypeLabel, productCategoryLabel, templateAnchorLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
 import { fmt } from '#/lib/format'
@@ -14,7 +17,6 @@ import { Button } from '#/ui/Button'
 import { ComboBox, NumberField, Option, Select, TextField } from '#/ui/Field'
 import { Card, EmptyState, ErrorNotice, Loading, Notice, PageHeader } from '#/ui/Layout'
 import { ConfirmButton, ModalDialog } from '#/ui/Overlay'
-import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 
 export const Route = createFileRoute('/o/$orgId/templates')({ component: TemplatesPage })
 
@@ -23,17 +25,60 @@ function TemplatesPage() {
   const { can } = useOrg()
   const templates = useOrgQuery<CultivationTemplate[]>('/templates')
   const [editing, setEditing] = useState<CultivationTemplate | 'new' | null>(null)
+  const [building, setBuilding] = useState(false)
+  const [copying, setCopying] = useState<{ template: CultivationTemplate; sourceOrgId?: string } | null>(null)
+  const shared = useOrgQuery<SharedTemplates[]>('/templates/shared')
   const remove = useOrgMutation((base, id: string) => api.delete(`${base}/templates/${id}`), { success: t('templates.toast.deleted') })
   const sorted = useMemo(() => [...(templates.data ?? [])].sort((a, b) => a.cropName.localeCompare(b.cropName) || a.name.localeCompare(b.name)), [templates.data])
   const writable = can('crop.write')
+  const columns = useMemo<ColumnDef<CultivationTemplate>[]>(
+    () => [
+      { id: 'crop', label: t('crops.plan.crop'), filter: 'select', value: (tpl) => tpl.cropName, render: (tpl) => <CropTag name={tpl.cropName} color={tpl.cropColor} /> },
+      {
+        id: 'name',
+        label: t('templates.column.name'),
+        isRowHeader: true,
+        value: (tpl) => tpl.name,
+        text: (tpl) => [tpl.name, tpl.notes].filter(Boolean).join(' '),
+        render: (tpl) => (
+          <>
+            <div className="font-medium">{tpl.name}</div>
+            {tpl.notes && <div className="text-xs text-muted line-clamp-1">{tpl.notes}</div>}
+          </>
+        ),
+      },
+      { id: 'steps', label: t('templates.column.steps'), align: 'end', filter: 'number', value: (tpl) => tpl.steps.length, render: (tpl) => fmt.num(tpl.steps.length) },
+      {
+        id: 'usedBy',
+        label: t('templates.column.usedBy'),
+        align: 'end',
+        filter: 'number',
+        value: (tpl) => tpl.usedBy,
+        render: (tpl) => (tpl.usedBy ? t('templates.usedBy', { count: tpl.usedBy }) : <span className="text-muted">—</span>),
+      },
+    ],
+    [t],
+  )
+  const view = useTableView(columns, sorted)
 
   return (
     <>
       <PageHeader
         title={t('templates.title')}
         subtitle={t('templates.subtitle')}
-        actions={writable && <Button variant="primary" onPress={() => setEditing('new')}><Plus /> {t('templates.new')}</Button>}
+        actions={
+          writable && (
+            <>
+              <Button onPress={() => setBuilding(true)}><ClipboardList /> {t('templates.fromSurvey')}</Button>
+              <Button variant="primary" onPress={() => setEditing('new')}><Plus /> {t('templates.new')}</Button>
+            </>
+          )
+        }
       />
+      <Card className="mb-4">
+        <p className="font-semibold text-fg">{t('templates.explainer.title')}</p>
+        <p className="mt-1 text-sm text-fg-2">{t('templates.explainer.body')}</p>
+      </Card>
       {templates.isLoading ? (
         <Loading />
       ) : templates.error ? (
@@ -46,46 +91,80 @@ function TemplatesPage() {
         </Card>
       ) : (
         <Card padded={false}>
-          <Table aria-label={t('templates.title')}>
-            <TableHeader>
-              <Column>{t('crops.plan.crop')}</Column>
-              <Column isRowHeader>{t('templates.column.name')}</Column>
-              <Column align="end">{t('templates.column.steps')}</Column>
-              <Column align="end">{t('templates.column.usedBy')}</Column>
-              <Column aria-label={t('common.actions')}> </Column>
-            </TableHeader>
-            <TableBody items={sorted}>
-              {(tpl) => (
-                <Row id={tpl.id}>
-                  <Cell><CropTag name={tpl.cropName} color={tpl.cropColor} /></Cell>
-                  <Cell>
-                    <div className="font-medium">{tpl.name}</div>
-                    {tpl.notes && <div className="text-xs text-muted line-clamp-1">{tpl.notes}</div>}
-                  </Cell>
-                  <Cell align="end">{fmt.num(tpl.steps.length)}</Cell>
-                  <Cell align="end">{tpl.usedBy ? t('templates.usedBy', { count: tpl.usedBy }) : <span className="text-muted">—</span>}</Cell>
-                  <Cell>
-                    {writable && (
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon-sm" variant="ghost" aria-label={t('templates.editNamed', { name: tpl.name })} onPress={() => setEditing(tpl)}><Pencil /></Button>
-                        <ConfirmButton
-                          title={t('templates.delete.title', { name: tpl.name })}
-                          message={t('templates.delete.message')}
-                          confirmLabel={t('common.delete')}
-                          onConfirm={() => remove.mutateAsync(tpl.id)}
-                          trigger={<Button size="icon-sm" variant="ghost" aria-label={t('templates.deleteNamed', { name: tpl.name })}><Trash2 /></Button>}
-                        />
-                      </div>
-                    )}
-                  </Cell>
-                </Row>
-              )}
-            </TableBody>
-          </Table>
+          <DataTable
+            aria-label={t('templates.title')}
+            view={view}
+            actions={
+              writable
+                ? (tpl) => (
+                    <div className="flex justify-end gap-1">
+                      <Button size="icon-sm" variant="ghost" aria-label={t('templates.editNamed', { name: tpl.name })} onPress={() => setEditing(tpl)}><Pencil /></Button>
+                      <Button size="icon-sm" variant="ghost" aria-label={t('templates.copyNamed', { name: tpl.name })} onPress={() => setCopying({ template: tpl })}><Copy /></Button>
+                      <ConfirmButton
+                        title={t('templates.delete.title', { name: tpl.name })}
+                        message={tpl.usedBy ? t('templates.delete.inUse') : t('templates.delete.message')}
+                        confirmLabel={t('common.delete')}
+                        onConfirm={() => remove.mutateAsync(tpl.id)}
+                        trigger={<Button size="icon-sm" variant="ghost" aria-label={t('templates.deleteNamed', { name: tpl.name })}><Trash2 /></Button>}
+                      />
+                    </div>
+                  )
+                : undefined
+            }
+          />
         </Card>
       )}
+      {(shared.data ?? []).map((g) => (
+        <Card key={g.organization.id} padded={false} className="mt-6">
+          <div className="px-4 py-3 border-b border-line">
+            <p className="font-semibold text-fg">{t('templates.shared.title', { org: g.organization.name })}</p>
+            <p className="text-xs text-muted">{t('templates.shared.hint')}</p>
+          </div>
+          <ul className="divide-y divide-line">
+            {g.templates.map((tpl) => (
+              <li key={tpl.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
+                <CropTag name={tpl.cropName} color={tpl.cropColor} />
+                <span className="font-medium text-fg">{tpl.name}</span>
+                <span className="text-muted">{t('templates.shared.steps', { count: tpl.steps.length })}</span>
+                {writable && (
+                  <Button size="sm" className="ml-auto" onPress={() => setCopying({ template: tpl, sourceOrgId: g.organization.id })}>
+                    <Copy /> {t('templates.saveAsCopy')}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ))}
       {editing && <TemplateDialog template={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {building && <TemplateBuilder onClose={() => setBuilding(false)} onCreated={() => setBuilding(false)} />}
+      {copying && <CopyDialog source={copying.template} sourceOrgId={copying.sourceOrgId} onClose={() => setCopying(null)} />}
     </>
+  )
+}
+
+/** A copy of an own template or one of another organization (reference "Neu aus bestehender Vorlage", "Als eigene Vorlage speichern"). */
+function CopyDialog({ source, sourceOrgId, onClose }: { source: CultivationTemplate; sourceOrgId?: string; onClose: () => void }) {
+  const { t } = useTranslation()
+  const [name, setName] = useState(t('templates.copy.defaultName', { name: source.name }))
+  const copy = useOrgMutation((base, _: void) => api.post<CopyTemplateResult>(`${base}/templates/${source.id}/copy`, { name: name.trim(), sourceOrgId }), {
+    success: (r: CopyTemplateResult) => (r.droppedInputs ? t('templates.copy.doneDropped', { count: r.droppedInputs }) : t('templates.copy.done')),
+    onSuccess: onClose,
+  })
+  return (
+    <ModalDialog isOpen onOpenChange={(o) => !o && onClose()} title={sourceOrgId ? t('templates.saveAsCopy') : t('templates.copy.title')} size="sm">
+      <Form onSubmit={(e) => { e.preventDefault(); copy.mutate() }} className="space-y-4">
+        <p className="text-sm text-fg-2">{t('templates.copy.source', { name: source.name, crop: source.cropName })}</p>
+        <TextField label={t('templates.copy.name')} value={name} onChange={setName} isRequired autoFocus />
+        {sourceOrgId && <Notice tone="info">{t('templates.copy.foreignHint')}</Notice>}
+        <div className="flex justify-end gap-2">
+          <Button onPress={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" variant="primary" isDisabled={!name.trim()} isPending={copy.isPending}>
+            <Copy /> {t('templates.copy.submit')}
+          </Button>
+        </div>
+      </Form>
+    </ModalDialog>
   )
 }
 

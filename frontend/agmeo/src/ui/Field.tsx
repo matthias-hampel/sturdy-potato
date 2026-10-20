@@ -243,6 +243,7 @@ export function Switch({ children, className, ...props }: SwitchProps & { childr
 }
 
 export interface DateFieldProps extends FieldBase {
+  'aria-label'?: string
   value: string | null | undefined
   onChange: (value: string | null) => void
   isRequired?: boolean

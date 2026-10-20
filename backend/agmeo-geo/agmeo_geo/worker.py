@@ -11,7 +11,7 @@ import nats
 from nats.errors import TimeoutError as NatsTimeout
 from nats.js.api import ConsumerConfig, DeliverPolicy
 
-from . import history, productivity
+from . import appmaps, history, productivity, soil
 from .config import Settings
 from .pipeline import compute, connect, reconcile, register_scenes
 
@@ -85,7 +85,7 @@ async def run(settings: Settings) -> None:
                 pass
 
     async def analyses():
-        # Requests are rows in productivity_analyses; polling keeps the API free of a NATS
+        # Requests are rows in productivity_analyses, soil_zonations and zoning_jobs; polling keeps the API free of a NATS
         # dependency for them and picks up analyses queued after a backfill.
         while not stop.is_set():
             try:
@@ -94,6 +94,18 @@ async def run(settings: Settings) -> None:
                     log.info("Productivity: %d analyses handled", handled)
             except Exception:
                 log.exception("Productivity analyses failed")
+            try:
+                handled = await asyncio.to_thread(soil.run_queued, settings)
+                if handled:
+                    log.info("Soil zonations: %d handled", handled)
+            except Exception:
+                log.exception("Soil zonations failed")
+            try:
+                handled = await asyncio.to_thread(appmaps.run_queued, settings)
+                if handled:
+                    log.info("Application-map zonings: %d handled", handled)
+            except Exception:
+                log.exception("Application-map zonings failed")
             try:
                 await asyncio.wait_for(stop.wait(), timeout=10)
             except TimeoutError:

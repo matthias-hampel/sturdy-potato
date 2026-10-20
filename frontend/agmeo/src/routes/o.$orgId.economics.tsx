@@ -44,6 +44,8 @@ import { Form, type SortDescriptor } from 'react-aria-components'
 import { Trans, useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { BarList, ColumnChart } from '#/components/charts'
+import { BenchmarksTab, MarketPricesCard, MultiYearTab } from '#/components/economics/Comparisons'
+import { ProfitabilityTab } from '#/components/economics/Profitability'
 import { CropTag } from '#/components/labels'
 import { costCategoryLabel } from '#/i18n/labels'
 import { api } from '#/lib/api'
@@ -58,11 +60,11 @@ import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx } from '#/ui/utils'
 import { LOCALE } from '#/i18n'
 
-const TABS = ['margins', 'result', 'carbon', 'prices'] as const
+const TABS = ['margins', 'profitability', 'multiyear', 'benchmarks', 'result', 'carbon', 'prices'] as const
 type EconomicsTab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/o/$orgId/economics')({
-  validateSearch: z.object({ tab: z.enum(TABS).optional() }),
+  validateSearch: z.object({ tab: z.enum(TABS).optional().catch(undefined) }),
   component: EconomicsPage,
 })
 
@@ -184,12 +186,22 @@ function SeasonEconomics({ seasonId, seasonName, harvestYear }: { seasonId: stri
       >
         <TabList aria-label={t('economics.tabs.label')}>
           <Tab id="margins">{t('economics.tabs.margins')}</Tab>
+          <Tab id="profitability">{t('economics.tabs.profitability')}</Tab>
+          <Tab id="multiyear">{t('economics.tabs.multiyear')}</Tab>
+          <Tab id="benchmarks">{t('economics.tabs.benchmarks')}</Tab>
           <Tab id="result">{t('economics.tabs.result')}</Tab>
           <Tab id="carbon">{t('economics.tabs.carbon')}</Tab>
           <Tab id="prices">{t('economics.tabs.prices')}</Tab>
         </TabList>
         <TabPanel id="margins">
           <MarginsTab summary={s} seasonId={seasonId} money={m} />
+        </TabPanel>
+        <TabPanel id="profitability">
+          <ProfitabilityTab seasonId={seasonId} />
+        </TabPanel>
+        <TabPanel id="multiyear">{harvestYear != null && <MultiYearTab harvestYear={harvestYear} />}</TabPanel>
+        <TabPanel id="benchmarks">
+          <BenchmarksTab seasonId={seasonId} />
         </TabPanel>
         <TabPanel id="result">
           <FarmResultTab summary={s} seasonId={seasonId} money={m} />
@@ -1162,13 +1174,17 @@ function ResultWaterfall({ summary: s, result: r, money }: { summary: EconomicsS
   )
 }
 
-const OVERHEAD_FIELDS = ['leasePerHa', 'landTaxPerHa', 'insurancePerHa', 'buildingsPerHa', 'accountingPerHa', 'otherPerHa'] as const
-const PAYMENT_FIELDS = ['basicPaymentPerHa', 'redistributive1PerHa', 'redistributive2PerHa', 'ecoSchemesPerHa', 'otherPaymentsPerHa'] as const
+const OVERHEAD_FIELDS = ['leasePerHa', 'landTaxPerHa', 'accidentInsurancePerHa', 'insurancePerHa', 'buildingsPerHa', 'rightsPerHa', 'accountingPerHa', 'otherPerHa'] as const
+const PAYMENT_FIELDS = ['basicPaymentPerHa', 'redistributive1PerHa', 'redistributive2PerHa', 'ecoSchemesPerHa', 'agriEnvPerHa', 'youngFarmersPerHa', 'otherPaymentsPerHa'] as const
 type OverheadField = (typeof OVERHEAD_FIELDS)[number] | (typeof PAYMENT_FIELDS)[number]
 
 const OVERHEAD_FIELD_LABELS: Record<OverheadField, string> = {
   leasePerHa: 'economics.overheads.lease',
   landTaxPerHa: 'economics.overheads.landTax',
+  accidentInsurancePerHa: 'economics.overheads.accidentInsurance',
+  rightsPerHa: 'economics.overheads.rights',
+  agriEnvPerHa: 'economics.payments.agriEnv',
+  youngFarmersPerHa: 'economics.payments.youngFarmers',
   insurancePerHa: 'economics.overheads.insurance',
   buildingsPerHa: 'economics.overheads.buildings',
   accountingPerHa: 'economics.overheads.accounting',
@@ -1204,12 +1220,14 @@ function OverheadsForm({ seasonId, initial, currency, areaHa }: { seasonId: stri
   const [values, setValues] = useState(
     () => Object.fromEntries([...OVERHEAD_FIELDS, ...PAYMENT_FIELDS].map((k) => [k, initial?.[k] ?? NaN])) as Record<OverheadField, number>,
   )
+  const [salaryPerHour, setSalaryPerHour] = useState(initial?.salaryPerHour ?? NaN)
+  const [redistributionHa, setRedistributionHa] = useState(initial?.totalHaForRedistribution ?? NaN)
   const save = useOrgMutation((base, input: FarmOverheadsInput) => api.put<FarmOverheads>(`${base}/economics/overheads`, input), { success: t('economics.overheads.saved') })
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const perHa = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, num(v) ?? 0])) as Record<OverheadField, number>
-    save.mutate({ seasonId, ...perHa })
+    save.mutate({ seasonId, ...perHa, salaryPerHour: num(salaryPerHour) ?? 0, totalHaForRedistribution: num(redistributionHa) })
   }
 
   const hint = (k: OverheadField) => {
@@ -1237,12 +1255,38 @@ function OverheadsForm({ seasonId, initial, currency, areaHa }: { seasonId: stri
     <Form onSubmit={submit} className="space-y-5">
       <fieldset>
         <legend className="mb-3 text-sm font-medium text-fg-2">{t('economics.overheads.costsLegend')}</legend>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{OVERHEAD_FIELDS.map(field)}</div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {OVERHEAD_FIELDS.map(field)}
+          <NumberField
+            label={t('economics.overheads.salaryPerHour')}
+            unit={`${currency}/h`}
+            minValue={0}
+            placeholder="0"
+            value={salaryPerHour}
+            onChange={setSalaryPerHour}
+            isReadOnly={!canWrite}
+            formatOptions={{ maximumFractionDigits: 2 }}
+            description={t('economics.overheads.salaryPerHourHint')}
+          />
+        </div>
       </fieldset>
       <fieldset>
         <legend className="mb-1 text-sm font-medium text-fg-2">{t('economics.payments.legend')}</legend>
         <p className="mb-3 text-xs text-muted">{t('economics.payments.notice')}</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{PAYMENT_FIELDS.map(field)}</div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {PAYMENT_FIELDS.map(field)}
+          <NumberField
+            label={t('economics.payments.redistributionArea')}
+            unit="ha"
+            minValue={0}
+            placeholder={fmt.num(areaHa, 2)}
+            value={redistributionHa}
+            onChange={setRedistributionHa}
+            isReadOnly={!canWrite}
+            formatOptions={{ maximumFractionDigits: 2 }}
+            description={t('economics.payments.redistributionAreaHint')}
+          />
+        </div>
       </fieldset>
       {canWrite ? (
         <div className="flex justify-end pt-4 border-t border-line">
@@ -1360,7 +1404,12 @@ function PricesTab({ summary, seasonId, harvestYear }: { summary: EconomicsSumma
   const cycles = useOrgQuery<CropCycle[]>('/crop-cycles', { seasonId })
   if (harvestYear == null || prices.isLoading) return <Loading />
   if (prices.error) return <ErrorNotice error={prices.error} />
-  return <PriceEditor key={harvestYear} summary={summary} harvestYear={harvestYear} prices={prices.data ?? []} cycles={cycles.data ?? []} />
+  return (
+    <div className="space-y-6">
+      <PriceEditor key={harvestYear} summary={summary} harvestYear={harvestYear} prices={prices.data ?? []} cycles={cycles.data ?? []} />
+      <MarketPricesCard harvestYear={harvestYear} />
+    </div>
+  )
 }
 
 /** The farm's sale price per crop for the harvest year, used where a crop cycle has no expected price of its own. */

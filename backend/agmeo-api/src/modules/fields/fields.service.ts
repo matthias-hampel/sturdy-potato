@@ -101,7 +101,8 @@ export class FieldsService {
     });
   }
 
-  private async insert(
+  /** Inserts a field with its first boundary (also used for fields made of cadastral parcels). */
+  async insert(
     trx: Trx,
     ctx: Ctx,
     input: Omit<Out<typeof CreateFieldInput>, 'tenure'> & { tenure?: Tenure },
@@ -177,6 +178,7 @@ export class FieldsService {
         identifier: input.identifier,
         parcel_number: input.parcelNumber,
         tenure: input.tenure,
+        lease_per_ha: input.leasePerHa,
         soil_type: input.soilType,
         notes: input.notes,
         status: input.status,
@@ -195,19 +197,15 @@ export class FieldsService {
     });
   }
 
-  /**
-   * Replaces the boundary from `validFrom` (now by default); earlier versions stay as history. A
-   * future date plans the change: the new version takes over until the next planned one, and a
-   * change planned for the same date is replaced.
-   */
   updateGeometry(ctx: Ctx, id: string, input: Out<typeof UpdateFieldGeometryInput>): Promise<Field> {
     return this.db.run(ctx, (trx) => this.replaceGeometry(trx, ctx, id, input.geometry, { validFrom: input.validFrom, reason: input.reason, source: 'edit' }));
   }
 
   /**
-   * Closes the boundary in effect at `validFrom` and inserts the new one. A future date plans the
-   * change: the new version takes over until the next planned one, and a change planned for the
-   * same date is replaced.
+   * Puts `geometry` in place from `validFrom` (the transaction's time by default, so the boundary
+   * reads as current within this transaction too); earlier versions stay as history. A future date
+   * plans the change: the new version takes over until the next planned one, and a change planned
+   * for the same moment is replaced. Restoring an old boundary goes the same way.
    */
   async replaceGeometry(
     trx: Trx,
@@ -230,8 +228,6 @@ export class FieldsService {
     const check = await this.validateIn(trx, geometry, id);
     if (!check.valid) throw badRequest('invalid_geometry', `Invalid field boundary: ${check.reason}`);
 
-    // Without a date the change takes effect at the transaction's time, so the boundary reads
-    // as current within this transaction too.
     const now = await dbNow(trx);
     const validFrom = opts.validFrom ? new Date(opts.validFrom) : now;
     if (validFrom <= current.valid_from) {
@@ -325,18 +321,22 @@ export class FieldsService {
 
   /** Imports valid features and reports invalid ones; overlaps are warnings, not errors. */
   /**
-   * Creates one field per valid feature. Features with a crop also get a planned main crop in
-   * `seasonId`, keeping the source's land-use code where it differs from the crop's default.
+   * Creates one field per valid feature. Features with a crop also get a planned main crop in their
+   * own `seasonId` or else the input's, keeping the source's land-use code where it differs from the
+   * crop's default.
    */
   import(ctx: Ctx, input: Out<typeof ImportFieldsInput>): Promise<ImportFieldsResult> {
     return this.db.run(ctx, async (trx) => {
-      const cropIds = [...new Set(input.features.flatMap((f) => (f.cropId ? [f.cropId] : [])))];
+      const seasonOf = (f: (typeof input.features)[number]) => f.seasonId ?? input.seasonId ?? null;
+      const withCrop = input.features.filter((f) => f.cropId);
+      const cropIds = [...new Set(withCrop.map((f) => f.cropId!))];
       const defaultCodes = new Map<string, string | null>();
       if (cropIds.length) {
         if (!can(ctx.role, 'crop.write')) throw forbidden();
-        if (!input.seasonId) throw badRequest('season_required', 'Choose a season for the imported crops');
-        const season = await trx.selectFrom('growing_seasons').select('id').where('id', '=', input.seasonId).executeTakeFirst();
-        if (!season) throw notFound('Season');
+        if (withCrop.some((f) => !seasonOf(f))) throw badRequest('season_required', 'Choose a season for the imported crops');
+        const seasonIds = [...new Set(withCrop.map((f) => seasonOf(f)!))];
+        const seasons = await trx.selectFrom('growing_seasons').select('id').where('id', 'in', seasonIds).execute();
+        if (seasons.length !== seasonIds.length) throw notFound('Season');
         const crops = await trx.selectFrom('crops').select(['id', 'land_use_code']).where('id', 'in', cropIds).execute();
         if (crops.length !== cropIds.length) throw notFound('Crop');
         for (const c of crops) defaultCodes.set(c.id, c.land_use_code);
@@ -356,7 +356,8 @@ export class FieldsService {
         if (check.overlaps.length) result.overlaps.push({ name: feature.name, overlaps: check.overlaps });
         const id = await this.insert(trx, ctx, { ...feature, farmId: input.farmId }, 'import');
         result.created.push({ id, name: feature.name, areaHa: check.areaHa! });
-        if (feature.cropId && input.seasonId) {
+        const seasonId = seasonOf(feature);
+        if (feature.cropId && seasonId) {
           // Codes outside the catalogue are dropped; the crop's default code applies then.
           const code = feature.landUseCode && knownCodes.has(feature.landUseCode) ? feature.landUseCode : null;
           const cycle = await trx
@@ -364,7 +365,7 @@ export class FieldsService {
             .values({
               organization_id: ctx.orgId,
               field_id: id,
-              season_id: input.seasonId,
+              season_id: seasonId,
               crop_id: feature.cropId,
               status: 'planned',
               role: 'main',
@@ -376,10 +377,10 @@ export class FieldsService {
             entityType: 'crop_cycle',
             entityId: cycle.id,
             action: 'created',
-            changes: { fieldId: id, cropId: feature.cropId, seasonId: input.seasonId, source: 'import' },
+            changes: { fieldId: id, cropId: feature.cropId, seasonId, source: 'import' },
             event: {
               type: 'crop_cycle.created',
-              payload: { cropCycleId: cycle.id, fieldId: id, fieldPartId: null, cropId: feature.cropId, seasonId: input.seasonId },
+              payload: { cropCycleId: cycle.id, fieldId: id, fieldPartId: null, cropId: feature.cropId, seasonId },
             },
           });
           result.cropsAssigned += 1;
@@ -482,6 +483,7 @@ export class FieldsService {
         'f.name',
         'f.identifier',
         'f.tenure',
+        'f.lease_per_ha',
         'f.soil_type',
         'f.soil_texture',
         'f.nitrate_sensitive_zone',
@@ -527,6 +529,7 @@ export class FieldsService {
       name: r.name,
       identifier: r.identifier,
       tenure: r.tenure as Tenure,
+      leasePerHa: r.lease_per_ha,
       soilType: r.soil_type,
       soilTexture: r.soil_texture,
       nitrateSensitiveZone: r.nitrate_sensitive_zone,

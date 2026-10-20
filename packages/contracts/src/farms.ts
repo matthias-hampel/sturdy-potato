@@ -1,6 +1,6 @@
 import type { MultiPolygon } from 'geojson';
 import { z } from 'zod';
-import { LatLng, countryCode, id, isoDate, isoDateTime, longText, name, shortText } from './common.js';
+import { LatLng, amount, countryCode, id, isoDate, isoDateTime, longText, name, shortText } from './common.js';
 
 export const FarmInput = z.object({
   name,
@@ -69,6 +69,8 @@ export const UpdateFieldInput = z.object({
   identifier: shortText,
   parcelNumber: shortText,
   tenure: z.enum(TENURES).optional(),
+  /** The field's own land rent per hectare and year; null uses its parcels' leases, then the farm's figure. */
+  leasePerHa: amount.max(1e6).nullish(),
   soilType: shortText,
   notes: longText,
   status: z.enum(['active', 'archived']).optional(),
@@ -104,7 +106,7 @@ export interface GeometryValidation {
 
 export const ImportFieldsInput = z.object({
   farmId: id,
-  /** Season the imported crops are planned in; required when any feature carries a crop. */
+  /** Season the imported crops are planned in unless a feature names its own; one of the two is required for a feature with a crop. */
   seasonId: id.nullish(),
   features: z
     .array(
@@ -112,8 +114,10 @@ export const ImportFieldsInput = z.object({
         name,
         identifier: shortText,
         geometry: FieldGeometry,
-        /** Main crop of the field in `seasonId`, e.g. resolved from the land-use code of a subsidy application. */
+        /** Main crop of the field in the season, e.g. resolved from the land-use code of a subsidy application. */
         cropId: id.nullish(),
+        /** Season of this feature's crop, e.g. the harvest year of the file it came from; overrides the top-level `seasonId`. */
+        seasonId: id.nullish(),
         /** Land-use code (Nutzungscode) from the source; kept on the crop when it differs from the crop's default. */
         landUseCode: z.string().trim().max(5).nullish(),
       }),
@@ -146,6 +150,8 @@ export interface Field {
   name: string;
   identifier: string | null;
   tenure: Tenure;
+  /** The field's own land rent per hectare and year (economics); null when not set. */
+  leasePerHa: number | null;
   soilType: string | null;
   /** Soil texture class used by the fertilization tables (set on the Soil tab). */
   soilTexture: string | null;

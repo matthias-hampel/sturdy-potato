@@ -1,6 +1,7 @@
 import type { MultiPolygon } from 'geojson';
 import { z } from 'zod';
-import type { LatLng } from './common.js';
+import { id, type LatLng } from './common.js';
+import type { FieldDiseaseRisk } from './modelServices.js';
 import type { OperationStatus, OperationType } from './operations.js';
 import type { Task } from './tasks.js';
 
@@ -83,7 +84,7 @@ export interface WeatherForecast {
 // ---------------------------------------------------------------------------
 
 /** Indices computed per field and acquisition (backend/agmeo-geo, agmeo_geo/sources.py INDICES). */
-export const VEGETATION_INDICES = ['ndvi', 'ndre', 'ndmi', 'evi', 'bsi', 'ndti'] as const;
+export const VEGETATION_INDICES = ['ndvi', 'ndre', 'ndmi', 'evi', 'bsi', 'ndti', 'savi', 'lai'] as const;
 export type VegetationIndex = (typeof VEGETATION_INDICES)[number];
 
 /**
@@ -133,6 +134,20 @@ export const INDEX_SCALES: Record<VegetationIndex, { label: string; description:
     min: 0,
     max: 0.3,
     stops: ['#f6f3e1', '#e6dba3', '#c8b25f', '#958033', '#5e5119'],
+  },
+  savi: {
+    label: 'SAVI',
+    description: 'Vigour, corrected for visible soil',
+    min: 0.1,
+    max: 0.7,
+    stops: ['#eef4e0', '#c3dfa5', '#86bd67', '#458f3c', '#1a5a1f'],
+  },
+  lai: {
+    label: 'LAI',
+    description: 'Leaf area per ground area (m²/m²)',
+    min: 0,
+    max: 6,
+    stops: ['#f3f6e4', '#cfe3a6', '#93c464', '#4f9a3a', '#1f6324'],
   },
 }
 
@@ -262,6 +277,9 @@ export interface FieldObservation {
   mean: number | null;
   median: number | null;
   p10: number | null;
+  /** 20 % and 80 % quantiles (null on observations processed before they were recorded). */
+  p20: number | null;
+  p80: number | null;
   p90: number | null;
   stddev: number | null;
   validPixelPct: number;
@@ -396,7 +414,9 @@ export type ConditionLevel = 0 | 1 | 2 | 3;
 export interface ConditionReason {
   /** Untranslated reason key of the model, e.g. "reason.wind". */
   key: string;
-  value: number | string | null;
+  value: number | null;
+  /** Unit dimension of the value (speed, temperature, length, hours, …), as in the units system. */
+  dimension: string | null;
 }
 
 export interface ConditionDay {
@@ -411,10 +431,16 @@ export interface FieldConditions {
   cropCycle: { id: string; cropName: string; sowingDate: string | null; sowingSource: 'booked' | 'planned' | null } | null;
   /** The soil class the water balance uses; its texture fractions are class mid-points. */
   soil: { texture: string | null; textureSource: 'soil_class' | null };
-  bars: { spraying: ConditionDay[]; sowing: ConditionDay[]; weatherRisk: ConditionDay[]; trafficability: ConditionDay[] | null };
+  /**
+   * `disease`: the worst ISIP disease risk of the crop per day (reasons: the diseases at risk);
+   * null when ISIP does not model the crop.
+   */
+  bars: { spraying: ConditionDay[]; sowing: ConditionDay[]; weatherRisk: ConditionDay[]; trafficability: ConditionDay[] | null; disease: ConditionDay[] | null };
+  disease: FieldDiseaseRisk;
   /** Spray level per hour for the next 48 hours. */
   sprayHours: { time: string; level: ConditionLevel; reasons: ConditionReason[] }[];
-  phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; bbchByDate: Record<string, number> | null } | null;
+  /** `calibrated`: the model's stages follow the farmer's BBCH observations. */
+  phenology: { sowingDate: string | null; gdd: number | null; currentBbch: number | null; bbchSource: 'model' | 'calendar' | null; calibrated: boolean; bbchByDate: Record<string, number> | null } | null;
   waterBalance: {
     soilTypeKa5: string | null;
     awcMm: number | null;
@@ -429,6 +455,81 @@ export interface FieldConditions {
   } | null;
 }
 
+/** The ESM phenology of one crop cycle with the farmer's BBCH observations (reference BBCH dialog). */
+export interface CropPhenology {
+  cropCycleId: string;
+  cropName: string;
+  /** Whether the ESM model has parameters for the crop. */
+  supported: boolean;
+  sowingDate: string | null;
+  sowingSource: 'booked' | 'planned' | 'calendar' | null;
+  /** Calibrated BBCH today. */
+  currentBbch: number | null;
+  /** Uncalibrated model BBCH on the last modelled day. */
+  modelBbch: number | null;
+  /** Offset in biological days applied today; null without observations. */
+  bbchOffset: number | null;
+  /** Sowing to seven days past today. */
+  days: { date: string; bbch: number; modelBbch: number; vernalization: number; photoperiod: number; tempMean: number }[];
+  observations: { observedOn: string; observedBbch: number; modelBbch: number | null; bdOffset: number }[];
+  /** Model parameters: temperatures in °C, VDSAT in days, cpp in hours, stage durations in biological days. */
+  params: Record<string, number> | null;
+  stageDurations: Record<string, number> | null;
+}
+
+export type DeficitLevel = 'ok' | 'warning' | 'critical';
+
+export interface WaterBalanceSummary {
+  soilTypeKa5: string | null;
+  /** Volumetric water content (% vol) at field capacity and wilting point. */
+  thetaFc: number | null;
+  thetaPwp: number | null;
+  fcMm: number | null;
+  pwpMm: number | null;
+  awcMm: number | null;
+  /** Depth the balance runs over: the cycle's override, else the crop's FAO-56 default. */
+  rootDepthM: number;
+  rootDepthOverrideM: number | null;
+  cropRootDepthM: number;
+  currentDeficitMm: number | null;
+  deficitLevel: DeficitLevel | null;
+  /** Soil water today as % of the available water capacity. */
+  fillPct: number | null;
+  totalPrecipitationMm: number;
+  totalEtaMm: number;
+  totalIrrigationMm: number;
+  simulationStartDate: string;
+  sowingDate: string | null;
+  recommendation: Record<string, unknown>;
+}
+
+export interface WaterBalanceDay {
+  date: string;
+  swcMm: number;
+  precipitationMm: number;
+  irrigationMm: number;
+  etaMm: number;
+  drainageMm: number;
+  deficitMm: number;
+  forecast: boolean;
+}
+
+export const IRRIGATION_METHODS = ['sprinkler', 'drip', 'pivot'] as const;
+export type IrrigationMethod = (typeof IRRIGATION_METHODS)[number];
+
+/** Root-zone water balance of one crop cycle with its days and irrigation events (reference irrigation page). */
+export interface CycleWaterBalance extends WaterBalanceSummary {
+  fieldId: string;
+  cropCycleId: string;
+  days: WaterBalanceDay[];
+  events: { operationId: string; date: string; mm: number; method: IrrigationMethod | null; status: string }[];
+}
+
+export const RootDepthInput = z.object({
+  updates: z.array(z.object({ cropCycleId: id, rootDepthM: z.number().min(0.1).max(3).nullable() })).min(1).max(500),
+});
+export type RootDepthInput = z.input<typeof RootDepthInput>;
+
 export interface FieldTrafficability {
   fieldId: string;
   equipmentId: string;
@@ -437,4 +538,26 @@ export interface FieldTrafficability {
   rearKpa: number;
   sciReady: boolean;
   days: { date: string; pf: number | null; precompressionKpa: number | null; stressAtDepthKpa: number | null; sci: number | null; band: string | null }[];
+}
+
+// ---------------------------------------------------------------------------
+// News feed (reference lib/news): computed per request, rendered by the client in its language
+// ---------------------------------------------------------------------------
+
+export const NEWS_CATEGORIES = ['weather', 'tasks', 'events', 'advisory'] as const;
+export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
+
+export interface NewsItem {
+  /** Stable per item and period (the reference's dedupe key without the language). */
+  id: string;
+  category: NewsCategory;
+  /** Which text template the client uses, e.g. "weather.heavyRain" or "advisory.meldung". */
+  headline: { key: string; params: Record<string, string | number> };
+  /** Paragraphs or bullet lines, each a template with parameters. */
+  body: { key: string; params: Record<string, string | number> }[];
+  priority: number;
+  validFrom: string;
+  validUntil: string | null;
+  /** In-app link target and its label template. */
+  cta: { to: 'tasks' | 'fertilizer-reports'; params?: Record<string, string | number>; labelKey: string } | null;
 }

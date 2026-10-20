@@ -62,6 +62,30 @@ export interface CultivationTemplate {
   updatedAt: string;
 }
 
+/** Templates of the other organizations the user belongs to, read-only (reference "Von anderen Organisationen"). */
+export interface SharedTemplates {
+  organization: { id: string; name: string };
+  templates: CultivationTemplate[];
+}
+
+/** Copies a template of this or another of the user's organizations into this one. */
+export const CopyTemplateInput = z.object({
+  name,
+  /** Organization the template belongs to; defaults to this one. */
+  sourceOrgId: id.optional(),
+});
+export type CopyTemplateInput = z.input<typeof CopyTemplateInput>;
+
+export interface CopyTemplateResult {
+  template: CultivationTemplate;
+  /** Products of a foreign template without a product of the same name here; their lines were left out. */
+  droppedInputs: number;
+}
+
+/** Saves a crop's operations as a new template (reference "Als Anbauvorlage speichern"). */
+export const SaveAsTemplateInput = z.object({ name });
+export type SaveAsTemplateInput = z.input<typeof SaveAsTemplateInput>;
+
 export const ApplyTemplateInput = z.object({
   templateId: id,
   /** Replace the planned operations of a template applied earlier (completed work is kept). */

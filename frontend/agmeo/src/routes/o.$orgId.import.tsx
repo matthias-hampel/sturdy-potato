@@ -1,9 +1,9 @@
 import type { Crop, Farm, Field, ImportFieldsResult, LandUseCode } from '@agmeo/contracts'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import type { FeatureCollection } from 'geojson'
+import type { FeatureCollection, Geometry } from 'geojson'
 import { AlertTriangle, CheckCircle2, FileText, FileUp, type LucideIcon, Shapes, Tractor } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { DropZone, FileTrigger, Radio, RadioGroup } from 'react-aria-components'
+import { Button as AriaButton, DropZone, FileTrigger, Radio, RadioGroup } from 'react-aria-components'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { CRS_OPTIONS, type CrsId } from '#/components/import/crs'
@@ -19,11 +19,16 @@ import {
   detectAntragColumns,
   existingField,
   guessShapeMapping,
+  harvestYearFromName,
   isoxmlRows,
   matchCrop,
   propertyKeys,
+  repeatedRows,
   shapeRows,
 } from '#/components/import/rows'
+import { centreOf, locationWarning } from '#/components/import/plausibility'
+import { RotationPicker } from '#/components/import/RotationPicker'
+import { readPortalXml } from '#/components/import/portal'
 import { readShapefiles, type ShapeLayer } from '#/components/import/shapefile'
 import { FieldMap } from '#/components/map/FieldMap'
 import { farmView } from '#/components/map/useMap'
@@ -38,14 +43,16 @@ import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
 import { cx, focusRing } from '#/ui/utils'
 
 const SOURCES = ['antrag', 'shapefile', 'isoxml'] as const
+// The import preview frames only the file's fields, not the farm's existing ones.
+const NO_FIELDS: string[] = []
 
 export const Route = createFileRoute('/o/$orgId/import')({
-  validateSearch: z.object({ source: z.enum(SOURCES).optional() }),
+  validateSearch: z.object({ source: z.enum(SOURCES).optional().catch(undefined) }),
   component: DataImportPage,
 })
 
 const SOURCE_META: Record<ImportSource, { icon: LucideIcon; accept: string[] }> = {
-  antrag: { icon: FileText, accept: ['.zip', '.shp', '.dbf', '.prj', '.cpg'] },
+  antrag: { icon: FileText, accept: ['.zip', '.shp', '.dbf', '.prj', '.cpg', '.xml', '.gml'] },
   shapefile: { icon: Shapes, accept: ['.zip', '.shp', '.dbf', '.prj', '.cpg'] },
   isoxml: { icon: Tractor, accept: ['.zip', '.xml', '.XML'] },
 }
@@ -112,9 +119,18 @@ function DataImportPage() {
 
 type Parsed = { kind: 'shape'; layers: ShapeLayer[] } | { kind: 'isoxml'; rows: ImportRow[] }
 
+/**
+ * The layer of an uploaded file to read by default: for application data one with land-use codes
+ * (portal exports also carry landscape elements), otherwise the one with the most polygons.
+ */
+function defaultLayer(layers: ShapeLayer[], source: ImportSource, knownCodes: Set<string>) {
+  const largest = [...layers].sort((a, b) => b.features.length - a.features.length)
+  return (source === 'antrag' && largest.find((l) => detectAntragColumns(l.features, knownCodes).code)) || largest[0]
+}
+
 function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: Farm[]; fields: Field[] }) {
   const { t } = useTranslation()
-  const { orgId, can } = useOrg()
+  const { orgId, org, can } = useOrg()
   const navigate = useNavigate()
   const { seasons, seasonId: workingSeasonId } = useSeason()
   const crops = useOrgQuery<Crop[]>('/crops', undefined, { staleTime: 5 * 60_000 })
@@ -126,15 +142,23 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   const [parsed, setParsed] = useState<Parsed | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
-  const [layerName, setLayerName] = useState<string | null>(null)
+  // The layer read from each uploaded file, by file; otherwise the default from `defaultLayer`.
+  const [layerChoice, setLayerChoice] = useState<Record<string, string>>({})
   const [antragMapping, setAntragMapping] = useState<AntragMapping | null>(null)
   const [shapeMapping, setShapeMapping] = useState<ShapeMapping | null>(null)
   const [excluded, setExcluded] = useState<Set<number> | null>(null)
   const [farmId, setFarmId] = useState<string | null>(farms[0]?.id ?? null)
-  const [seasonId, setSeasonId] = useState<string | null>(workingSeasonId ?? null)
+  // The season each file's crops go to, by file, where the user changed it.
+  const [seasonChoice, setSeasonChoice] = useState<Record<string, string | null>>({})
   const [assignCrops, setAssignCrops] = useState(true)
   const [cropChoice, setCropChoice] = useState<Record<string, string | null>>({})
   const [result, setResult] = useState<ImportFieldsResult | null>(null)
+  const [rotationId, setRotationId] = useState<string | null>(null)
+  const [rotationAssigned, setRotationAssigned] = useState(0)
+  // A file whose fields land far from where they belong must be confirmed before importing.
+  const [locationConfirmed, setLocationConfirmed] = useState(false)
+  // What the map moves to: all fields of a newly read file, or the row clicked in the table.
+  const [focus, setFocus] = useState<Geometry | FeatureCollection | null>(null)
 
   // Parse whenever the files or the chosen reference system change.
   useEffect(() => {
@@ -144,7 +168,9 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     setParseError(null)
     const run = async (): Promise<Parsed> => {
       if (source === 'isoxml') return { kind: 'isoxml', rows: isoxmlRows(readIsoxml(files.files)) }
-      const layers = (await readShapefiles(files.files, crsOverride)).filter((l) => l.features.length)
+      // Portal XML/GML exports carry names and codes, so they come before any Shapefile next to them.
+      const portal = source === 'antrag' ? await readPortalXml(files.files, crsOverride) : []
+      const layers = [...portal, ...(await readShapefiles(files.files, crsOverride))].filter((l) => l.features.length)
       if (!layers.length) {
         const portalXml = files.files.some((f) => ['xml', 'gml'].includes(extension(f)))
         throw new Error(t(source === 'antrag' && portalXml ? 'import.antrag.xmlOnly' : 'import.shapefile.none'))
@@ -164,28 +190,53 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     }
   }, [files, crsOverride, source, t])
 
-  const layers = parsed?.kind === 'shape' ? parsed.layers : []
-  const layer = layers.find((l) => l.name === layerName) ?? layers[0] ?? null
+  const layers = useMemo(() => (parsed?.kind === 'shape' ? parsed.layers : []), [parsed])
+  const layersByFile = useMemo(() => {
+    const byFile = new Map<string, ShapeLayer[]>()
+    for (const l of layers) byFile.set(l.file, [...(byFile.get(l.file) ?? []), l])
+    return byFile
+  }, [layers])
+  // One layer per uploaded file; all of them make up the import.
+  const chosen = useMemo(
+    () => [...layersByFile.values()].map((ls) => ls.find((l) => l.id === layerChoice[ls[0].file]) ?? defaultLayer(ls, source, knownCodes)),
+    [layersByFile, layerChoice, source, knownCodes],
+  )
+  const usable = useMemo(() => chosen.filter((l) => l.crs.source !== 'unknown'), [chosen])
+  const chosenKey = chosen.map((l) => l.id).join('|')
 
-  // Column mappings are detected once per layer and can then be changed by the user.
+  // Column mappings are detected once per set of layers and can then be changed by the user.
   useEffect(() => {
-    if (!layer) return
-    if (source === 'antrag') setAntragMapping(detectAntragColumns(layer.features, knownCodes))
-    else setShapeMapping(guessShapeMapping(layer.features))
+    if (!chosen.length) return
+    const features = chosen.flatMap((l) => l.features)
+    if (source === 'antrag') setAntragMapping(detectAntragColumns(features, knownCodes))
+    else setShapeMapping(guessShapeMapping(features))
     setExcluded(null)
-  }, [layer, source, knownCodes])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosenKey, parsed, source, knownCodes])
 
   const rows: ImportRow[] = useMemo(() => {
     if (parsed?.kind === 'isoxml') return parsed.rows
-    if (!layer || layer.crs.source === 'unknown') return []
-    if (source === 'antrag') return antragMapping ? antragRows(layer.features, antragMapping) : []
-    return shapeMapping ? shapeRows(layer.features, shapeMapping) : []
-  }, [parsed, layer, source, antragMapping, shapeMapping])
+    const mapping = source === 'antrag' ? antragMapping : shapeMapping
+    if (!mapping) return []
+    let next = 0
+    return usable.flatMap((l) =>
+      (source === 'antrag' ? antragRows(l.features, antragMapping!) : shapeRows(l.features, shapeMapping!)).map((r) => ({ ...r, key: next++, file: l.file })),
+    )
+  }, [parsed, usable, source, antragMapping, shapeMapping])
+
+  // New files, layers or a reference system frame all their fields; a changed column mapping keeps the camera.
+  useEffect(() => {
+    const geometries = parsed?.kind === 'isoxml' ? parsed.rows.flatMap((r) => (r.geometry ? [r.geometry] : [])) : usable.flatMap((l) => l.features.map((f) => f.geometry))
+    const features = geometries.map((geometry) => ({ type: 'Feature' as const, geometry, properties: {} }))
+    setFocus(features.length ? { type: 'FeatureCollection', features } : null)
+  }, [parsed, usable])
 
   const duplicates = useMemo(() => new Map(rows.map((r) => [r.key, existingField(r, fields, farmId)])), [rows, fields, farmId])
+  const repeated = useMemo(() => repeatedRows(rows), [rows])
   const invalid = useMemo(() => new Set(rows.filter((r) => !r.geometry).map((r) => r.key)), [rows])
-  // By default, rows that already exist on the farm are left out.
-  const skip = excluded ?? new Set(rows.filter((r) => duplicates.get(r.key)).map((r) => r.key))
+  const severalFiles = new Set(rows.map((r) => r.file)).size > 1
+  // By default, rows that already exist on the farm or come again in a later file are left out.
+  const skip = excluded ?? new Set(rows.filter((r) => duplicates.get(r.key) || repeated.has(r.key)).map((r) => r.key))
   const selected = rows.filter((r) => !skip.has(r.key) && !invalid.has(r.key))
 
   const cropKeys = useMemo(() => {
@@ -195,21 +246,51 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
   }, [rows])
   const resolvedCrop = (key: string) => (key in cropChoice ? cropChoice[key] : (matchCrop(key, crops.data ?? [])?.id ?? null))
   const canAssign = can('crop.write') && cropKeys.length > 0 && seasons.length > 0
-  const withCrops = canAssign && assignCrops && !!seasonId
+  // Crops go to the season of the year in their file's name, e.g. "Antrag 2026.zip"; without a year to the working season.
+  const cropFiles = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const r of rows) if (r.cropKey) counts.set(r.file ?? '', (counts.get(r.file ?? '') ?? 0) + 1)
+    return [...counts].map(([file, count]) => {
+      const year = harvestYearFromName(file)
+      return { file, count, year, detected: year == null ? (workingSeasonId ?? null) : (seasons.find((s) => s.harvestYear === year)?.id ?? null) }
+    })
+  }, [rows, seasons, workingSeasonId])
+  const seasonFor = (file: string | null) => {
+    const f = file ?? ''
+    return f in seasonChoice ? seasonChoice[f] : (cropFiles.find((c) => c.file === f)?.detected ?? null)
+  }
+  const withCrops = (r: ImportRow) => canAssign && assignCrops && !!r.cropKey && !!seasonFor(r.file)
+  const seasonItems = [{ id: '__none', name: t('import.crops.noSeasonOption') }, ...[...seasons].sort((a, b) => b.harvestYear - a.harvestYear).map((s) => ({ id: s.id, name: String(s.harvestYear) }))]
+
+  const location = useMemo(
+    () =>
+      locationWarning(centreOf(selected.map((r) => r.geometry)), {
+        countries: [org.country],
+        orgCentre: fields.length ? { lon: fields.reduce((s, f) => s + f.centroid.lng, 0) / fields.length, lat: fields.reduce((s, f) => s + f.centroid.lat, 0) / fields.length } : null,
+        europeOnly: source === 'antrag',
+      }),
+    [selected, fields, org.country, source],
+  )
+  // The rotation starts with the earliest season the import plans crops in, else the working season.
+  const importYears = cropFiles.map((c) => seasons.find((s) => s.id === seasonFor(c.file))?.harvestYear).filter((y): y is number => y != null)
+  const rotationStartYear = importYears.length ? Math.min(...importYears) : (seasons.find((s) => s.id === workingSeasonId)?.harvestYear ?? new Date().getFullYear())
 
   const importMutation = useOrgMutation(
-    (base, _: void) =>
-      api.post<ImportFieldsResult>(`${base}/fields/import`, {
+    async (base, _: void) => {
+      const res = await api.post<ImportFieldsResult>(`${base}/fields/import`, {
         farmId,
-        seasonId: withCrops ? seasonId : null,
-        features: selected.map((r) => ({
-          name: r.name,
-          identifier: r.identifier,
-          geometry: r.geometry,
-          cropId: withCrops && r.cropKey ? resolvedCrop(r.cropKey) : null,
-          landUseCode: r.landUseCode,
-        })),
-      }),
+        features: selected.map((r) => {
+          const cropId = withCrops(r) ? resolvedCrop(r.cropKey!) : null
+          return { name: r.name, identifier: r.identifier, geometry: r.geometry, cropId, seasonId: cropId ? seasonFor(r.file) : null, landUseCode: r.landUseCode }
+        }),
+      })
+      // The imported fields follow the chosen rotation from the import's season on.
+      if (rotationId && can('crop.write') && res.created.length) {
+        await api.post(`${base}/rotations/${rotationId}/fields`, { fieldIds: res.created.map((c) => c.id), startYear: rotationStartYear })
+        setRotationAssigned(res.created.length)
+      } else setRotationAssigned(0)
+      return res
+    },
     { success: (r) => t('fields.import.imported', { count: r.created.length }), onSuccess: setResult },
   )
 
@@ -217,11 +298,15 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     if (!list.length) return
     setResult(null)
     setParsed(null)
-    setLayerName(null)
+    setLayerChoice({})
     setCrsOverride(null)
     setCropChoice({})
+    setLocationConfirmed(false)
+    setSeasonChoice({})
     try {
-      setFiles({ label: list.map((f) => f.name).join(', '), files: await collectFiles(list) })
+      // Name order puts the export of a later year after the earlier one (see repeatedRows).
+      const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+      setFiles({ label: sorted.map((f) => f.name).join(', '), files: await collectFiles(sorted) })
     } catch (e) {
       setParseError(errorMessage(e))
     }
@@ -237,14 +322,22 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
     type: 'FeatureCollection',
     features: selected.map((r) => ({ type: 'Feature', geometry: r.geometry!, properties: {} })),
   }
-  const keys = layer ? propertyKeys(layer.features) : []
+  const keys = propertyKeys(chosen.flatMap((l) => l.features))
+  const withoutPrj = chosen.filter((l) => l.crs.source !== 'prj')
   const keyItems = [{ id: '__none', name: t('fields.import.noAttribute') }, ...keys.map((k) => ({ id: k, name: k }))]
   const totalHa = selected.reduce((s, r) => s + (r.areaHa ?? 0), 0)
 
   return (
     <div className="grid xl:grid-cols-[1fr_26rem] gap-4 items-start">
       <div className="space-y-4 min-w-0">
-        <FieldMap fields={fields} highlight={selected.length ? preview : null} view={farmView(farms.find((f) => f.id === farmId))} className="h-[50vh] min-h-80" />
+        <FieldMap
+          fields={fields}
+          fitIds={NO_FIELDS}
+          highlight={selected.length ? preview : null}
+          focus={focus}
+          view={farmView(farms.find((f) => f.id === farmId))}
+          className="h-[50vh] min-h-80"
+        />
         {rows.length > 0 && !result && (
           <Card
             title={t('import.rows.title')}
@@ -269,8 +362,8 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   <Column>{t('fields.identifier')}</Column>
                   {cropKeys.length > 0 && <Column>{t('import.rows.crop')}</Column>}
                   {source === 'isoxml' && <Column>{t('import.rows.origin')}</Column>}
+                  {severalFiles && <Column>{t('import.rows.file')}</Column>}
                   <Column align="end">{t('import.rows.area')}</Column>
-                  <Column>{t('import.rows.status')}</Column>
                 </TableHeader>
                 <TableBody items={rows}>
                   {(r) => {
@@ -281,28 +374,42 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                         <Cell>
                           <Checkbox slot="selection" />
                         </Cell>
-                        <Cell className="max-w-64 truncate">{r.name}</Cell>
+                        <Cell>
+                          <span className="flex items-center gap-2 min-w-0">
+                            {r.geometry ? (
+                              // A press on the name moves the map there (also again, after panning away); the rest of the row toggles the selection.
+                              <AriaButton
+                                className="truncate max-w-64 text-left cursor-pointer hover:underline underline-offset-2 outline-none focus-visible:underline"
+                                onPress={() => setFocus({ ...r.geometry! })}
+                              >
+                                {r.name}
+                              </AriaButton>
+                            ) : (
+                              <span className="truncate max-w-64">{r.name}</span>
+                            )}
+                            {!r.geometry ? (
+                              <Badge tone="danger">{t('import.rows.noBoundary')}</Badge>
+                            ) : dup ? (
+                              <Badge tone="warning">{t('import.rows.exists', { name: dup.name })}</Badge>
+                            ) : (
+                              repeated.has(r.key) && <Badge tone="warning">{t('import.rows.repeated', { file: repeated.get(r.key)!.file ?? '' })}</Badge>
+                            )}
+                          </span>
+                        </Cell>
                         <Cell className="text-muted">{r.identifier}</Cell>
                         {cropKeys.length > 0 && (
                           <Cell>
                             {r.cropKey && (
                               <span className="whitespace-nowrap">
-                                {crops.data?.find((c) => c.id === cropId)?.name ?? <span className="text-muted">{r.cropKey}</span>}
+                                {/* Muted where the row's file gets no crops. */}
+                                <span className={cx(!withCrops(r) && 'text-muted')}>{crops.data?.find((c) => c.id === cropId)?.name ?? r.cropKey}</span>
                               </span>
                             )}
                           </Cell>
                         )}
                         {source === 'isoxml' && <Cell className="text-muted">{r.origin}</Cell>}
+                        {severalFiles && <Cell className="text-muted max-w-48 truncate">{r.file}</Cell>}
                         <Cell align="end">{r.areaHa != null ? fmt.ha(r.areaHa, 2) : '–'}</Cell>
-                        <Cell>
-                          {!r.geometry ? (
-                            <Badge tone="danger">{t('import.rows.noBoundary')}</Badge>
-                          ) : dup ? (
-                            <Badge tone="warning">{t('import.rows.exists', { name: dup.name })}</Badge>
-                          ) : (
-                            <Badge tone="success">{t('import.rows.new')}</Badge>
-                          )}
-                        </Cell>
                       </Row>
                     )
                   }}
@@ -336,28 +443,41 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
               <strong>{files.label}</strong> ·{' '}
               {parsed.kind === 'isoxml'
                 ? t('import.isoxml.partfields', { count: parsed.rows.length })
-                : layer && (layer.skipped ? t('fields.import.polygonsSkipped', { count: layer.features.length, skipped: layer.skipped }) : t('fields.import.polygons', { count: layer.features.length }))}
+                : (() => {
+                    const count = chosen.reduce((n, l) => n + l.features.length, 0)
+                    const skipped = chosen.reduce((n, l) => n + l.skipped, 0)
+                    return skipped ? t('fields.import.polygonsSkipped', { count, skipped }) : t('fields.import.polygons', { count })
+                  })()}
             </p>
           )}
         </Card>
 
-        {layer && !result && (
+        {chosen.length > 0 && !result && (
           <Card title={t('import.mapping.title')} description={source === 'antrag' ? t('import.mapping.antragHint') : undefined}>
             <div className="space-y-4">
-              {layers.length > 1 && (
-                <Select label={t('import.mapping.layer')} items={layers.map((l) => ({ id: l.name, name: `${l.name} (${l.features.length})` }))} value={layer.name} onChange={(v) => setLayerName(v ? String(v) : null)}>
-                  {(l) => <Option id={l.id}>{l.name}</Option>}
-                </Select>
+              {[...layersByFile].map(
+                ([file, ls]) =>
+                  ls.length > 1 && (
+                    <Select
+                      key={file}
+                      label={layersByFile.size > 1 ? `${t('import.mapping.layer')} · ${file}` : t('import.mapping.layer')}
+                      items={ls.map((l) => ({ id: l.id, name: `${l.name} (${l.features.length})` }))}
+                      value={chosen.find((l) => l.file === file)?.id ?? null}
+                      onChange={(v) => v && setLayerChoice({ ...layerChoice, [file]: String(v) })}
+                    >
+                      {(l) => <Option id={l.id}>{l.name}</Option>}
+                    </Select>
+                  ),
               )}
-              {layer.crs.source !== 'prj' && (
+              {withoutPrj.length > 0 && (
                 <>
-                  {layer.crs.source === 'unknown' && <Notice tone="danger" icon={AlertTriangle}>{t('import.crs.unknown')}</Notice>}
-                  {layer.crs.source === 'guessed' && !layer.crs.certain && <Notice tone="warning" icon={AlertTriangle}>{t('import.crs.uncertain')}</Notice>}
+                  {withoutPrj.some((l) => l.crs.source === 'unknown') && <Notice tone="danger" icon={AlertTriangle}>{t('import.crs.unknown')}</Notice>}
+                  {withoutPrj.some((l) => l.crs.source === 'guessed' && !l.crs.certain) && <Notice tone="warning" icon={AlertTriangle}>{t('import.crs.uncertain')}</Notice>}
                   <Select
                     label={t('import.crs.label')}
                     description={t('import.crs.description')}
                     items={CRS_OPTIONS.map((c) => ({ id: c.id, name: c.label }))}
-                    value={crsOverride ?? layer.crs.id}
+                    value={crsOverride ?? withoutPrj[0].crs.id}
                     onChange={(v) => setCrsOverride(v ? (String(v) as CrsId) : null)}
                   >
                     {(c) => <Option id={c.id}>{c.name}</Option>}
@@ -409,9 +529,27 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   <Switch isSelected={assignCrops} onChange={setAssignCrops}>{t('import.crops.assign')}</Switch>
                   {assignCrops && (
                     <>
-                      <Select label={t('nav.season')} items={seasons.map((s) => ({ id: s.id, name: String(s.harvestYear) }))} value={seasonId} onChange={(v) => setSeasonId(v ? String(v) : null)}>
-                        {(s) => <Option id={s.id}>{s.name}</Option>}
-                      </Select>
+                      <div>
+                        <div className="text-sm font-medium text-fg mb-1">{t('import.crops.season')}</div>
+                        <p className="text-xs text-muted mb-2">{t('import.crops.seasonHint')}</p>
+                        <div className="space-y-3">
+                          {cropFiles.map(({ file, count, year, detected }) => (
+                            <Select
+                              key={file}
+                              label={cropFiles.length > 1 ? file : t('nav.season')}
+                              description={[
+                                t('import.crops.rows', { count }),
+                                year != null && !detected && t('import.crops.noSeasonForYear', { year }),
+                              ].filter(Boolean).join(' · ')}
+                              items={seasonItems}
+                              value={seasonFor(file) ?? '__none'}
+                              onChange={(v) => setSeasonChoice({ ...seasonChoice, [file]: v && v !== '__none' ? String(v) : null })}
+                            >
+                              {(s) => <Option id={s.id}>{s.name}</Option>}
+                            </Select>
+                          ))}
+                        </div>
+                      </div>
                       <div>
                         <div className="text-sm font-medium text-fg mb-1">{t('import.crops.mapping')}</div>
                         <p className="text-xs text-muted mb-2">{t('import.crops.mappingHint')}</p>
@@ -442,7 +580,14 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
                   )}
                 </>
               )}
-              <Button variant="primary" className="w-full" isDisabled={!farmId || !selected.length || (withCrops && !seasonId)} isPending={importMutation.isPending} onPress={() => importMutation.mutate()}>
+              {can('crop.write') && <RotationPicker value={rotationId} onChange={setRotationId} crops={crops.data ?? []} />}
+              {location && (
+                <Notice tone="warning" icon={AlertTriangle}>
+                  <p className="mb-2">{t(`import.location.${location}`, { country: org.country })}</p>
+                  <Checkbox isSelected={locationConfirmed} onChange={setLocationConfirmed}>{t('import.location.confirm')}</Checkbox>
+                </Notice>
+              )}
+              <Button variant="primary" className="w-full" isDisabled={!farmId || !selected.length || (!!location && !locationConfirmed)} isPending={importMutation.isPending} onPress={() => importMutation.mutate()}>
                 {t('fields.import.submit', { count: selected.length })}
               </Button>
             </div>
@@ -455,6 +600,7 @@ function ImportWizard({ source, farms, fields }: { source: ImportSource; farms: 
               <Notice tone="success" icon={CheckCircle2}>
                 {t('fields.import.resultSummary', { count: result.created.length, area: fmt.ha(result.created.reduce((s, c) => s + c.areaHa, 0), 1) })}
                 {result.cropsAssigned > 0 && <> {t('import.result.crops', { count: result.cropsAssigned })}</>}
+                {rotationAssigned > 0 && <> {t('import.result.rotation', { count: rotationAssigned, year: rotationStartYear })}</>}
               </Notice>
               {result.errors.length > 0 && (
                 <Notice tone="danger" icon={AlertTriangle}>

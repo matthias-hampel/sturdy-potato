@@ -1,135 +1,170 @@
 /**
- * Greenhouse-gas emissions of field operations in kg CO2e, after the BEK-style calculator of
- * AGVOLUTION/agmeo (src/lib/co2calculator, factors with sources in method/parametersSources.ts).
- * Simplified: no crop residues, humus balance or scope 2. NH3 losses of organic fertilizers use
- * default shares of ammonium N by application technique instead of Thünen's full model.
+ * Greenhouse-gas emissions after the BEK method (Berechnungsstandard für einzelbetriebliche
+ * Klimabilanzen) as implemented in AGVOLUTION/agmeo src/lib/co2calculator — ported in ./bek with
+ * its tests. This module is the entry point for the rest of the API: the factor-set name stored
+ * with every ledger entry, the source → category grouping and the calculation parameters page.
  */
-import { type ApplicationTechnique, type BaseUnit, type CalculationParameter, type FertilizerType, isOrganicFertilizer, nutrientKgPerHa, type NutrientContents } from '@agmeo/contracts';
+import {
+  BEK_SOURCE_CATEGORY,
+  BEK_SOURCES,
+  type BekSource,
+  type CalculationParameter,
+  type CalculationParameterGroup,
+  type EmissionCategory,
+} from '@agmeo/contracts';
+import PARAMS from './bek/parameters.js';
+import { parametersWithDetails } from './bek/parameters-sources.js';
+import { cropsWithoutModelData, type SupportedCrops } from './bek/types.js';
 
-export const CO2E_FACTOR_SET = 'DE-BEK-simplified-2026.1';
+export { operationEmissionsPerHa, cycleEmissionsPerHa } from './emissions.js';
 
-const GWP_N2O = 273;
-const N2O_N_TO_N2O = 44 / 28;
-/** Direct N2O-N per kg N applied (agmeo ef.n2oN). */
-const EF_N2O_DIRECT = 0.01225;
-/** N2O-N per kg NH3-N volatilized and redeposited. */
-const EF_N2O_INDIRECT = 0.01;
-const n2o = (kgN2oN: number) => kgN2oN * N2O_N_TO_N2O * GWP_N2O;
+/** Stored with each emission entry; changes when the method or its factors change. */
+export const CO2E_FACTOR_SET = 'DE-BEK-agmeo-2026.10';
 
-/** Combustion per litre of diesel, and machine manufacture and maintenance per litre burnt. */
-export const DIESEL_KG_PER_L = 3.013;
-export const MACHINERY_KG_PER_L_DIESEL = 0.885;
+/** Sources of the simplified calculator (factor set DE-BEK-simplified-2026.1), still in old ledger rows. */
+const LEGACY_SOURCE: Record<string, BekSource> = {
+  diesel: 'pb6a',
+  machinery: 'pb7',
+  n2o_direct: 'pf4',
+  n2o_indirect: 'pf2',
+  fertilizer_supply: 'pb1a',
+  lime_urea_co2: 'pf8a',
+  plant_protection: 'pb5',
+  seed: 'pb4',
+};
 
-/** NH3-N lost per kg N of mineral fertilizers. */
-const NH3_MINERAL: Partial<Record<FertilizerType, number>> = { urea: 0.128, urea_inhibitor: 0.038, uan: 0.081, np: 0.041 };
-const NH3_MINERAL_DEFAULT = 0.01;
-/** Share of ammonium N lost as NH3 from liquid organic fertilizers by technique, not incorporated. */
-const NH3_LIQUID: Record<ApplicationTechnique, number> = { broadcast: 0.4, trailing_hose: 0.3, trailing_shoe: 0.2, injection: 0.05, other: 0.4 };
-const NH3_SOLID = 0.6;
-const LIQUID_ORGANIC: FertilizerType[] = ['cattle_slurry', 'pig_slurry', 'cattle_liquid_manure', 'pig_liquid_manure', 'digestate_liquid'];
-
-/** Upstream emissions of fertilizer production per kg nutrient. */
-const SUPPLY_N: Partial<Record<FertilizerType, number>> = { urea: 3.502, urea_inhibitor: 3.502, uan: 3.397 };
-const SUPPLY_N_DEFAULT = 3.52;
-const SUPPLY_P2O5 = 0.542;
-const SUPPLY_K2O = 0.416;
-const SUPPLY_CAO = 0.021;
-/** CO2 from lime (per kg CaO) and from urea hydrolysis (per kg urea N). */
-const LIME_CO2_PER_CAO = 0.786;
-const UREA_CO2_PER_N = 1.57;
-/** Share of urea N in UAN. */
-const UAN_UREA_SHARE = 0.5;
-/** Plant protection: kg active ingredient per kg (or l) product and kg CO2e per kg active ingredient. */
-const PESTICIDE_AI_SHARE = 0.35;
-const PESTICIDE_KG_PER_AI = 11.09;
-/** Seed production, kg CO2e per kg seed (generic; agmeo has per-crop values). */
-const SEED_KG_PER_KG = 0.5;
-
-/** The factors above, for display (read-only). Keys are stable; labels live in the frontend. */
-export function calculationParameters(): CalculationParameter[] {
-  const row = (group: CalculationParameter['group'], key: string, value: number, unit: string, variant?: string): CalculationParameter => ({ group, key, variant: variant ?? null, value, unit });
-  return [
-    row('general', 'gwp_n2o', GWP_N2O, 'kg CO₂e/kg N₂O'),
-    row('fuel', 'diesel_combustion', DIESEL_KG_PER_L, 'kg CO₂e/l'),
-    row('fuel', 'machinery', MACHINERY_KG_PER_L_DIESEL, 'kg CO₂e/l'),
-    row('nitrous_oxide', 'n2o_direct', EF_N2O_DIRECT, 'kg N₂O-N/kg N'),
-    row('nitrous_oxide', 'n2o_indirect', EF_N2O_INDIRECT, 'kg N₂O-N/kg NH₃-N'),
-    ...Object.entries(NH3_MINERAL).map(([type, v]) => row('ammonia', 'nh3_mineral', v!, 'kg NH₃-N/kg N', type)),
-    row('ammonia', 'nh3_mineral_default', NH3_MINERAL_DEFAULT, 'kg NH₃-N/kg N'),
-    ...Object.entries(NH3_LIQUID).map(([technique, v]) => row('ammonia', 'nh3_liquid', v, 'kg NH₃-N/kg NH₄-N', technique)),
-    row('ammonia', 'nh3_solid', NH3_SOLID, 'kg NH₃-N/kg NH₄-N'),
-    ...Object.entries(SUPPLY_N).map(([type, v]) => row('fertilizer_supply', 'supply_n', v!, 'kg CO₂e/kg N', type)),
-    row('fertilizer_supply', 'supply_n_default', SUPPLY_N_DEFAULT, 'kg CO₂e/kg N'),
-    row('fertilizer_supply', 'supply_p2o5', SUPPLY_P2O5, 'kg CO₂e/kg P₂O₅'),
-    row('fertilizer_supply', 'supply_k2o', SUPPLY_K2O, 'kg CO₂e/kg K₂O'),
-    row('fertilizer_supply', 'supply_cao', SUPPLY_CAO, 'kg CO₂e/kg CaO'),
-    row('fertilizer_supply', 'lime_co2', LIME_CO2_PER_CAO, 'kg CO₂/kg CaO'),
-    row('fertilizer_supply', 'urea_co2', UREA_CO2_PER_N, 'kg CO₂/kg N'),
-    row('fertilizer_supply', 'uan_urea_share', UAN_UREA_SHARE, '–'),
-    row('plant_protection', 'pesticide_ai_share', PESTICIDE_AI_SHARE, 'kg/kg'),
-    row('plant_protection', 'pesticide_per_ai', PESTICIDE_KG_PER_AI, 'kg CO₂e/kg'),
-    row('seed', 'seed_production', SEED_KG_PER_KG, 'kg CO₂e/kg'),
-  ];
+/** The BEK source of a ledger row's `source`, mapping rows written by the simplified calculator. */
+export function bekSource(source: string): BekSource | null {
+  if ((BEK_SOURCES as readonly string[]).includes(source))
+    return source as BekSource;
+  return LEGACY_SOURCE[source] ?? null;
 }
 
-export const EMISSION_SOURCES = [
-  'diesel',
-  'machinery',
-  'n2o_direct',
-  'n2o_indirect',
-  'fertilizer_supply',
-  'lime_urea_co2',
-  'plant_protection',
-  'seed',
+export function emissionCategory(source: string): EmissionCategory | null {
+  const s = bekSource(source);
+  return s ? BEK_SOURCE_CATEGORY[s] : null;
+}
+
+const CROP_FIELDS = [
+  'dryMatterContent',
+  'dryMatterContentByproduct',
+  'MPBR',
+  'rootProportion',
+  'nContentRoot',
+  'nByproductFm',
+  'p2o5ByproductFm',
+  'k2oByproductFm',
+  'restsHumusBuildingPotential',
+  'humusMain',
+  'supplySeed',
+  'thousandGrainWeight',
+  'piecesToKg',
 ] as const;
-export type EmissionSource = (typeof EMISSION_SOURCES)[number];
 
-export interface EmissionInput {
-  category: string;
-  baseUnit: BaseUnit;
-  /** Across all treated fields, in the base unit. */
-  totalQuantity: number;
-  product: NutrientContents & { fertilizerType: FertilizerType | null };
+function groupOf(id: string): CalculationParameterGroup | null {
+  if (id.startsWith('cf.') || id.startsWith('gwp.') || id === 'nPerCHumus')
+    return 'general';
+  if (
+    [
+      'ef.diesel',
+      'ef.biodiesel',
+      'ef.hvo100',
+      'ef.machineManufacture',
+    ].includes(id)
+  )
+    return 'fuel';
+  if (/Bafa2025$|^ef\.electricity/.test(id)) return 'scope2';
+  if (id === 'ef.supplyPesticides' || id.startsWith('pesticides.'))
+    return 'plant_protection';
+  if (
+    id.startsWith('ef.supply') ||
+    id === 'ef.otherMineralN' ||
+    id === 'ef.nPrevious'
+  )
+    return 'fertilizer_supply';
+  if (id.startsWith('ef.')) return 'field';
+  if (id.startsWith('orgFertParams.')) return 'organic_fertilizer';
+  return null;
 }
 
-/** kg CO2e per source of one operation, for the operation as a whole. */
-export function operationEmissions(op: { inputs: EmissionInput[]; dieselL: number; technique?: ApplicationTechnique | null; incorporationHours?: number | null }): Partial<Record<EmissionSource, number>> {
-  const out: Partial<Record<EmissionSource, number>> = {};
-  const add = (k: EmissionSource, v: number) => {
-    if (v) out[k] = (out[k] ?? 0) + v;
-  };
-  add('diesel', op.dieselL * DIESEL_KG_PER_L);
-  add('machinery', op.dieselL * MACHINERY_KG_PER_L_DIESEL);
-  for (const i of op.inputs) {
-    if (i.category === 'fuel' && (i.baseUnit === 'l' || i.baseUnit === 'm3')) continue; // counted as diesel
-    if (i.category === 'crop_protection') {
-      add('plant_protection', (i.baseUnit === 't' || i.baseUnit === 'm3' ? i.totalQuantity * 1000 : i.totalQuantity) * PESTICIDE_AI_SHARE * PESTICIDE_KG_PER_AI);
-      continue;
-    }
-    if (i.category === 'seed') {
-      if (i.baseUnit === 'kg' || i.baseUnit === 't') add('seed', (i.baseUnit === 't' ? i.totalQuantity * 1000 : i.totalQuantity) * SEED_KG_PER_KG);
-      continue;
-    }
-    if (i.category !== 'fertilizer') continue;
-    // Nutrients of the whole quantity: the per-hectare function with "1 ha".
-    const n = nutrientKgPerHa(i.product, i.totalQuantity, i.baseUnit);
-    const type = i.product.fertilizerType;
-    const organic = isOrganicFertilizer(type);
-    const totalN = n.n ?? 0;
-    add('n2o_direct', n2o(totalN * EF_N2O_DIRECT));
-    if (organic) {
-      const liquid = type != null && LIQUID_ORGANIC.includes(type);
-      let share = liquid ? NH3_LIQUID[op.technique ?? 'broadcast'] : NH3_SOLID;
-      // Quick incorporation on bare land roughly halves the losses.
-      if (op.incorporationHours != null && op.incorporationHours <= 4 && op.technique !== 'injection') share /= 2;
-      add('n2o_indirect', n2o((n.nh4N ?? totalN * 0.5) * share * EF_N2O_INDIRECT));
-    } else {
-      add('n2o_indirect', n2o(totalN * (type ? (NH3_MINERAL[type] ?? NH3_MINERAL_DEFAULT) : NH3_MINERAL_DEFAULT) * EF_N2O_INDIRECT));
-      add('fertilizer_supply', totalN * (type ? (SUPPLY_N[type] ?? SUPPLY_N_DEFAULT) : SUPPLY_N_DEFAULT) + (n.p2o5 ?? 0) * SUPPLY_P2O5 + (n.k2o ?? 0) * SUPPLY_K2O + Math.max(n.cao ?? 0, 0) * SUPPLY_CAO);
-      const ureaN = type === 'urea' || type === 'urea_inhibitor' ? totalN : type === 'uan' ? totalN * UAN_UREA_SHARE : 0;
-      add('lime_urea_co2', Math.max(n.cao ?? 0, 0) * LIME_CO2_PER_CAO + ureaN * UREA_CO2_PER_N);
+/** Every factor of the calculator with its value as used, unit and citation; crop values per crop. */
+export function calculationParameters(): CalculationParameter[] {
+  const out: CalculationParameter[] = [];
+  for (const [id, p] of Object.entries(parametersWithDetails)) {
+    const group = groupOf(id);
+    if (!group) continue;
+    const parts = id.split('.');
+    const variant =
+      group === 'organic_fertilizer'
+        ? `${parts[1]}.${parts[2]}`
+        : parts.length > 2
+          ? parts.slice(1, -1).join('.')
+          : null;
+    out.push({
+      id,
+      group,
+      key: parts[parts.length - 1],
+      variant,
+      value: p.Wert,
+      unit: p.Einheit,
+      name: p.Bezeichnung || null,
+      description: p.Beschreibung || null,
+      source: p.Kurzzitat || null,
+      citation: p.Langzitat || null,
+    });
+  }
+  // Constants the reference sets in the calculator itself.
+  out.push(
+    {
+      id: 'n2oNefAmmoniaDeposit',
+      group: 'field',
+      key: 'n2oNefAmmoniaDeposit',
+      variant: null,
+      value: 0.01,
+      unit: 'kg N2O-N · (kg NH3-N)-1',
+      name: 'EF N2O-N, NH3-Deposition',
+      description: null,
+      source: null,
+      citation: null,
+    },
+    {
+      id: 'nLastYearShare',
+      group: 'field',
+      key: 'nLastYearShare',
+      variant: null,
+      value: 0.1,
+      unit: '–',
+      name: 'N-Nachwirkung organische Düngung Vorjahr',
+      description: null,
+      source: null,
+      citation: null,
+    },
+  );
+  // Crop parameters as the calculator uses them (several crops borrow another crop's values).
+  for (const crop of Object.keys(PARAMS.crop) as SupportedCrops[]) {
+    if (cropsWithoutModelData.includes(crop)) continue;
+    const params = PARAMS.crop[crop] as unknown as Record<
+      string,
+      number | undefined
+    >;
+    for (const field of CROP_FIELDS) {
+      const value = params[field];
+      if (value == null) continue;
+      const cited = parametersWithDetails[`crop.${crop}.${field}`];
+      const same = cited && cited.Wert === value;
+      out.push({
+        id: `crop.${crop}.${field}`,
+        group: 'crop',
+        key: field,
+        variant: crop,
+        value,
+        unit: cited?.Einheit ?? '',
+        name: cited?.Bezeichnung || null,
+        description: cited?.Beschreibung || null,
+        source: same ? cited.Kurzzitat || null : null,
+        citation: same ? cited.Langzitat || null : null,
+      });
     }
   }
-  for (const k of Object.keys(out) as EmissionSource[]) out[k] = Math.round(out[k]! * 1000) / 1000;
   return out;
 }

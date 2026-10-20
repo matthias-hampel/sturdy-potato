@@ -1,7 +1,6 @@
 import type { Crop, KtblAction, KtblEstimate, OperationType } from '@agmeo/contracts'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LANGUAGE } from '#/i18n'
 import { fmt } from '#/lib/format'
 import { useOrgQuery } from '#/lib/queries'
 import { Button } from '#/ui/Button'
@@ -21,9 +20,8 @@ const DEFAULT_DISTANCE_KM = 5
 const DEFAULT_POWER_KW = 120
 const COST_KEYS = ['depreciation', 'interest', 'miscellaneous', 'repairs', 'materials', 'services'] as const
 
-const text = (x: { de: string; en: string }) => (LANGUAGE === 'en' ? x.en : x.de)
 /** Label of a KTBL action: the work and the machine variant. */
-export const ktblActionLabel = (a: KtblAction) => `${text(a.group)}: ${text(a.label)}`
+export const ktblActionLabel = (a: KtblAction) => `${a.group.de}: ${a.label.de}`
 
 /**
  * Takes diesel and hours per hectare of a KTBL action (work and machine variant) into the action
@@ -90,8 +88,8 @@ export function KtblLookup({
         menuTrigger="focus"
       >
         {(x) => (
-          <Option id={x.id} textValue={ktblActionLabel(x.action)} description={text(x.action.group)}>
-            {text(x.action.label)}
+          <Option id={x.id} textValue={ktblActionLabel(x.action)} description={x.action.group.de}>
+            {x.action.label.de}
           </Option>
         )}
       </ComboBox>

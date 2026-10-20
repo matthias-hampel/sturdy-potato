@@ -2,7 +2,7 @@ import type { Field } from '@agmeo/contracts'
 import bbox from '@turf/bbox'
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson'
 import { Layers, Map as MapIcon } from 'lucide-react'
-import type { GeoJSONSource, LngLatBoundsLike, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl'
+import type { GeoJSONSource, ImageSource, LngLatBoundsLike, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl'
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fmt } from '#/lib/format'
@@ -17,6 +17,16 @@ const SOURCE = `${OWN}fields`
 const HIGHLIGHT = `${OWN}highlight`
 const RASTER = `${OWN}raster`
 const OVERLAY = `${OWN}overlay`
+const IMAGE = `${OWN}image`
+const NOTES = `${OWN}notes`
+const NOTE_LAYERS = [`${NOTES}-fill`, `${NOTES}-line`, `${NOTES}-point`]
+
+/** A georeferenced image over the map, e.g. a radar frame; corners as [west, south, east, north]. */
+export interface MapImageOverlay {
+  url: string
+  bounds: [number, number, number, number]
+  opacity?: number
+}
 
 export interface FieldMapProps {
   fields: Field[]
@@ -41,8 +51,17 @@ export interface FieldMapProps {
   /** Polygons drawn below the field outlines, coloured by their `color` property (e.g. zones). */
   overlay?: FeatureCollection | null
   overlayOpacity?: number
+  /** Image drawn above the field fills and below their outlines, swapped in place when its URL changes (animation). */
+  image?: MapImageOverlay | null
   /** An overlay (e.g. a popup child) the selected field is centred clear of. */
   occludedBy?: RefObject<HTMLElement | null>
+  /** Receives the MapLibre map once it is ready (and null when it goes away), e.g. for an image export. */
+  onMap?: (map: MapLibreMap | null) => void
+  /** Notes drawn on the map (points, lines, polygons), coloured by their `color` and labelled with their `note`. */
+  annotations?: FeatureCollection | null
+  onAnnotationClick?: (id: string) => void
+  /** Geometry the camera moves to whenever a new one is passed, e.g. a row picked in a list. */
+  focus?: Geometry | FeatureCollection | null
 }
 
 export function FieldMap({
@@ -62,7 +81,12 @@ export function FieldMap({
   raster,
   overlay,
   overlayOpacity = 0.85,
+  image,
   occludedBy,
+  onMap,
+  annotations,
+  onAnnotationClick,
+  focus,
 }: FieldMapProps) {
   const { t } = useTranslation()
   const [basemap, setBasemap] = useState<Basemap>(defaultBasemap)
@@ -74,6 +98,14 @@ export function FieldMap({
   const { containerRef, map, styleVersion } = useMap({ basemap, interactive, ...initial })
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
+  const onAnnotationClickRef = useRef(onAnnotationClick)
+  onAnnotationClickRef.current = onAnnotationClick
+  const onMapRef = useRef(onMap)
+  onMapRef.current = onMap
+  useEffect(() => {
+    onMapRef.current?.(map)
+    return () => onMapRef.current?.(null)
+  }, [map])
 
   const data = useMemo<FeatureCollection>(
     () => ({
@@ -137,6 +169,90 @@ export function FieldMap({
     map.setPaintProperty(`${OVERLAY}-fill`, 'fill-opacity', overlayOpacity)
   }, [map, overlay, overlayOpacity, styleVersion, data])
 
+  // Image overlay: the source is created once per style and its image replaced as the URL changes,
+  // so an animation swaps frames without rebuilding the layer.
+  const imageUrl = image?.url
+  const imageBounds = image?.bounds.join(',')
+  useEffect(() => {
+    if (!map || !map.getLayer(`${OWN}fields-outline`)) return
+    if (!image) {
+      if (map.getLayer(IMAGE)) map.removeLayer(IMAGE)
+      if (map.getSource(IMAGE)) map.removeSource(IMAGE)
+      return
+    }
+    const [w, s, e, n] = image.bounds
+    const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [[w, n], [e, n], [e, s], [w, s]]
+    const source = map.getSource(IMAGE) as ImageSource | undefined
+    if (source) source.updateImage({ url: image.url, coordinates })
+    else {
+      map.addSource(IMAGE, { type: 'image', url: image.url, coordinates })
+      map.addLayer({ id: IMAGE, type: 'raster', source: IMAGE, paint: { 'raster-opacity': image.opacity ?? 0.85, 'raster-fade-duration': 0 } }, `${OWN}fields-outline`)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, imageUrl, imageBounds, styleVersion])
+
+  useEffect(() => {
+    if (map?.getLayer(IMAGE) && image) map.setPaintProperty(IMAGE, 'raster-opacity', image.opacity ?? 0.85)
+  }, [map, image?.opacity])
+
+  // Annotations: drawn above everything else, data updated in place, layers created once per style.
+  useEffect(() => {
+    if (!map || !map.getLayer(`${OWN}fields-outline`)) return
+    const empty: FeatureCollection = { type: 'FeatureCollection', features: [] }
+    if (!annotations && !map.getSource(NOTES)) return
+    if (!map.getSource(NOTES)) {
+      map.addSource(NOTES, { type: 'geojson', data: empty })
+      const polygon: ['==', ['geometry-type'], string] = ['==', ['geometry-type'], 'Polygon']
+      map.addLayer({ id: `${NOTES}-fill`, type: 'fill', source: NOTES, filter: polygon, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.25 } })
+      map.addLayer({
+        id: `${NOTES}-line`,
+        type: 'line',
+        source: NOTES,
+        filter: ['!=', ['geometry-type'], 'Point'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': ['case', polygon, 2, 3] },
+      })
+      map.addLayer({
+        id: `${NOTES}-point`,
+        type: 'circle',
+        source: NOTES,
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: { 'circle-radius': 7, 'circle-color': ['get', 'color'], 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+      })
+      map.addLayer({
+        id: `${NOTES}-label`,
+        type: 'symbol',
+        source: NOTES,
+        filter: ['has', 'note'],
+        layout: { 'text-field': ['get', 'note'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-max-width': 15, 'text-offset': [0, 1.3], 'text-anchor': 'top' },
+        paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.7)', 'text-halo-width': 1.2 },
+      })
+    }
+    ;(map.getSource(NOTES) as GeoJSONSource).setData(annotations ?? empty)
+  }, [map, annotations, styleVersion, data])
+
+  useEffect(() => {
+    if (!map) return
+    const click = (e: MapLayerMouseEvent) => {
+      const id = e.features?.[0]?.properties?.id as string | undefined
+      if (id) onAnnotationClickRef.current?.(id)
+    }
+    const enter = () => (map.getCanvas().style.cursor = onAnnotationClickRef.current ? 'pointer' : '')
+    const leave = () => (map.getCanvas().style.cursor = '')
+    for (const layer of NOTE_LAYERS) {
+      map.on('click', layer, click)
+      map.on('mouseenter', layer, enter)
+      map.on('mouseleave', layer, leave)
+    }
+    return () => {
+      for (const layer of NOTE_LAYERS) {
+        map.off('click', layer, click)
+        map.off('mouseenter', layer, enter)
+        map.off('mouseleave', layer, leave)
+      }
+    }
+  }, [map])
+
   useEffect(() => {
     if (!map) return
     const source = map.getSource(HIGHLIGHT) as GeoJSONSource | undefined
@@ -176,6 +292,13 @@ export function FieldMap({
     const offset: [number, number] = [(padding.left - padding.right) / 2, (padding.top - padding.bottom) / 2]
     map.easeTo({ center: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2], zoom, offset, duration: 500 })
   }, [map, selectedId, fields, occludedBy])
+
+  useEffect(() => {
+    const b = map && focus ? boundsOf([], focus) : undefined
+    if (!map || !b) return
+    const camera = map.cameraForBounds(b as LngLatBoundsLike, { padding: 48, maxZoom: 16.5 })
+    if (camera) map.easeTo({ center: camera.center, zoom: camera.zoom, duration: 500 })
+  }, [map, focus])
 
   // Fit to fields when the set of fields changes; the fallback view only applies without any. A selected
   // field that is still shown keeps the camera (e.g. while another index or layer loads).

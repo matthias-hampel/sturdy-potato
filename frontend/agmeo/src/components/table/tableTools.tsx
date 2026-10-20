@@ -17,6 +17,9 @@ export interface ColumnDef<R> {
   id: string
   label: string
   align?: 'end'
+  /** The column that names a row; a DataTable takes the first one when none is marked. */
+  isRowHeader?: boolean
+  className?: string
   /** Sort key; empty values sort last in both directions. Number and date filters compare against it. */
   value: (r: R) => string | number | null | undefined
   /** What the text search matches against, as shown in the cell; defaults to the value. */
@@ -83,8 +86,14 @@ export function useTableView<R>(columns: ColumnDef<R>[], rows: R[]) {
   return useMemo(() => {
     const active = columns.flatMap((c) => (isActive(filters[c.id]) ? [{ c, f: filters[c.id] }] : []))
     const column = sort && columns.find((c) => c.id === sort.column)
+    const compare = column ? compareBy(column, sort.direction) : null
+    const shown = rows.filter((r) => active.every(({ c, f }) => matches(c, f, r)))
+    if (compare) shown.sort(compare)
     const choices = (c: ColumnDef<R>) => [...new Set(rows.flatMap((r) => optionsOf(c, r)))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
     return {
+      columns,
+      /** The rows that pass the filters, in sort order. */
+      shown,
       sort,
       setSort,
       filters,
@@ -92,12 +101,14 @@ export function useTableView<R>(columns: ColumnDef<R>[], rows: R[]) {
       clearFilters: () => setFilters({}),
       filtered: active.length > 0,
       matches: (r: R) => active.every(({ c, f }) => matches(c, f, r)),
-      compare: column ? compareBy(column, sort.direction) : null,
+      compare,
       /** Header content of a column: its label and the filter button. */
       head: (c: ColumnDef<R>) => <ColumnHead label={c.label} kind={c.filter ?? 'text'} choices={c.filter === 'select' ? () => choices(c) : undefined} value={filters[c.id]} onChange={(v) => setFilters((f) => ({ ...f, [c.id]: v }) as Record<string, FilterValue>)} />,
     }
   }, [columns, rows, sort, filters])
 }
+
+export type TableView<R> = ReturnType<typeof useTableView<R>>
 
 function ColumnHead({ label, kind, choices, value, onChange }: { label: string; kind: FilterKind; choices?: () => string[]; value: FilterValue | undefined; onChange: (v: FilterValue | undefined) => void }) {
   const { t } = useTranslation()

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Folders the app writes into; the user can rename, move or delete them like any folder. */
-export const SYSTEM_FOLDERS = ['imports', 'exports', 'applicationMaps', 'reports', 'soilImports', 'soilExports'] as const;
+export const SYSTEM_FOLDERS = ['imports', 'exports', 'applicationMaps', 'reports', 'soilImports', 'soilExports', 'yieldMaps', 'fieldDocuments'] as const;
 export type SystemFolder = (typeof SYSTEM_FOLDERS)[number];
 
 export interface FileItem {
@@ -94,4 +94,16 @@ export function fileKind(name: string): 'geo' | 'table' | 'image' | 'pdf' | 'zip
   if (ext === 'pdf') return 'pdf';
   if (ext === 'zip') return 'zip';
   return 'other';
+}
+
+export const LinkDocumentsInput = z.object({
+  fileIds: z.array(z.uuid()).min(1).max(100),
+  harvestYear: z.number().int().min(1900).max(2200).nullish(),
+});
+export type LinkDocumentsInput = z.input<typeof LinkDocumentsInput>;
+
+/** A file attached to a field, optionally for one harvest year. */
+export interface FieldDocument extends FileItem {
+  harvestYear: number | null;
+  linkedAt: string;
 }

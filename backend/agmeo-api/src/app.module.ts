@@ -4,10 +4,24 @@ import { AuthGuard, OrgGuard } from './auth/auth.guards.js';
 import { TokenService } from './auth/token.service.js';
 import { ApiExceptionFilter } from './core/errors.js';
 import { DatabaseModule } from './db/database.js';
+import { CadastralController } from './modules/cadastral/cadastral.controller.js';
+import { CadastralService } from './modules/cadastral/cadastral.service.js';
+import { CadastralClient, WfsHttp } from './modules/cadastral/wfs/client.js';
+import { CarbonController } from './modules/carbon/carbon.controller.js';
+import { CarbonService } from './modules/carbon/carbon.service.js';
+import { CarbonReportService } from './modules/carbon/report.service.js';
+import { MapLayersController } from './modules/map-layers/map-layers.controller.js';
+import { MapLayersService } from './modules/map-layers/map-layers.service.js';
+import { VarietiesController } from './modules/varieties/varieties.controller.js';
+import { VarietiesService } from './modules/varieties/varieties.service.js';
+import { VoiceController } from './modules/voice/voice.controller.js';
+import { VoiceService } from './modules/voice/voice.service.js';
 import { ComplianceController } from './modules/compliance/compliance.controller.js';
 import { ComplianceService } from './modules/compliance/compliance.service.js';
 import { CropsController } from './modules/crops/crops.controller.js';
 import { CropsService } from './modules/crops/crops.service.js';
+import { CropTableController } from './modules/crops/crop-table.controller.js';
+import { CropTableService } from './modules/crops/crop-table.service.js';
 import { DashboardController } from './modules/dashboard/dashboard.controller.js';
 import { DashboardService } from './modules/dashboard/dashboard.service.js';
 import { EconomicsController } from './modules/economics/economics.controller.js';
@@ -26,6 +40,8 @@ import { FieldPartsService } from './modules/fields/field-parts.service.js';
 import { FieldsService } from './modules/fields/fields.service.js';
 import { IdentityController } from './modules/identity/identity.controller.js';
 import { IdentityService } from './modules/identity/identity.service.js';
+import { OrgSettingsController } from './modules/identity/org-settings.controller.js';
+import { OrgSettingsService } from './modules/identity/org-settings.service.js';
 import { InventoryController } from './modules/inventory/inventory.controller.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
 import { KtblController } from './modules/ktbl/ktbl.controller.js';
@@ -39,9 +55,15 @@ import { PlanningService } from './modules/planning/planning.service.js';
 import { ProtectionController } from './modules/protection/protection.controller.js';
 import { ProtectionService } from './modules/protection/protection.service.js';
 import { PsmRecordController } from './modules/protection/record/psm-record.controller.js';
+import { RadarController } from './modules/radar/radar.controller.js';
+import { RadarService } from './modules/radar/radar.service.js';
 import { PsmRecordService } from './modules/protection/record/psm-record.service.js';
 import { NutrientsController } from './modules/nutrients/nutrients.controller.js';
 import { NutrientsService } from './modules/nutrients/nutrients.service.js';
+import { NitrogenController } from './modules/nutrients/nitrogen.controller.js';
+import { NitrogenService } from './modules/nutrients/nitrogen.service.js';
+import { BaseFertilizationController } from './modules/nutrients/base-fertilization.controller.js';
+import { BaseFertilizationService } from './modules/nutrients/base-fertilization.service.js';
 import { ExplainerService } from './modules/recommendations/explainer.service.js';
 import { RecommendationsController } from './modules/recommendations/recommendations.controller.js';
 import { RecommendationsService } from './modules/recommendations/recommendations.service.js';
@@ -57,24 +79,51 @@ import { BoardService } from './modules/operations/board.service.js';
 import { CommentsController } from './modules/comments/comments.controller.js';
 import { CommentsService } from './modules/comments/comments.service.js';
 import { OperationsService } from './modules/operations/operations.service.js';
+import { SoilController } from './modules/soil/soil.controller.js';
+import { SoilExportService } from './modules/soil/export.service.js';
+import { SoilHistoryService } from './modules/soil/history.service.js';
+import { SoilLabService } from './modules/soil/lab.service.js';
+import { SoilSharePublicController } from './modules/soil/share.controller.js';
+import { SoilShareService } from './modules/soil/share.service.js';
+import { SoilZonationService } from './modules/soil/zonation.service.js';
 import { VraController } from './modules/vra/vra.controller.js';
+import { VraBasesController } from './modules/vra/vra-bases.controller.js';
+import { VraOrgController } from './modules/vra/vra-org.controller.js';
+import { VraBasesService } from './modules/vra/bases.service.js';
 import { VraService } from './modules/vra/vra.service.js';
 import { TasksController } from './modules/tasks/tasks.controller.js';
 import { TasksService } from './modules/tasks/tasks.service.js';
 import { TeamController } from './modules/team/team.controller.js';
 import { TeamService } from './modules/team/team.service.js';
 import { WeatherController } from './modules/weather/weather.controller.js';
+import { CropModelsController } from './modules/weather/crop-models.controller.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { FieldConditionsService } from './modules/weather/field-conditions.service.js';
+import { CropModelsService } from './modules/weather/crop-models.service.js';
+import { MaizeDmcClient } from './modules/maize-dmc/client.js';
+import { MaizeDmcController } from './modules/maize-dmc/maize-dmc.controller.js';
+import { MaizeDmcService } from './modules/maize-dmc/maize-dmc.service.js';
+import { NewsController } from './modules/news/news.controller.js';
+import { ModelServicesController } from './modules/model-services/model-services.controller.js';
+import { ModelServicesService } from './modules/model-services/model-services.service.js';
+import { NewsService } from './modules/news/news.service.js';
+import { FieldDocumentsController } from './modules/documents/field-documents.controller.js';
+import { FieldDocumentsService } from './modules/documents/field-documents.service.js';
+import { AnnotationsController } from './modules/annotations/annotations.controller.js';
+import { AnnotationsService } from './modules/annotations/annotations.service.js';
+import { YieldController } from './modules/yield/yield.controller.js';
+import { YieldService } from './modules/yield/yield.service.js';
 
 export const DOMAIN_SERVICES = [
   IdentityService,
+  OrgSettingsService,
   FarmsService,
   FieldsService,
   FieldPartsService,
   FieldManagementService,
   FieldGroupsService,
   CropsService,
+  CropTableService,
   InventoryService,
   TeamService,
   KtblService,
@@ -84,23 +133,45 @@ export const DOMAIN_SERVICES = [
   ProtectionService,
   PsmRecordService,
   NutrientsService,
+  NitrogenService,
+  BaseFertilizationService,
   RegulatoryService,
   EconomicsService,
   ProfitabilityService,
   ComplianceService,
   WeatherService,
   FieldConditionsService,
+  CropModelsService,
+  NewsService,
   MonitoringService,
   ProductivityService,
   VraService,
-  ExplainerService,
-  RecommendationsService,
+  VraBasesService,
+  SoilZonationService,
+  SoilExportService,
+  SoilLabService,
+  SoilHistoryService,
+  SoilShareService,
   DashboardService,
-  SearchService,
   FilesService,
   BoardService,
   CommentsService,
+  RadarService,
+  CarbonService,
+  CarbonReportService,
+  VoiceService,
+  VarietiesService,
+  MapLayersService,
+  YieldService,
+  AnnotationsService,
+  FieldDocumentsService,
+  MaizeDmcService,
+  ModelServicesService,
+  ExplainerService,
+  RecommendationsService,
+  SearchService,
   GeocodingService,
+  CadastralService,
 ];
 
 /**
@@ -111,6 +182,7 @@ export const DOMAIN_SERVICES = [
   imports: [DatabaseModule],
   controllers: [
     IdentityController,
+    OrgSettingsController,
     FarmsController,
     FieldsController,
     FieldPartsController,
@@ -125,25 +197,48 @@ export const DOMAIN_SERVICES = [
     ProtectionController,
     PsmRecordController,
     NutrientsController,
+    NitrogenController,
+    BaseFertilizationController,
     RegulatoryController,
     EconomicsController,
     EconomicsInsightsController,
+    NewsController,
     ComplianceController,
     WeatherController,
+    CropModelsController,
+    CropTableController,
     MonitoringController,
     ProductivityController,
     VraController,
-    RecommendationsController,
+    VraBasesController,
+    VraOrgController,
+    SoilController,
+    SoilSharePublicController,
     DashboardController,
-    SearchController,
     FilesController,
     BoardController,
     CommentsController,
+    RadarController,
+    CarbonController,
+    VoiceController,
+    VarietiesController,
+    MapLayersController,
+    YieldController,
+    AnnotationsController,
+    FieldDocumentsController,
+    MaizeDmcController,
+    ModelServicesController,
+    RecommendationsController,
+    SearchController,
     GeocodingController,
+    CadastralController,
   ],
   providers: [
     TokenService,
     ObjectStorage,
+    MaizeDmcClient,
+    WfsHttp,
+    CadastralClient,
     ...DOMAIN_SERVICES,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: OrgGuard },

@@ -1,4 +1,4 @@
-import { CALCULATION_PARAMETER_GROUPS, PRODUCT_CATEGORIES, type CalculationParameters, type ProductPriceInput, type ProductPriceRow } from '@agmeo/contracts'
+import { CALCULATION_PARAMETER_GROUPS, PRODUCT_CATEGORIES, type CalculationParameter, type CalculationParameters, type ProductPriceInput, type ProductPriceRow } from '@agmeo/contracts'
 import { createFileRoute } from '@tanstack/react-router'
 import { Coins } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -13,6 +13,7 @@ import { Button } from '#/ui/Button'
 import { NumberField, Option, SearchField, Select } from '#/ui/Field'
 import { Badge, Card, EmptyState, ErrorNotice, Loading, PageHeader, Tab, TabList, TabPanel, Tabs } from '#/ui/Layout'
 import { Cell, Column, Row, Table, TableBody, TableHeader } from '#/ui/Table'
+import { cx } from '#/ui/utils'
 
 export const Route = createFileRoute('/o/$orgId/prices')({ component: PricesPage })
 
@@ -172,17 +173,28 @@ function effectivePrice(r: ProductPriceRow): { price: number; label: string; ton
   return null
 }
 
+const CROP_FIELDS = ['dryMatterContent', 'dryMatterContentByproduct', 'MPBR', 'rootProportion', 'nContentRoot', 'nByproductFm', 'p2o5ByproductFm', 'k2oByproductFm', 'restsHumusBuildingPotential', 'humusMain', 'supplySeed', 'thousandGrainWeight', 'piecesToKg'] as const
+
+/** The factors of the BEK calculator with their sources (agmeo method/parametersSources.ts). */
 function ParametersTab() {
   const { t } = useTranslation()
   const params = useOrgQuery<CalculationParameters>('/calculation-parameters', undefined, { staleTime: Infinity })
   if (params.isLoading) return <Loading />
   if (params.error) return <ErrorNotice error={params.error} />
   const all = params.data?.parameters ?? []
+  const label = (p: CalculationParameter) => {
+    if (p.group === 'organic_fertilizer' && p.variant) {
+      const [category, time] = p.variant.split('.')
+      return `${t(`calcParam.organic.${category}`, { defaultValue: category })} · ${t(`calcParam.incorporation.${time}`, { defaultValue: time })}`
+    }
+    return t(`calcParam.${p.id}`, { defaultValue: p.description ?? p.name ?? p.id })
+  }
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">{t('prices.parameters.intro', { set: params.data?.factorSet })}</p>
       {CALCULATION_PARAMETER_GROUPS.map((g) => {
-        const items = all.filter((p) => p.group === g).map((p) => ({ ...p, id: `${p.key}:${p.variant ?? ''}` }))
+        if (g === 'crop') return <CropParameters key={g} params={all.filter((p) => p.group === 'crop')} />
+        const items = all.filter((p) => p.group === g)
         if (!items.length) return null
         return (
           <Card key={g} padded={false}>
@@ -192,18 +204,29 @@ function ParametersTab() {
                 <Column isRowHeader>{t('prices.parameters.parameter')}</Column>
                 <Column align="end">{t('prices.parameters.value')}</Column>
                 <Column>{t('prices.parameters.unit')}</Column>
+                <Column>{t('prices.parameters.source')}</Column>
               </TableHeader>
               <TableBody items={items}>
                 {(p) => (
                   <Row id={p.id}>
                     <Cell>
-                      {t(`prices.parameters.key.${p.key}`)}
-                      {p.variant && <span className="text-muted"> · {t(`prices.parameters.variant.${p.variant}`, { defaultValue: p.variant })}</span>}
+                      <div>{label(p)}</div>
+                      <div className="text-xs text-muted">
+                        {p.name && p.name !== label(p) ? `${p.name} · ` : ''}
+                        <code>{p.id}</code>
+                      </div>
                     </Cell>
                     <Cell align="end" className="tabular">
                       {fmt.num(p.value, 5)}
                     </Cell>
                     <Cell className="text-muted whitespace-nowrap">{p.unit}</Cell>
+                    <Cell className="text-xs text-fg-2 max-w-80">
+                      {p.source ? (
+                        <span title={p.citation ?? undefined}>{p.source}</span>
+                      ) : (
+                        <span className="text-muted">{t('prices.parameters.methodValue')}</span>
+                      )}
+                    </Cell>
                   </Row>
                 )}
               </TableBody>
@@ -212,5 +235,48 @@ function ParametersTab() {
         )
       })}
     </div>
+  )
+}
+
+/** Crop parameters as a matrix: crops × parameters, with the source of each value on hover. */
+function CropParameters({ params }: { params: CalculationParameter[] }) {
+  const { t } = useTranslation()
+  const crops = [...new Set(params.map((p) => p.variant!))].sort((a, b) => t(`calcParam.crop.${a}`, { defaultValue: a }).localeCompare(t(`calcParam.crop.${b}`, { defaultValue: b })))
+  const byKey = new Map(params.map((p) => [`${p.variant}.${p.key}`, p]))
+  const fields = CROP_FIELDS.filter((f) => params.some((p) => p.key === f))
+  return (
+    <Card padded={false}>
+      <h2 className="px-4 pt-3 pb-1 text-sm font-semibold">{t('prices.parameters.group.crop')}</h2>
+      <p className="px-4 pb-2 text-xs text-muted">{t('prices.parameters.cropHint')}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-separate border-spacing-0">
+          <thead>
+            <tr>
+              <th className="sticky left-0 bg-surface px-3 py-2 text-left text-xs font-semibold text-muted border-b border-line">{t('prices.parameters.crop')}</th>
+              {fields.map((f) => (
+                <th key={f} className="px-3 py-2 text-right text-xs font-semibold text-muted border-b border-line whitespace-nowrap" title={byKey.get(`${crops[0]}.${f}`)?.unit}>
+                  {t(`calcParam.cropField.${f}`)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {crops.map((c) => (
+              <tr key={c}>
+                <td className="sticky left-0 bg-surface px-3 py-1.5 border-b border-line/60 whitespace-nowrap">{t(`calcParam.crop.${c}`, { defaultValue: c })}</td>
+                {fields.map((f) => {
+                  const p = byKey.get(`${c}.${f}`)
+                  return (
+                    <td key={f} className={cx('px-3 py-1.5 border-b border-line/60 text-right tabular', !p?.source && 'text-fg-2')} title={p ? [p.unit, p.source ?? t('prices.parameters.methodValue')].filter(Boolean).join(' · ') : undefined}>
+                      {p ? fmt.num(p.value, 4) : '—'}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   )
 }
