@@ -168,7 +168,7 @@ function ManageFields() {
                           onChange={(e) => setEdit(f, { tenure: e.target.value as Tenure })}
                           className={cx('h-8 rounded-md border bg-transparent px-1.5 outline-none focus:border-primary', edits[f.id]?.tenure !== undefined ? 'border-warning bg-warning-soft/40' : 'border-transparent hover:border-line')}
                         >
-                          {TENURES.map((x) => <option key={x} value={x}>{t(`enum.tenure.${x}`)}</option>)}
+                          {TENURES.map((x) => <option key={x} value={x}>{t(`fields.tenure.${x}`)}</option>)}
                         </select>
                       </td>
                       <td className="px-3 py-1.5">
