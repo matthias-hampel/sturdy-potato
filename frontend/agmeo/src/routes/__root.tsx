@@ -2,7 +2,7 @@ import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext, useRouter } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
 import { I18nProvider, RouterProvider } from 'react-aria-components'
-import { LANGUAGE, LOCALE } from '#/i18n'
+import { LOCALE } from '#/i18n'
 import { SessionWatcher } from '#/lib/auth'
 import { Toaster } from '#/ui/Toast'
 import appCss from '../styles.css?url'
@@ -37,8 +37,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    // The client sets the language before hydrating (it can differ from the server shell).
-    <html lang={LANGUAGE} suppressHydrationWarning>
+    <html lang="de">
       <head>
         <HeadContent />
       </head>

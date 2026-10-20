@@ -9,53 +9,27 @@ import type { MultiPolygon, Position } from 'geojson';
 import type { PdfImage } from '../../../core/images.js';
 import { hexToRgb, PdfDoc, type Rgb } from './pdf.js';
 
-export type Locale = 'de' | 'en';
-
 const L = {
-  de: {
-    zonationTitle: 'Zonierungskarte',
-    resultsTitle: 'Bodenuntersuchung – Ergebnisse',
-    overview: 'Betriebsübersicht',
-    contents: 'Inhalt',
-    field: 'Schlag',
-    area: 'Fläche',
-    probes: 'Proben',
-    probe: 'Probe',
-    zone: 'Zone',
-    page: 'Seite',
-    sum: 'Summe',
-    fields: 'Schläge',
-    zonedHeader: 'Felder mit Zonierung',
-    noZonationHeader: 'Felder ohne Zonierung',
-    noZonationHint: 'Für diese Felder liegt noch keine Zonierung vor.',
-    zones: (n: number) => (n === 1 ? '1 Zone' : `${n} Zonen`),
-    soilType: 'Bodenart',
-    sampledOn: 'Probenahme',
-    classes: 'Gehaltsklassen nach VDLUFA (A sehr niedrig … E sehr hoch)',
-    point: 'Probepunkt',
-  },
-  en: {
-    zonationTitle: 'Zonation map',
-    resultsTitle: 'Soil analysis – results',
-    overview: 'Farm overview',
-    contents: 'Contents',
-    field: 'Field',
-    area: 'Area',
-    probes: 'Samples',
-    probe: 'Sample',
-    zone: 'Zone',
-    page: 'Page',
-    sum: 'Total',
-    fields: 'fields',
-    zonedHeader: 'Fields with zonation',
-    noZonationHeader: 'Fields without zonation',
-    noZonationHint: 'These fields have no zonation yet.',
-    zones: (n: number) => (n === 1 ? '1 zone' : `${n} zones`),
-    soilType: 'Soil type',
-    sampledOn: 'Sampled',
-    classes: 'VDLUFA content classes (A very low … E very high)',
-    point: 'Sampling point',
-  },
+  zonationTitle: 'Zonierungskarte',
+  resultsTitle: 'Bodenuntersuchung – Ergebnisse',
+  overview: 'Betriebsübersicht',
+  contents: 'Inhalt',
+  field: 'Schlag',
+  area: 'Fläche',
+  probes: 'Proben',
+  probe: 'Probe',
+  zone: 'Zone',
+  page: 'Seite',
+  sum: 'Summe',
+  fields: 'Schläge',
+  zonedHeader: 'Felder mit Zonierung',
+  noZonationHeader: 'Felder ohne Zonierung',
+  noZonationHint: 'Für diese Felder liegt noch keine Zonierung vor.',
+  zones: (n: number) => (n === 1 ? '1 Zone' : `${n} Zonen`),
+  soilType: 'Bodenart',
+  sampledOn: 'Probenahme',
+  classes: 'Gehaltsklassen nach VDLUFA (A sehr niedrig … E sehr hoch)',
+  point: 'Probepunkt',
 } as const;
 
 export interface SheetZone {
@@ -84,10 +58,10 @@ const GRAY: Rgb = [0.45, 0.47, 0.42];
 const LINE: Rgb = [0.85, 0.84, 0.8];
 const STAGE: Record<string, Rgb> = { A: hexToRgb('#dc2626'), B: hexToRgb('#f97316'), C: hexToRgb('#22c55e'), D: hexToRgb('#3b82f6'), E: hexToRgb('#8b5cf6') };
 
-const num = (locale: Locale, v: number, digits: number) =>
-  new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-GB', { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(v);
-const ha = (locale: Locale, v: number) => `${num(locale, v, 2)} ha`;
-const day = (locale: Locale, iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const num = (v: number, digits: number) =>
+  new Intl.NumberFormat('de-DE', { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(v);
+const ha = (v: number) => `${num(v, 2)} ha`;
+const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 function header(pdf: PdfDoc, title: string, subtitle: string, date: string) {
   pdf.text('agmeo', MARGIN, MARGIN + 10, { size: 14, bold: true, color: [0.24, 0.42, 0.18] });
@@ -99,8 +73,8 @@ function header(pdf: PdfDoc, title: string, subtitle: string, date: string) {
   pdf.line(MARGIN, MARGIN + 30, pdf.width - MARGIN, MARGIN + 30, LINE, 0.8);
 }
 
-function footer(pdf: PdfDoc, locale: Locale, page: number) {
-  pdf.text(`${L[locale].page} ${page}`, pdf.width - MARGIN, pdf.height - MARGIN / 2, { size: 8, color: GRAY, align: 'right' });
+function footer(pdf: PdfDoc, page: number) {
+  pdf.text(`${L.page} ${page}`, pdf.width - MARGIN, pdf.height - MARGIN / 2, { size: 8, color: GRAY, align: 'right' });
 }
 
 /** Map projection fitting lon/lat geometries into a box (equirectangular, scaled by latitude). */
@@ -181,10 +155,10 @@ function zoneTable(pdf: PdfDoc, zones: SheetZone[], x: number, y: number, column
   return ry;
 }
 
-function overviewPage(pdf: PdfDoc, locale: Locale, title: string, orgName: string, date: string, fields: SheetField[], others: SheetField[], firstPage: number) {
-  const l = L[locale];
+function overviewPage(pdf: PdfDoc, title: string, orgName: string, date: string, fields: SheetField[], others: SheetField[], firstPage: number) {
+  const l = L;
   const totalHa = [...fields, ...others].reduce((s, f) => s + f.areaHa, 0);
-  header(pdf, title, `${orgName} · ${fields.length + others.length} ${l.fields} · ${ha(locale, totalHa)}`, date);
+  header(pdf, title, `${orgName} · ${fields.length + others.length} ${l.fields} · ${ha(totalHa)}`, date);
   const box = { x: MARGIN, y: MARGIN + 44, w: (pdf.width - 2 * MARGIN) * 0.55, h: pdf.height - 2 * MARGIN - 64 };
   pdf.text(l.overview, box.x, box.y - 4, { size: 9, bold: true, color: NAVY });
   pdf.rect(box.x, box.y, box.w, box.h, { stroke: LINE, fill: [0.97, 0.97, 0.95] });
@@ -203,7 +177,7 @@ function overviewPage(pdf: PdfDoc, locale: Locale, title: string, orgName: strin
   const row = (name: string, areaHa: number, probes: string, page: string, bold = false) => {
     pdf.text(pdf.fit(name, tw - 120, 8, bold), tx, y, { size: 8, bold });
     pdf.text(probes, tx + tw - 80, y, { size: 8, align: 'right', bold });
-    pdf.text(ha(locale, areaHa), tx + tw - 26, y, { size: 8, align: 'right', bold });
+    pdf.text(ha(areaHa), tx + tw - 26, y, { size: 8, align: 'right', bold });
     pdf.text(page, tx + tw, y, { size: 8, align: 'right', bold });
     y += 12;
   };
@@ -222,18 +196,18 @@ function overviewPage(pdf: PdfDoc, locale: Locale, title: string, orgName: strin
   y += 4;
   pdf.line(tx, y - 8, tx + tw, y - 8, LINE, 0.6);
   row(`${l.sum} · ${all.length} ${l.fields}`, totalHa, String(fields.reduce((s, f) => s + f.zones.length, 0)), '', true);
-  footer(pdf, locale, 1);
+  footer(pdf, 1);
 }
 
 /** Zonation map: an overview page and one page per field with zones, probe numbers and sampling points. */
-export function zonationPdf(fields: SheetField[], others: SheetField[], opts: { locale: Locale; orgName: string; date: string; logo?: PdfImage | null }): Buffer {
-  const l = L[opts.locale];
+export function zonationPdf(fields: SheetField[], others: SheetField[], opts: { orgName: string; date: string; logo?: PdfImage | null }): Buffer {
+  const l = L;
   const pdf = new PdfDoc(undefined, { logo: opts.logo });
-  const date = day(opts.locale, opts.date);
-  overviewPage(pdf, opts.locale, l.zonationTitle, opts.orgName, date, fields, others, 2);
+  const date = day(opts.date);
+  overviewPage(pdf, l.zonationTitle, opts.orgName, date, fields, others, 2);
   fields.forEach((field, i) => {
     pdf.addPage();
-    header(pdf, field.name, `${ha(opts.locale, field.areaHa)} · ${l.zones(field.zones.length)}${field.soilType ? ` · ${l.soilType} ${field.soilType}` : ''}`, date);
+    header(pdf, field.name, `${ha(field.areaHa)} · ${l.zones(field.zones.length)}${field.soilType ? ` · ${l.soilType} ${field.soilType}` : ''}`, date);
     const box = { x: MARGIN, y: MARGIN + 44, w: (pdf.width - 2 * MARGIN) * 0.62, h: pdf.height - 2 * MARGIN - 64 };
     drawFieldMap(pdf, field, box, (z) => hexToRgb(z.color));
     const tx = box.x + box.w + 18;
@@ -246,26 +220,26 @@ export function zonationPdf(fields: SheetField[], others: SheetField[], opts: { 
       [
         { label: l.zone, width: tw * 0.46, value: (z) => z.label },
         { label: l.probe, width: tw * 0.22, align: 'right', value: (z) => (z.probeNr != null ? String(z.probeNr) : '—') },
-        { label: l.area, width: tw * 0.32, align: 'right', value: (z) => ha(opts.locale, z.areaHa) },
+        { label: l.area, width: tw * 0.32, align: 'right', value: (z) => ha(z.areaHa) },
       ],
       pdf.height - MARGIN - 20,
     );
-    footer(pdf, opts.locale, i + 2);
+    footer(pdf, i + 2);
   });
   return pdf.toBuffer({ title: l.zonationTitle });
 }
 
 /** Results: per field the zones coloured by their pH class and a table of the measured values. */
-export function resultsPdf(fields: SheetField[], params: SoilParameter[], opts: { locale: Locale; orgName: string; date: string; paramLabel: (p: SoilParameter) => string; logo?: PdfImage | null }): Buffer {
-  const l = L[opts.locale];
+export function resultsPdf(fields: SheetField[], params: SoilParameter[], opts: { orgName: string; date: string; paramLabel: (p: SoilParameter) => string; logo?: PdfImage | null }): Buffer {
+  const l = L;
   const pdf = new PdfDoc(undefined, { logo: opts.logo });
-  const date = day(opts.locale, opts.date);
-  overviewPage(pdf, opts.locale, l.resultsTitle, opts.orgName, date, fields, [], 2);
+  const date = day(opts.date);
+  overviewPage(pdf, l.resultsTitle, opts.orgName, date, fields, [], 2);
   const classKey: Partial<Record<SoilParameter, SoilParameter>> = { ph: 'ph', p2o5: 'p2o5', k2o: 'k2o', mgo: 'mgo' };
   fields.forEach((field, i) => {
     pdf.addPage();
     const sampled = field.zones.map((z) => z.sampledOn).filter((d): d is string => !!d).sort().at(-1);
-    header(pdf, field.name, `${ha(opts.locale, field.areaHa)} · ${l.zones(field.zones.length)}${sampled ? ` · ${l.sampledOn} ${day(opts.locale, sampled)}` : ''}`, date);
+    header(pdf, field.name, `${ha(field.areaHa)} · ${l.zones(field.zones.length)}${sampled ? ` · ${l.sampledOn} ${day(sampled)}` : ''}`, date);
     const mapBox = { x: MARGIN, y: MARGIN + 44, w: (pdf.width - 2 * MARGIN) * 0.4, h: pdf.height - 2 * MARGIN - 90 };
     drawFieldMap(pdf, field, mapBox, (z) => (z.classes.ph ? STAGE[z.classes.ph] : hexToRgb(z.color)));
     const tx = mapBox.x + mapBox.w + 14;
@@ -280,12 +254,12 @@ export function resultsPdf(fields: SheetField[], params: SoilParameter[], opts: 
       [
         { label: l.zone, width: tw * 0.2, value: (z) => z.label },
         { label: l.probe, width: tw * 0.08, align: 'right', value: (z) => (z.probeNr != null ? String(z.probeNr) : '—') },
-        { label: l.area, width: tw * 0.1, align: 'right', value: (z) => num(opts.locale, z.areaHa, 2) },
+        { label: l.area, width: tw * 0.1, align: 'right', value: (z) => num(z.areaHa, 2) },
         ...shown.map<Column>((p) => ({
           label: `${opts.paramLabel(p)}${SOIL_PARAM_META[p].unit ? ` ${SOIL_PARAM_META[p].unit}` : ''}`,
           width: valueWidth,
           align: 'right',
-          value: (z) => (z.values[p] != null ? num(opts.locale, z.values[p]!, SOIL_PARAM_META[p].decimals) : '—'),
+          value: (z) => (z.values[p] != null ? num(z.values[p]!, SOIL_PARAM_META[p].decimals) : '—'),
           chip: (z) => {
             const key = classKey[p];
             const cls = key ? z.classes[key] : null;
@@ -304,7 +278,7 @@ export function resultsPdf(fields: SheetField[], params: SoilParameter[], opts: 
       pdf.text(stage, lx + 9, ly, { size: 7.5 });
       lx += 22;
     }
-    footer(pdf, opts.locale, i + 2);
+    footer(pdf, i + 2);
   });
   return pdf.toBuffer({ title: l.resultsTitle });
 }

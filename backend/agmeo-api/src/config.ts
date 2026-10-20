@@ -48,7 +48,6 @@ export const config = {
     /** Weekly storage overview for operations (comma-separated addresses); empty sends none. */
     storageOverviewTo: env('STORAGE_DIGEST_RECIPIENTS', ''),
     /** Language of the operations overview. */
-    storageOverviewLocale: env('STORAGE_DIGEST_LOCALE', 'de'),
   },
   storage: {
     // 'local' keeps objects in a directory (development, tests); 's3' uses an S3-compatible bucket.

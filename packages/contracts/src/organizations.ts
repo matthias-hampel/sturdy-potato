@@ -2,9 +2,8 @@ import { z } from 'zod';
 import { countryCode, currencyCode, id, name } from './common.js';
 import { MEASUREMENT_SETTINGS, type MeasurementSetting, type MeasurementSystem } from './units.js';
 
-/** UI languages. The user's choice is stored on the account; new accounts follow the browser. */
-/** UI languages, as in AGVOLUTION/agmeo; German and English are complete, the others fall back to English. */
-export const LOCALES = ['de', 'en', 'cs', 'es', 'et', 'fr', 'lt', 'lv', 'pl', 'ro', 'uk'] as const;
+/** UI language. agmeo is German-only (decision 2026-10-20: all other languages removed). */
+export const LOCALES = ['de'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const ROLES = ['owner', 'manager', 'agronomist', 'worker', 'accountant', 'viewer'] as const;
@@ -132,7 +131,7 @@ export interface CurrentUser {
   id: string;
   email: string;
   displayName: string;
-  /** Chosen UI language; null until the user picks one (the app then follows the browser). */
+  /** Stored UI language; null for most accounts. The app is German-only and ignores it. */
   locale: Locale | null;
   organizations: Organization[];
 }

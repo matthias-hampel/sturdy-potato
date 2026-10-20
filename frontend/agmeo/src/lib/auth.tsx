@@ -2,7 +2,6 @@ import type { CurrentUser, SignInResult } from '@agmeo/contracts'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect } from 'react'
-import { applyUserLanguage } from '#/i18n'
 import { SESSION_EXPIRED_EVENT, api, tokenStore } from './api'
 import { authConfig, redirectToSignIn, redirectToSignOut, watchTokens } from './oidc'
 
@@ -54,14 +53,12 @@ export function useAuth() {
 }
 
 /**
- * Keeps the session alive (token renewal), sends the user to sign-in when the API reports an
- * expired session, and switches to the user's saved language.
+ * Keeps the session alive (token renewal) and sends the user to sign-in when the API reports an
+ * expired session.
  */
 export function SessionWatcher() {
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const hasToken = tokenStore.get() != null
-  const me = useQuery<CurrentUser>({ queryKey: ['me'], queryFn: () => api.get<CurrentUser>('/me'), enabled: hasToken, staleTime: 60_000, retry: false })
 
   useEffect(() => {
     const onExpired = () => {
@@ -85,11 +82,6 @@ export function SessionWatcher() {
       stop()
     }
   }, [])
-
-  const locale = me.data?.locale
-  useEffect(() => {
-    if (locale) applyUserLanguage(locale)
-  }, [locale])
 
   return null
 }

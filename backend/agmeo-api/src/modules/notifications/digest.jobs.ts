@@ -20,10 +20,6 @@ const MIN_COVERAGE = 0.8;
 /** Storage notices go out above this share of the allowance (the files page warns from here). */
 const STORAGE_WARN_RATIO = 0.8;
 
-/** Countries whose members get German mails when they never chose a language. */
-const GERMAN_COUNTRIES = new Set(['DE', 'AT', 'CH', 'LI', 'LU']);
-const recipientLocale = (locale: string | null, country: string) => locale ?? (GERMAN_COUNTRIES.has(country) ? 'de' : 'en');
-
 interface DigestOrg {
   organization_id: string;
   name: string;
@@ -36,7 +32,6 @@ interface Recipient {
   user_id: string;
   email: string;
   display_name: string;
-  locale: string | null;
   farm_ids: string[] | null;
 }
 
@@ -107,7 +102,7 @@ export async function sendRainDigest(db: Kysely<DB>, org: DigestOrg, now: Date):
     farmId: f.farm_id,
     name: f.name,
     areaHa: Number(f.area_ha),
-    crop: f.crop_name ? { en: f.crop_name, de: f.crop_name_de } : null,
+    crop: f.crop_name_de ?? f.crop_name,
     precipMm: sums.get(`${Number(f.lat)},${Number(f.lng)}`) ?? null,
     refreshedAt: f.refreshed_at ? new Date(f.refreshed_at) : null,
   }));
@@ -122,7 +117,6 @@ export async function sendRainDigest(db: Kysely<DB>, org: DigestOrg, now: Date):
     const ok = await queueEmail(db, {
       to: r.email,
       template: 'rainDigest',
-      locale: recipientLocale(r.locale, org.country),
       organizationId: org.organization_id,
       dedupeKey: `${prefix}${r.user_id}`,
       headers: { 'List-Unsubscribe': `<${links.oneClick}>, <${links.page}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
@@ -173,13 +167,11 @@ export function storageDigestHandler(db: Kysely<DB>, clock: () => Date = () => n
     const tight = orgs.filter((o) => o.limit > 0 && o.used >= STORAGE_WARN_RATIO * o.limit);
     let queued = 0;
     for (const o of tight) {
-      const country = (await db.selectFrom('organizations').select('country').where('id', '=', o.organization_id).executeTakeFirst())?.country ?? 'DE';
       for (const r of await recipients(db, o.organization_id, 'storage_digest', ['owner', 'manager'])) {
         const links = unsubscribeLinks(r.user_id, 'storage_digest');
         const ok = await queueEmail(db, {
           to: r.email,
           template: 'storageDigest',
-          locale: recipientLocale(r.locale, country),
           organizationId: o.organization_id,
           dedupeKey: `storage-digest:${week}:${o.organization_id}:${r.user_id}`,
           headers: { 'List-Unsubscribe': `<${links.oneClick}>, <${links.page}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
@@ -193,7 +185,6 @@ export function storageDigestHandler(db: Kysely<DB>, clock: () => Date = () => n
       await queueEmail(db, {
         to,
         template: 'storageOverview',
-        locale: config.mail.storageOverviewLocale,
         dedupeKey: `storage-overview:${week}:${to}`,
         params: {
           totalBytes: orgs.reduce((s, o) => s + o.used + o.trash, 0),

@@ -17,7 +17,7 @@ Paths without a prefix are in the reference under `src/app/app/[orgId]/` or `src
 | Weather and agronomic models | present | Stored weather, condition bars, trafficability, BBCH with calibration, ISIP disease, water balance, radar (§7). Out of scope: microclimate, climavi |
 | Integrations and imports | out of scope | Provider integrations excluded (decision §5); data import page for application data, shapefiles and ISO-XML exists |
 | agmeo Chat, knowledge base | out of scope | Excluded (decision §5) |
-| Platform | present (in scope) | Keycloak, files, mail, jobs, 11 languages, farm-restricted members, onboarding, settings, digests (§7). Out of scope: billing, API keys, public API, staff/admin tools |
+| Platform | present (in scope) | Keycloak, files, mail, jobs, German only (decision 2026-10-20: all other languages removed), farm-restricted members, onboarding, settings, digests (§7). Out of scope: billing, API keys, public API, staff/admin tools |
 
 ## 2. Cross-cutting foundations
 
@@ -29,12 +29,12 @@ rework:
 | **F1 Production auth** (Keycloak/OIDC per architecture doc, or Clerk as in the reference), invitations by e-mail, allow-list, SSO | everything customer-facing |
 | **F2 Scheduler + job queue** (cron in the worker, Postgres `SKIP LOCKED` jobs or NATS consumers, idempotent runs) | 28 reference crons: weather, satellite, provider syncs, digests, market prices, OAuth refresh |
 | **F3 Object storage + files module** (S3/R2, folders, quota, scan, trash, preview) | files page, AI import, yield maps, soil lab uploads, field documents, export history, knowledge base, chat |
-| **F4 Mailer** (templates, locale, RFC 8058 unsubscribe, per-user opt-out) | invitations, rain digest, AI import notices, notifications settings |
+| **F4 Mailer** (German templates, RFC 8058 unsubscribe, per-user opt-out) | invitations, rain digest, AI import notices, notifications settings |
 | **F5 Stored weather per field/season** (Open-Meteo archive backfill + daily refresh in org-local slot) | spray/sowing/risk bars, GDD/BBCH since sowing, water balance, disease models, trafficability, N model, news feed |
 | **F6 OAuth connections** (encrypted token store, refresh cron, reconnect UI) + **provider import runner** (runs/chunks, product matcher, review queue) | JD, CLAAS, AGCO, NEXT Farming, climavi, Raindancer |
 | **F7 Import contract** (jobs → chunks → plan → commit, schema + snapshot endpoints) | AI import, NEXT Farming Pro backup, agmeo-import skill/MCP |
 | **F8 API keys + OpenAPI + usage metering** | public API, Pöttinger docs, MCP, mobile app, climavi |
-| **F9 i18n** (11 locales, detection, switcher) and **unit system** (auto/metric/imperial per org) | every screen |
+| **F9 i18n** (German only (decision 2026-10-20: all other languages removed), one catalogue) and **unit system** (auto/metric/imperial per org) | every screen |
 | **F10 Billing** (Zoho subscriptions, hectare tiers, plan gates, coupons, invoices) | Pro gates, chat credits, B2B Maps |
 
 ## 3. Gaps by area
@@ -180,7 +180,7 @@ standalone host and EU residency, assistant API, knowledge base with embeddings 
 | Settings tabs | `settings/_components/*Page.tsx` | done (platform) | Out of scope: communication (co2nserve/Rentenbank), partnerships, connections, subscription, API keys, chat |
 | Billing | `checkout`, `coupon`, `lib/subscription`, `webhooks/zoho` | out of scope | Excluded (decision §5) |
 | Admin dashboard, API stats, staff team pages (clone org, manage orgs, news, partners, KTBL) | `src/app/admin-dashboard`, `src/app/team` | out of scope | Excluded (decision §5) |
-| Languages | `src/i18n/common` (11) | present | — (11 languages; mails and server PDFs German or English) |
+| Languages | `src/i18n/common` (11) | out of scope | German only (decision 2026-10-20: all other languages removed); mails and server PDFs German |
 | Help page, PWA manifest | `app/help`, `public/site.webmanifest` | done (platform) | Coupon, PSM and variety links, cookie settings |
 | E-mail digests (rain, storage) | `cron/rain-digest`, `cron/storage-digest` | done (platform) | Field list sorted by rain (no rain column) |
 
@@ -213,12 +213,12 @@ Each phase ends usable on its own. Effort is relative (S < M < L < XL).
 
 | Phase | Content | Effort |
 |---|---|---|
-| 0 | Foundations: F1 Keycloak/OIDC + e-mail invitations, F2 scheduler and jobs in the worker, F3 object storage + files module, F4 mailer, F9 language switch + org unit system | L |
+| 0 | Foundations: F1 Keycloak/OIDC + e-mail invitations, F2 scheduler and jobs in the worker, F3 object storage + files module, F4 mailer, F9 German UI catalogue + org unit system | L |
 | 1 | Core workflow gaps: field manager (merge, split, archive/restore, renumber), boundary cut/simplify/snap/restore, crop rotation UI, field and cultivation groups, field-table columns and bulk actions, task board with comments, warehouse details and stocktake, prices per year, calculation parameters, machinery details (machine/implement, SCI data), operation action catalogue (diesel/kWh/h per ha), BESyD + Sachsen-Anhalt exports, fertilizer-report wizard and export history | L |
 | 2 | Weather and models: F5 stored weather per field and season, field weather with hourly spray score, 4-level condition bars (spray with Delta T, sowing, weather risk), GDD/BBCH phenology, FAO-56 water balance, trafficability, disease risk, radar | L |
 | 3 | Soil and yield: soil zonation and sampling suite, lab upload and matching, sample cards, history, analysis dashboard, share links; yield-map import and analytics; application maps from soil, yield, single-scene or uploaded zonations, brush editor, bulk maps; satellite annotations, field documents and overview PDF; harvest yield estimate | XL |
 | 4 | Economics and carbon: multi-year profitability, grouping, ranking, coverage stats, diesel and hours, map choropleth, full overhead and CAP fields, benchmarks, market prices; CO2 analysis depth and Excel export, RothC carbon tab, scope 2, emission recommendations; overview table; news feed | L |
-| 5 | Monitoring extras: maize dry-matter monitoring, predictions (yield, DMC, LAI, nFK), N model for zone optimisation and DüV comparison, LAI/SAVI indices, remaining languages | L |
+| 5 | Monitoring extras: maize dry-matter monitoring, predictions (yield, DMC, LAI, nFK), N model for zone optimisation and DüV comparison, LAI/SAVI indices | L |
 
 ## 7. Progress
 
@@ -238,8 +238,8 @@ Each phase ends usable on its own. Effort is relative (S < M < L < XL).
   keyboard shortcuts, context menus, drag & drop (move and desktop upload), paste upload, table / image /
   PDF preview, geo viewer (Shapefile with sidecars, GeoJSON, KML/KMZ, zipped Shapefile) with layers and
   attribute table.
-- **F4 Mail**: `email.send` jobs, typed German/English templates, SMTP (Mailpit locally); invitation e-mails.
-- **F9 Language and units**: language from account, browser or German, switch in the account menu;
+- **F4 Mail**: `email.send` jobs, typed German templates, SMTP (Mailpit locally); invitation e-mails.
+- **F9 Language and units**: German only (decision 2026-10-20: all other languages removed), no language switch;
   organization measurement setting (auto/metric/imperial) with the reference app's 28-dimension unit system;
   areas, weather values and the map scale convert.
 
@@ -422,10 +422,10 @@ Differences from the reference:
 - Every service stays off while its URL or credentials are empty: reads say "not configured", calls
   answer 503 `service_not_configured`, jobs skip themselves.
 
-- **Languages** (000049): Czech, Spanish, Estonian, French, Lithuanian, Latvian, Polish, Romanian and
-  Ukrainian beside German and English, seeded from the reference app's catalogues where the German text
-  matches (about a third) and translated otherwise, with each language's plural forms; a catalogue loads
-  on demand, missing keys fall back to English. Mails and server-side PDFs stay German or English.
+- **Languages**: German only (decision 2026-10-20: all other languages removed). The English catalogue,
+  the nine further catalogues (000049), the language menu and the browser detection are gone; mails,
+  server-side PDFs and system folder names are German. The `users.locale` column stays; the API accepts
+  only `de`.
 
 Open:
 - ESM timeseries answer 404 for crop cycles of this app until the ESM stops checking ids against the
@@ -480,7 +480,7 @@ Open:
 - **Digests** (000122): `notifications.rain-digest` every quarter hour with the reference's timing in the
   organization's local morning, rain from the stored hourly weather, fields limited to each member's
   farms; `notifications.storage-digest` on Mondays to owners and managers above 80 % of the allowance and
-  an operations overview (`STORAGE_DIGEST_RECIPIENTS`). German/English templates, HMAC unsubscribe links
+  an operations overview (`STORAGE_DIGEST_RECIPIENTS`). German templates, HMAC unsubscribe links
   (`EMAIL_UNSUBSCRIBE_SECRET`) with RFC 8058 one-click and `/unsubscribe/:token`.
 - **Help page** and **web app manifest** with icons rendered from the favicon.
 

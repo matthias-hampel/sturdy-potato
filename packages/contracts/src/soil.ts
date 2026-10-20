@@ -292,8 +292,6 @@ export const SoilExportInput = z.object({
   customerNumber: z.string().trim().max(10).nullish(),
   /** Renumber the sample card from here; default keep numbers and continue after the highest. */
   startProbeNr: z.int().min(1).max(99_999_999).nullish(),
-  /** Language of PDF sheets. */
-  locale: z.enum(['de', 'en']).default('de'),
   /** Result columns of the results PDF; default pH, P, K, Mg, humus, Nmin. */
   params: z.array(z.enum(SOIL_PARAMETERS)).max(20).nullish(),
 });
@@ -579,7 +577,6 @@ export const CreateSoilShareInput = z.object({
   expiresAt: z.iso.datetime({ offset: true }).nullish(),
   /** The lab import whose original file the viewer may download. */
   labImportId: id.nullish(),
-  locale: z.enum(['de', 'en']).nullish(),
 });
 export type CreateSoilShareInput = z.input<typeof CreateSoilShareInput>;
 
@@ -600,7 +597,6 @@ export interface SoilShare {
   fieldNames: string[];
   hasPassword: boolean;
   hasFile: boolean;
-  locale: 'de' | 'en' | null;
   expiresAt: string | null;
   createdAt: string;
   createdByName: string | null;
@@ -618,7 +614,6 @@ export interface SoilShareInfo {
   status: 'ok' | 'expired' | 'revoked';
   requiresPassword: boolean;
   hasFile: boolean;
-  locale: 'de' | 'en' | null;
   createdAt: string;
 }
 

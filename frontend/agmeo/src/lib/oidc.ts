@@ -78,7 +78,7 @@ export async function redirectToSignIn(opts: { returnTo?: string; register?: boo
     state: { returnTo: opts.returnTo ?? null },
     login_hint: opts.loginHint,
     prompt: opts.register ? 'create' : undefined,
-    extraQueryParams: { ui_locales: document.documentElement.lang || 'de' },
+    extraQueryParams: { ui_locales: 'de' },
   })
 }
 

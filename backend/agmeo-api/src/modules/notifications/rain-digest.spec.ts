@@ -34,7 +34,7 @@ const row = (name: string, mm: number | null, over: Partial<DigestInputRow> = {}
   farmId: 'farm-a',
   name,
   areaHa: 10,
-  crop: { en: 'Winter wheat', de: 'Winterweizen' },
+  crop: 'Winterweizen',
   precipMm: mm,
   refreshedAt: fresh,
   ...over,

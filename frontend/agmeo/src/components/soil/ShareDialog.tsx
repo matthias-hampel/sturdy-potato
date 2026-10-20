@@ -31,7 +31,7 @@ const endOfDay = (day: string) => new Date(`${day}T23:59:59`).toISOString()
  * their whole sampling history, optionally password-protected and expiring, with the lab file.
  */
 export function ShareDialog({ fieldIds, isOpen, onOpenChange }: { fieldIds: string[]; isOpen: boolean; onOpenChange: (open: boolean) => void }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [kind, setKind] = useState<SoilShareKind>('results')
   const [title, setTitle] = useState('')
   const [password, setPassword] = useState('')
@@ -78,7 +78,6 @@ export function ShareDialog({ fieldIds, isOpen, onOpenChange }: { fieldIds: stri
                   password: password || null,
                   expiresAt: expires ? endOfDay(expires) : null,
                   labImportId: kind === 'results' ? importId : null,
-                  locale: i18n.language === 'de' ? 'de' : 'en',
                 })
               }
             >

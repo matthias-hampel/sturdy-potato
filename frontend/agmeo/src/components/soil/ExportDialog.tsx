@@ -25,7 +25,7 @@ const readCustomer = () => {
  * and results PDFs, GeoJSON and a shapefile. The file is downloaded and archived under "Soil exports".
  */
 export function ExportDialog({ fieldIds, isOpen, onOpenChange }: { fieldIds: string[]; isOpen: boolean; onOpenChange: (open: boolean) => void }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { orgId } = useOrg()
   const [format, setFormat] = useState<SoilExportFormat>('sampleCard')
   const [customer, setCustomer] = useState(readCustomer)
@@ -74,7 +74,6 @@ export function ExportDialog({ fieldIds, isOpen, onOpenChange }: { fieldIds: str
                   format,
                   customerNumber: customer || null,
                   startProbeNr: start,
-                  locale: i18n.language === 'de' ? 'de' : 'en',
                   params: format === 'resultsPdf' ? [...DEFAULT_RESULT_COLS] : null,
                 })
               }
